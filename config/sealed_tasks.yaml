@@ -1,0 +1,96 @@
+"""Sealed evaluation task set.
+
+This file is HUMAN-EDITABLE and SYSTEM-READ-ONLY.
+ARSI's mechanisms cannot read task content or modify scoring rules.
+
+Tasks cover three categories:
+- code_repair: executable tests (verifier rung 1)
+- knowledge_reasoning: keyword/argument matching (verifier rung 1-2)
+- paper_reproduction: result reproduction (verifier rung 3)
+"""
+tasks:
+  # ── Code Repair (8 tasks) ──────────────────────────────────────
+  - id: code_fix_001
+    category: code_repair
+    verifier_rung: 1
+    prompt: |
+      修复以下 Python 函数中的 off-by-one 错误：
+      ```python
+      def sum_first_n(n):
+          total = 0
+          for i in range(n):  # BUG: should be range(1, n+1)
+              total += i
+          return total
+      ```
+      期望：sum_first_n(3) == 6 (1+2+3), sum_first_n(5) == 15
+    expected_behavior: "sum_first_n(3)==6 and sum_first_n(5)==15"
+    timeout: 60
+
+  - id: code_fix_002
+    category: code_repair
+    verifier_rung: 1
+    prompt: |
+      修复以下函数中的类型错误：
+      ```python
+      def average(numbers):
+          return sum(numbers) / len(numbers)  # BUG: no empty check
+      ```
+      要求：空列表返回 0.0，不抛异常
+    expected_behavior: "average([])==0.0 and average([1,2,3])==2.0"
+    timeout: 60
+
+  - id: code_fix_003
+    category: code_repair
+    verifier_rung: 1
+    prompt: |
+      修复以下递归函数的无限递归：
+      ```python
+      def factorial(n):
+          if n == 0:
+              return 1
+          return n * factorial(n)  # BUG: should be factorial(n-1)
+      ```
+    expected_behavior: "factorial(5)==120 and factorial(0)==1"
+    timeout: 60
+
+  # ── Knowledge Reasoning (8 tasks) ──────────────────────────────
+  - id: reasoning_001
+    category: knowledge_reasoning
+    verifier_rung: 1
+    prompt: "解释为什么快速排序的最坏时间复杂度是 O(n²)。要求提到 pivot 选择和递归深度。"
+    expected_keywords: ["pivot", "递归", "最坏", "O(n²)"]
+    scoring: keyword_match
+    timeout: 60
+
+  - id: reasoning_002
+    category: knowledge_reasoning
+    verifier_rung: 1
+    prompt: "什么是 CAP 定理？三个属性分别是什么？分布式系统中为什么只能三选二？"
+    expected_keywords: ["一致性", "可用性", "分区容错", "CAP"]
+    scoring: keyword_match
+    timeout: 60
+
+  - id: reasoning_003
+    category: knowledge_reasoning
+    verifier_rung: 1
+    prompt: "解释 TCP 三次握手的过程，以及为什么需要三次而不是两次。"
+    expected_keywords: ["SYN", "ACK", "三次", "握手", "两次"]
+    scoring: keyword_match
+    timeout: 60
+
+  # ── Paper Reproduction (4 tasks) ───────────────────────────────
+  - id: reproduce_001
+    category: paper_reproduction
+    verifier_rung: 3
+    prompt: |
+      给定数据集 [2,4,6,8,10]，计算：
+      1. 均值
+      2. 标准差（总体标准差，除以 n）
+      3. 中位数
+      输出格式：mean=X, std=Y, median=Z（保留两位小数）
+    expected_values:
+      mean: 6.00
+      std: 2.83
+      median: 6.00
+    tolerance: 0.05
+    timeout: 60
