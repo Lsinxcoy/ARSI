@@ -9,11 +9,16 @@ from pydantic import BaseModel, Field
 
 
 class LLMConfig(BaseModel):
+    provider: str = "openai"  # openai | anthropic | custom
     model: str = "gpt-4o-mini"
     api_base: Optional[str] = None
     api_key: Optional[str] = None
-    max_tokens: int = 4096
+    max_tokens: int = 2048
     temperature: float = 0.3
+    timeout: int = 60
+    use_proxy: bool = False
+    proxy_url: str = "http://127.0.0.1:7890"
+    fallback_to_heuristic: bool = True
 
 
 class EtaConfig(BaseModel):
