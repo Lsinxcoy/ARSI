@@ -36,9 +36,11 @@ from arsi.mnemosyne.core import Mnemosyne
 from arsi.mnemosyne.memory_proxy import MemoryProxy, NullNativeMemory
 from arsi.world_model.siwm import SIWM
 from arsi.governor.core import AutopoieticGovernor, DimensionManager
+from arsi.governor.pre_enactment import PreEnactmentEngine
 from arsi.empowerment.engine import EmpowermentEngine, NullAdapter
 from arsi.pipelines.dream import DreamPipeline
 from arsi.llm_brain import LLMPoweredGovernor, LLMPoweredMindZero, LLMPoweredDiagnosis, LLMPoweredDream
+from arsi.world_model.dynamics import DynamicsModel
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +80,11 @@ class ARSI:
         self.llm_mindzero = LLMPoweredMindZero(llm=llm, heuristic_mindzero=siwm.mindzero)
         self.llm_diagnosis = LLMPoweredDiagnosis(llm=llm)
         self.llm_dream = LLMPoweredDream(llm=llm)
+
+        # SIWM Layer 2 + Pre-enactment
+        self.dynamics = DynamicsModel(store, llm=llm)
+        self.pre_enactment = PreEnactmentEngine(self.dynamics)
+        self._dynamics_trained = False
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> "ARSI":
@@ -179,13 +186,21 @@ class ARSI:
     def step(self) -> dict:
         """Execute one full ARSI cycle.
 
-        Uses LLM for Governor decisions and MindZero inference when available.
-        Falls back to heuristics when LLM is unavailable.
+        Decision priority:
+          1. Pre-enactment (Layer 2 dynamics prediction)
+          2. LLM (if pre-enactment confidence too low)
+          3. Heuristic (fallback)
         """
         self._step_count += 1
-        result = {"step": self._step_count, "actions": [], "llm_used": False}
+        result = {"step": self._step_count, "actions": [], "decision_source": "heuristic"}
 
-        # 1. Refresh world state (with LLM-powered MindZero if available)
+        # 0. Train dynamics model periodically
+        if self._step_count % 10 == 1 or not self._dynamics_trained:
+            train_result = self.dynamics.train()
+            self._dynamics_trained = train_result["statistical"]["trained"]
+            result["dynamics_trained"] = self._dynamics_trained
+
+        # 1. Refresh world state
         state = self.siwm.refresh_state()
         result["state"] = {
             "generation": state.phi.generation,
@@ -194,24 +209,34 @@ class ARSI:
             "storage": state.phi.storage_stats,
         }
 
-        # 2. LLM-powered Governor decision
+        # 2. Three-layer decision
         candidates = ["dream", "learn", "evolve", "maintain", "remember"]
-        llm_decision = self.llm_governor.decide(state, candidates)
-        result["llm_used"] = self.llm_governor._llm_calls > 0
+
+        # Layer A: Pre-enactment (predict consequences)
+        pre_result = self.pre_enactment.select_best(state, candidates)
+        if pre_result["confidence"] > 0.1:
+            decision = pre_result
+            result["decision_source"] = "pre_enactment"
+        else:
+            # Layer B: LLM decision
+            llm_decision = self.llm_governor.decide(state, candidates)
+            decision = llm_decision
+            result["decision_source"] = "llm" if self.llm_governor._llm_calls > 0 else "heuristic"
 
         result["decision"] = {
-            "action": llm_decision["action"],
-            "reason": llm_decision.get("reason", ""),
-            "risk": llm_decision.get("risk", "low"),
-            "source": "llm" if result["llm_used"] else "heuristic",
+            "action": decision["action"],
+            "reason": decision.get("reason", ""),
+            "risk": decision.get("risk", "low"),
+            "source": result["decision_source"],
+            "confidence": decision.get("confidence", 0.0),
         }
 
         # 3. Execute the action
-        exec_result = self._execute_action_str(llm_decision["action"], state)
+        exec_result = self._execute_action_str(decision["action"], state)
         result["actions"].append(exec_result)
 
         # 4. Update η (predict what we did)
-        self.siwm.predict_and_update(llm_decision["action"])
+        self.siwm.predict_and_update(decision["action"])
 
         # 5. Governor metabolism (distill policy)
         if self._step_count % 5 == 0:
@@ -332,6 +357,8 @@ class ARSI:
         g_stats = self.governor.stats
         e_stats = self.empowerment.stats
         d_stats = self.dream.stats
+        pe_stats = self.pre_enactment.stats
+        dyn_stats = self.dynamics.stats
 
         return {
             **m_stats,
@@ -345,6 +372,9 @@ class ARSI:
             "llm_governor_calls": self.llm_governor._llm_calls,
             "llm_mindzero_calls": self.llm_mindzero._llm_calls,
             "llm_diagnosis_calls": self.llm_diagnosis._llm_calls,
+            "pre_enactment_count": pe_stats.get("pre_enactment_count", 0),
+            "dynamics_trained": dyn_stats.get("transition_model", {}).get("trained", False),
+            "dynamics_actions": dyn_stats.get("transition_model", {}).get("action_count", 0),
             "iron_laws": self.iron_laws.law_ids,
         }
 
