@@ -34,6 +34,7 @@ from arsi.core import ARSI
 from arsi.adapters.mimo_extractor import MiMoSessionExtractor
 from arsi.adapters.mimo_deep_extractor import MiMoDeepExtractor
 from arsi.adapters.hermes_adapter import HermesAdapter
+from arsi.adapters.hermes_deep_adapter import HermesDeepAdapter
 from arsi.adapters.synthex_adapter import SynthexAdapter
 from arsi.empowerment.dimensions import DimensionOrchestrator
 
@@ -62,8 +63,15 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     # Step 1b: Extract traces from Hermes
     hermes = HermesAdapter()
     hermes_traces = hermes.extract_traces()
-    print(f"  Hermes: {len(hermes_traces)} 条轨迹")
-    traces.extend(hermes_traces)
+    print(f"  Hermes 基础: {len(hermes_traces)} 条轨迹")
+
+    # Step 1b-deep: Deep extraction from Hermes state.db
+    hermes_deep = HermesDeepAdapter()
+    hermes_deep_traces = hermes_deep.extract_traces(limit_sessions=100, limit_messages=300)
+    hermes_stats = hermes_deep.get_stats()
+    print(f"  Hermes 深度: {len(hermes_deep_traces)} 条轨迹")
+    print(f"    ({hermes_stats.get('active_sessions', '?')} 会话, {hermes_stats.get('total_messages', '?')} 消息, {hermes_stats.get('unique_tools', '?')} 工具)")
+    traces.extend(hermes_deep_traces)
 
     # Step 1c: Extract traces from SYNTHEX (母巢)
     synthex = SynthexAdapter()
