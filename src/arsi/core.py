@@ -242,9 +242,13 @@ class ARSI:
             result["decision_source"] = "pre_enactment"
         else:
             # Layer B: LLM decision
+            llm_calls_before = self.llm_governor._llm_calls
             llm_decision = self.llm_governor.decide(state, candidates)
             decision = llm_decision
-            result["decision_source"] = "llm" if self.llm_governor._llm_calls > 0 else "heuristic"
+            result["decision_source"] = "llm" if self.llm_governor._llm_calls > llm_calls_before else "heuristic"
+            # Track LLM cost
+            if self.llm_governor._llm_calls > llm_calls_before:
+                self.cost_ledger.record_llm_call(input_tokens=400, output_tokens=150)
 
         result["decision"] = {
             "action": decision["action"],
@@ -398,6 +402,9 @@ class ARSI:
             "pre_enactment_count": pe_stats.get("pre_enactment_count", 0),
             "dynamics_trained": dyn_stats.get("transition_model", {}).get("trained", False),
             "dynamics_actions": dyn_stats.get("transition_model", {}).get("action_count", 0),
+            "cost_tokens": self.cost_ledger.snapshot()["tokens"]["total"],
+            "cost_llm_calls": self.cost_ledger.snapshot()["tokens"]["llm_calls"],
+            "cost_verifier_queries": self.cost_ledger.snapshot()["verifier"]["queries"],
             "iron_laws": self.iron_laws.law_ids,
         }
 

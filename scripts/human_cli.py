@@ -5,6 +5,7 @@ Usage:
     python scripts/human_cli.py
 
 Commands:
+    dashboard       — full system dashboard (state + dims + dynamics + cost + log)
     stats           — show system stats
     state           — show world state (Φ+Ψ+η)
     step            — run one step
@@ -38,6 +39,60 @@ from arsi.foundation.schema import EmpowermentDimension
 
 def format_dict(d: dict, indent: int = 2) -> str:
     return json.dumps(d, indent=indent, ensure_ascii=False, default=str)
+
+
+def cmd_dashboard(arsi: ARSI) -> None:
+    """Full system dashboard — one-screen overview."""
+    stats = arsi.get_stats()
+    state = arsi.siwm.refresh_state()
+
+    print("\n" + "═" * 56)
+    print("  ARSI 系统仪表盘")
+    print("═" * 56)
+
+    # World state
+    print("\n  ── 世界状态 ──")
+    print(f"  Φ: 代数={state.phi.generation}  存储={state.phi.storage_stats}")
+    print(f"  Ψ: 信念={len(state.psi.beliefs)}  情绪={state.psi.affect}")
+    eta = state.eta
+    eta_bar = "█" * int(eta * 20) + "░" * (20 - int(eta * 20))
+    print(f"  η: [{eta_bar}] {eta:.3f}")
+
+    # Core metrics
+    print("\n  ── 核心指标 ──")
+    print(f"  步数: {stats.get('step_count', 0)}  Term: {stats.get('term_count', 0)}")
+    print(f"  轨迹: {stats.get('trace_count', 0)}  经验: {stats.get('experience_count', 0)}")
+    print(f"  梦境: {stats.get('dreams', 0)}  预演: {stats.get('pre_enactment_count', 0)}")
+
+    # LLM usage
+    print("\n  ── LLM 使用 ──")
+    print(f"  可用: {stats.get('llm_available', False)}")
+    print(f"  Governor: {stats.get('llm_governor_calls', 0)}  MindZero: {stats.get('llm_mindzero_calls', 0)}")
+    print(f"  Token: {stats.get('cost_tokens', 0)}  验证查询: {stats.get('cost_verifier_queries', 0)}")
+
+    # Dynamics
+    print("\n  ── 动力学 ──")
+    print(f"  已训练: {stats.get('dynamics_trained', False)}  动作数: {stats.get('dynamics_actions', 0)}")
+
+    # Iron laws
+    laws = stats.get("iron_laws", [])
+    print(f"\n  ── 铁律: {len(laws)} 条 ──")
+
+    # Recent log
+    dreams = arsi.store.get_self_records("dream_session", limit=2)
+    terms = arsi.store.get_self_records("term_report", limit=1)
+    if dreams:
+        d = json.loads(dreams[0].get("data", "{}"))
+        print(f"\n  ── 最近梦境 ──")
+        print(f"  η: {d.get('eta_before', '?')} → {d.get('eta_after', '?')}")
+    if terms:
+        t = json.loads(terms[0].get("data", "{}"))
+        gd = t.get("gain_decomposition", {})
+        print(f"\n  ── 最近 Term ──")
+        print(f"  {t.get('term_id', '?')}: 增益={gd.get('total', '?')} "
+              f"(放大={gd.get('amplified', '?')} 进口={gd.get('imported', '?')} 自组织={gd.get('self_organized', '?')})")
+
+    print("\n" + "═" * 56)
 
 
 def cmd_stats(arsi: ARSI) -> None:
@@ -265,6 +320,8 @@ def main():
                 break
             elif cmd == "help":
                 print(__doc__)
+            elif cmd == "dashboard":
+                cmd_dashboard(arsi)
             elif cmd == "stats":
                 cmd_stats(arsi)
             elif cmd == "state":
