@@ -33,6 +33,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from arsi.core import ARSI
 from arsi.adapters.mimo_extractor import MiMoSessionExtractor
 from arsi.adapters.hermes_adapter import HermesAdapter
+from arsi.adapters.synthex_adapter import SynthexAdapter
 from arsi.empowerment.dimensions import DimensionOrchestrator
 
 # Feedback file location (MiMo reads this at session start)
@@ -57,6 +58,12 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     print(f"  Hermes: {len(hermes_traces)} 条轨迹")
     traces.extend(hermes_traces)
 
+    # Step 1c: Extract traces from SYNTHEX (母巢)
+    synthex = SynthexAdapter()
+    synthex_traces = synthex.extract_traces()
+    print(f"  SYNTHEX(母巢): {len(synthex_traces)} 条轨迹")
+    traces.extend(synthex_traces)
+
     if not traces:
         print("  无新轨迹，跳过")
         return {"status": "no_traces"}
@@ -64,7 +71,13 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     # Step 2: Ingest into ARSI
     print("\n[2/6] 导入 ARSI...")
     for t in traces:
-        agent_id = "hermes" if t.get("params", {}).get("source", "").startswith(("mstar", "hermes", "skill")) else "mimo-desktop"
+        source = t.get("params", {}).get("source", "")
+        if source.startswith(("mstar", "hermes", "skill")):
+            agent_id = "hermes"
+        elif source.startswith(("synthex", "mechanism", "wal", "state")):
+            agent_id = "synthex-mothernest"
+        else:
+            agent_id = "mimo-desktop"
         arsi.ingest_trace(
             agent_id=agent_id,
             action=t.get("action", "unknown"),
