@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from arsi.core import ARSI
 from arsi.adapters.mimo_extractor import MiMoSessionExtractor
+from arsi.adapters.hermes_adapter import HermesAdapter
 from arsi.empowerment.dimensions import DimensionOrchestrator
 
 # Feedback file location (MiMo reads this at session start)
@@ -45,10 +46,16 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     print(f"ARSI Continuous Loop — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"{'='*50}")
 
-    # Step 1: Extract traces
+    # Step 1: Extract traces from MiMo
     print("\n[1/6] 提取行为轨迹...")
     traces = extractor.extract_traces(session_id)
-    print(f"  提取到 {len(traces)} 条轨迹")
+    print(f"  MiMo: {len(traces)} 条轨迹")
+
+    # Step 1b: Extract traces from Hermes
+    hermes = HermesAdapter()
+    hermes_traces = hermes.extract_traces()
+    print(f"  Hermes: {len(hermes_traces)} 条轨迹")
+    traces.extend(hermes_traces)
 
     if not traces:
         print("  无新轨迹，跳过")
@@ -57,8 +64,9 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     # Step 2: Ingest into ARSI
     print("\n[2/6] 导入 ARSI...")
     for t in traces:
+        agent_id = "hermes" if t.get("params", {}).get("source", "").startswith(("mstar", "hermes", "skill")) else "mimo-desktop"
         arsi.ingest_trace(
-            agent_id="mimo-desktop",
+            agent_id=agent_id,
             action=t.get("action", "unknown"),
             outcome=t.get("outcome", "unknown"),
             effect=t.get("effect", 0.5),
