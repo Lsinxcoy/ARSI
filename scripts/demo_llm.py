@@ -29,7 +29,7 @@ def create_llm() -> LLMClient:
     api_key = os.environ.get("ARSI_API_KEY", "")
     config = LLMConfig(
         provider="openai",
-        model="deepseek-v4-flash",
+        model="omen-alpha",
         api_key=api_key,
         api_base="https://opencode.ai/zen/go/v1",
         use_proxy=True,
