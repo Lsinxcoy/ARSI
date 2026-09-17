@@ -38,6 +38,7 @@ from arsi.world_model.siwm import SIWM
 from arsi.governor.core import AutopoieticGovernor, DimensionManager
 from arsi.empowerment.engine import EmpowermentEngine, NullAdapter
 from arsi.pipelines.dream import DreamPipeline
+from arsi.llm_brain import LLMPoweredGovernor, LLMPoweredMindZero, LLMPoweredDiagnosis, LLMPoweredDream
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +72,12 @@ class ARSI:
         self._step_count = 0
         self._term_count = 0
         self._memory_proxies: dict[str, MemoryProxy] = {}
+
+        # LLM brain (wraps heuristic modules with LLM intelligence)
+        self.llm_governor = LLMPoweredGovernor(llm=llm, heuristic_governor=governor)
+        self.llm_mindzero = LLMPoweredMindZero(llm=llm, heuristic_mindzero=siwm.mindzero)
+        self.llm_diagnosis = LLMPoweredDiagnosis(llm=llm)
+        self.llm_dream = LLMPoweredDream(llm=llm)
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> "ARSI":
@@ -172,12 +179,13 @@ class ARSI:
     def step(self) -> dict:
         """Execute one full ARSI cycle.
 
-        Returns a dict with all actions taken and their results.
+        Uses LLM for Governor decisions and MindZero inference when available.
+        Falls back to heuristics when LLM is unavailable.
         """
         self._step_count += 1
-        result = {"step": self._step_count, "actions": []}
+        result = {"step": self._step_count, "actions": [], "llm_used": False}
 
-        # 1. Refresh world state
+        # 1. Refresh world state (with LLM-powered MindZero if available)
         state = self.siwm.refresh_state()
         result["state"] = {
             "generation": state.phi.generation,
@@ -186,20 +194,24 @@ class ARSI:
             "storage": state.phi.storage_stats,
         }
 
-        # 2. Governor decides
-        action = self.governor.decide(state)
+        # 2. LLM-powered Governor decision
+        candidates = ["dream", "learn", "evolve", "maintain", "remember"]
+        llm_decision = self.llm_governor.decide(state, candidates)
+        result["llm_used"] = self.llm_governor._llm_calls > 0
+
         result["decision"] = {
-            "action": action.a_phy,
-            "reason": action.a_ment.reason,
-            "risk": action.a_ment.risk_assessment,
+            "action": llm_decision["action"],
+            "reason": llm_decision.get("reason", ""),
+            "risk": llm_decision.get("risk", "low"),
+            "source": "llm" if result["llm_used"] else "heuristic",
         }
 
         # 3. Execute the action
-        exec_result = self._execute_action(action, state)
+        exec_result = self._execute_action_str(llm_decision["action"], state)
         result["actions"].append(exec_result)
 
         # 4. Update η (predict what we did)
-        self.siwm.predict_and_update(action.a_phy)
+        self.siwm.predict_and_update(llm_decision["action"])
 
         # 5. Governor metabolism (distill policy)
         if self._step_count % 5 == 0:
@@ -217,9 +229,9 @@ class ARSI:
 
         return result
 
-    def _execute_action(self, action: CoupledAction, state: WorldState) -> dict:
-        """Execute a coupled action."""
-        a = action.a_phy
+    def _execute_action_str(self, action_name: str, state: WorldState) -> dict:
+        """Execute an action by name."""
+        a = action_name
 
         if a == "dream":
             new_state = self.dream.execute(state)
@@ -281,10 +293,24 @@ class ARSI:
 
     # ── Empowerment ─────────────────────────────────────────────
 
-    def empower_agent(self, agent_id: str) -> EmpowermentOp:
-        """Empower a host agent."""
+    def empower_agent(self, agent_id: str) -> dict:
+        """Empower a host agent with LLM-powered diagnosis."""
         state = self.siwm.refresh_state()
-        return self.empowerment.empower(agent_id, state)
+        traces = self.store.get_recent_traces(n=20, agent_id=agent_id)
+
+        # LLM diagnosis
+        diagnosis = self.llm_diagnosis.diagnose(traces, state)
+
+        # Execute empowerment
+        op = self.empowerment.empower(agent_id, state)
+
+        return {
+            "empowerment_id": op.id,
+            "agent_id": agent_id,
+            "diagnosis": diagnosis,
+            "verification": op.verification.value,
+            "evidence": op.verification_evidence,
+        }
 
     # ── Sealed Evaluation ───────────────────────────────────────
 
@@ -316,6 +342,9 @@ class ARSI:
             "empowerments": e_stats.get("empowerment_count", 0),
             "dreams": d_stats.get("dream_count", 0),
             "llm_available": self.llm.available if self.llm else False,
+            "llm_governor_calls": self.llm_governor._llm_calls,
+            "llm_mindzero_calls": self.llm_mindzero._llm_calls,
+            "llm_diagnosis_calls": self.llm_diagnosis._llm_calls,
             "iron_laws": self.iron_laws.law_ids,
         }
 

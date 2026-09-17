@@ -84,3 +84,57 @@
 1. PowerShell Set-Content 的反杠转义导致 __init__.py 语法错误 — 改用 write 工具
 2. Pydantic 不允许非注解类属性 — 改用普通类测试铁律
 3. 维度管理器在无数据时 data_sufficiency=0 导致无法选择 — 测试中先注入轨迹
+
+---
+
+## LLM 接入 + Core 主类 + LLM 内化
+
+### 2026-09-16 搭建记录
+
+#### 已完成
+| 模块 | 文件 | 状态 |
+|------|------|------|
+| LLM 客户端 | `foundation/llm.py` | ✅ 代理支持 + 降级 + extra_headers |
+| ARSI Core | `core.py` | ✅ 主类组装全部模块 |
+| Term Runner | `scripts/run_term.py` | ✅ 完整 term 执行 |
+| LLM Brain | `llm_brain.py` | ✅ LLM 内化到四个核心模块 |
+| LLM Demo | `scripts/demo_llm.py` | ✅ 端到端演示 |
+
+#### LLM 内化详情
+| 模块 | LLM 用途 | 降级策略 |
+|------|---------|---------|
+| Governor | 分析状态、选择动作、给出理由 | 启发式候选选择 |
+| MindZero | 从轨迹推断信念/目标/情绪 | 频率统计推断 |
+| 赋能诊断 | 分析失败模式、推荐改进维度 | if-then 规则 |
+| 梦境管道 | belief 语义调和 | 置信度阈值过滤 |
+
+#### 实测结果（union-alpha via OpenRouter）
+```
+Step 1: learn — LLM 决策（理由：0 信念、10 经验、需建立认知基础）
+Step 2: dream — 启发式降级（LLM 限流）
+Step 3: learn — LLM 决策（理由：η=0.145 有失配、信念数为 0）
+Step 4-5: dream — 启发式降级
+```
+LLM 可用时用 LLM，限流时自动降级——设计行为正确。
+
+#### 与代码级方案的偏差
+| 偏差点 | 方案 | 实际 | 原因 |
+|--------|------|------|------|
+| LLM 协议 | chat/completions | chat/completions（OpenRouter） | opencode.ai 的 union-alpha 服务端 500 |
+| 模型 ID | union-alpha | stealth/union-alpha | OpenRouter 上需要 provider 前缀 |
+| LLM 内化方式 | 直接改原模块 | 装饰器模式（llm_brain.py） | 保持启发式降级路径干净 |
+| 测试 LLM | 真实调用 | 强制禁用（_client=None） | 避免测试时网络请求 |
+
+#### 遇到的问题
+1. opencode.ai 的 union-alpha 全端点 500 — 切换到 OpenRouter
+2. OpenRouter 上模型 ID 是 stealth/union-alpha 不是 union-alpha
+3. config.py 的 LLMConfig 缺 extra_headers 字段 — 补上
+4. 测试中 LLM 尝试联网导致超时 — fixture 中强制禁用
+5. step() 方法重构后残留旧代码导致 IndentationError — 清理
+
+#### 当前系统状态
+- **69/69 测试通过**
+- **LLM 接入**：union-alpha via OpenRouter，代理 127.0.0.1:7890
+- **LLM 内化**：Governor/MindZero/诊断/梦境 四个模块
+- **降级策略**：LLM 不可用时自动回退到启发式
+- **ARSI Core**：一个对象拥有全部系统，step() 是完整决策+执行循环

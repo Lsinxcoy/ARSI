@@ -10,9 +10,10 @@ def arsi(tmp_path):
     """Create an ARSI instance with in-memory store."""
     import yaml
 
-    # Write minimal config
+    # Write minimal config (LLM disabled for tests)
     config = {
-        "llm": {"provider": "openai", "model": "test", "api_key": "", "fallback_to_heuristic": True},
+        "llm": {"provider": "openai", "model": "test", "api_key": "sk-test-disabled",
+                "use_proxy": False, "fallback_to_heuristic": True, "timeout": 1},
         "db_path": ":memory:",
         "iron_laws_path": str(tmp_path / "iron_laws.yaml"),
         "sealed_tasks_path": str(tmp_path / "sealed_tasks.yaml"),
@@ -27,6 +28,9 @@ def arsi(tmp_path):
     )
 
     instance = ARSI.from_config(config_path)
+    # Force disable LLM for tests (no network calls)
+    if instance.llm:
+        instance.llm._client = None
     yield instance
     instance.close()
 
@@ -80,8 +84,10 @@ class TestARSICore:
     def test_empower_agent(self, arsi):
         for i in range(10):
             arsi.ingest_trace("agent_b", "learn", "failure", 0.2)
-        op = arsi.empower_agent("agent_b")
-        assert op.target_agent == "agent_b"
+        result = arsi.empower_agent("agent_b")
+        assert result["agent_id"] == "agent_b"
+        assert "diagnosis" in result
+        assert "verification" in result
 
     def test_stats(self, arsi):
         arsi.ingest_trace("a1", "learn", "success", 0.8)
