@@ -1,0 +1,102 @@
+{
+  "capability": 0.6534,
+  "self_model_accuracy": 0.6866,
+  "task_count": 5,
+  "per_category": {
+    "code_repair": 0.3,
+    "knowledge_reasoning": 0.8335,
+    "paper_reproduction": 1.0
+  },
+  "per_task": [
+    {
+      "task_id": "code_fix_001",
+      "category": "code_repair",
+      "declared_confidence": 0.5,
+      "actual_score": 0.3,
+      "self_model_error": 0.2,
+      "evidence": {
+        "output_length": 401,
+        "has_function": true,
+        "note": "simplified_check"
+      }
+    },
+    {
+      "task_id": "code_fix_002",
+      "category": "code_repair",
+      "declared_confidence": 0.5,
+      "actual_score": 0.3,
+      "self_model_error": 0.2,
+      "evidence": {
+        "output_length": 783,
+        "has_function": true,
+        "note": "simplified_check"
+      }
+    },
+    {
+      "task_id": "reasoning_001",
+      "category": "knowledge_reasoning",
+      "declared_confidence": 0.5,
+      "actual_score": 1.0,
+      "self_model_error": 0.5,
+      "evidence": {
+        "output_length": 534,
+        "keywords_found": [
+          "pivot",
+          "递归",
+          "最坏"
+        ],
+        "keywords_total": [
+          "pivot",
+          "递归",
+          "最坏"
+        ]
+      }
+    },
+    {
+      "task_id": "reasoning_002",
+      "category": "knowledge_reasoning",
+      "declared_confidence": 0.5,
+      "actual_score": 0.667,
+      "self_model_error": 0.167,
+      "evidence": {
+        "output_length": 514,
+        "keywords_found": [
+          "一致性",
+          "可用性"
+        ],
+        "keywords_total": [
+          "一致性",
+          "可用性",
+          "分区容错"
+        ]
+      }
+    },
+    {
+      "task_id": "reproduce_001",
+      "category": "paper_reproduction",
+      "declared_confidence": 0.5,
+      "actual_score": 1.0,
+      "self_model_error": 0.5,
+      "evidence": {
+        "output_length": 40,
+        "value_details": {
+          "mean": {
+            "expected": 6.0,
+            "actual": 6.0,
+            "match": true
+          },
+          "std": {
+            "expected": 2.83,
+            "actual": 2.8284271247461903,
+            "match": true
+          },
+          "median": {
+            "expected": 6.0,
+            "actual": 6.0,
+            "match": true
+          }
+        }
+      }
+    }
+  ]
+}
