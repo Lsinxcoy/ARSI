@@ -101,7 +101,7 @@ class EdgeDiscovery:
 class Mnemosyne:
     """Unified memory substrate — the brain's memory system.
 
-    Three zones + causal chains + cross-agent experience sharing.
+    Three zones + causal chains + cross-agent experience sharing + semantic retrieval.
     """
 
     def __init__(self, store: MnemosyneStore):
@@ -109,6 +109,17 @@ class Mnemosyne:
         self.dopamine = DopamineGate()
         self.decay = UtilityDecay()
         self.edge_discovery = EdgeDiscovery(store)
+        # Lazy-loaded semantic retriever
+        self._retriever = None
+
+    @property
+    def retriever(self):
+        """Semantic retriever (lazy-initialized)."""
+        if self._retriever is None:
+            from arsi.mnemosyne.semantic_retrieval import SemanticRetriever
+            self._retriever = SemanticRetriever(self.store)
+            self._retriever.index_all()
+        return self._retriever
 
     @property
     def current_generation(self) -> int:
@@ -178,17 +189,40 @@ class Mnemosyne:
 
     # ── Cross-agent experience search ────────────────────────────
 
-    def search_experience(self, query_tags: list[str], agent_id: Optional[str] = None) -> list[MemoryRecord]:
-        """Search EXPERIENCE zone. Results include experiences from OTHER agents."""
-        results = self.store.search_memories(
-            zone=MemoryZone.EXPERIENCE,
-            tags=query_tags,
-            limit=10,
-        )
-        # If agent_id specified, boost results from same agent but include others
+    def search_experience(self, query: str, agent_id: Optional[str] = None, k: int = 10) -> list[MemoryRecord]:
+        """Search EXPERIENCE zone using semantic retrieval.
+
+        Args:
+            query: Natural language query (not just tags)
+            agent_id: Boost results from this agent but include others
+            k: Max results
+        """
+        try:
+            # Use semantic retriever
+            results_with_scores = self.retriever.search(
+                query, k=k, zone=MemoryZone.EXPERIENCE
+            )
+            results = [r for r, s in results_with_scores]
+        except Exception:
+            # Fallback to tag matching
+            results = self.store.search_memories(
+                zone=MemoryZone.EXPERIENCE, limit=k
+            )
+
+        # Boost same-agent results
         if agent_id:
             results.sort(key=lambda r: (0 if r.agent_id == agent_id else 1, -r.utility_score))
         return results
+
+    def search_cross_agent(self, query: str, exclude_agent: Optional[str] = None, k: int = 5) -> list[MemoryRecord]:
+        """Search for experiences from OTHER agents (cross-agent sharing)."""
+        try:
+            results_with_scores = self.retriever.search_cross_agent(
+                query, k=k, exclude_agent=exclude_agent
+            )
+            return [r for r, s in results_with_scores]
+        except Exception:
+            return self.store.search_memories(zone=MemoryZone.EXPERIENCE, limit=k)
 
     # ── Consolidation cycle ──────────────────────────────────────
 

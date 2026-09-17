@@ -226,7 +226,7 @@ class EmpowermentEngine:
 
         # Search experience memory for relevant past lessons
         experiences = self.mnemosyne.search_experience(
-            query_tags=[dim.value],
+            query=dim.value + " " + weakness.get("reason", ""),
             agent_id=agent_id,
         )
 

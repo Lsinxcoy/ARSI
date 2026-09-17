@@ -89,7 +89,7 @@ class TestMnemosyne:
             agent_id="a1",
         ))
         # Agent B searches and finds A's experience
-        results = mnemosyne.search_experience(query_tags=["decomposition"], agent_id="b1")
+        results = mnemosyne.search_experience(query="decomposition", agent_id="b1")
         assert len(results) > 0
         assert results[0].agent_id == "a1"
 
