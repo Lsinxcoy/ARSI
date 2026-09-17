@@ -3,8 +3,8 @@
 
 llm:
   provider: openai
-  model: omen-alpha
-  api_base: https://opencode.ai/zen/go/v1
+  model: stealth/union-alpha
+  api_base: https://openrouter.ai/api/v1
   # api_key: set via environment variable ARSI_API_KEY
   max_tokens: 2048
   temperature: 0.3

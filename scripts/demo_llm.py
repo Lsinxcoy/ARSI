@@ -29,12 +29,12 @@ def create_llm() -> LLMClient:
     api_key = os.environ.get("ARSI_API_KEY", "")
     config = LLMConfig(
         provider="openai",
-        model="omen-alpha",
+        model="stealth/union-alpha",
         api_key=api_key,
-        api_base="https://opencode.ai/zen/go/v1",
+        api_base="https://openrouter.ai/api/v1",
         use_proxy=True,
         proxy_url="http://127.0.0.1:7890",
-        extra_headers={"x-opencode-session": "arsi-demo-001"},
+        extra_headers={},
         temperature=0.3,
         max_tokens=1024,
         fallback_to_heuristic=True,
