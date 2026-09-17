@@ -52,12 +52,15 @@ class DreamPipeline:
     """Dream pipeline — the system's sleep cycle.
 
     Not rest: deep processing of memory and self-model.
+    Enhanced with LLM-powered belief reconciliation when available.
     """
 
-    def __init__(self, siwm: SIWM, mnemosyne: Mnemosyne):
+    def __init__(self, siwm: SIWM, mnemosyne: Mnemosyne, llm=None):
         self.siwm = siwm
         self.mnemosyne = mnemosyne
+        self.llm = llm
         self._dream_count = 0
+        self._llm_reconcile_count = 0
 
     def execute(self, state: WorldState) -> WorldState:
         """Execute a dream cycle."""
@@ -71,7 +74,7 @@ class DreamPipeline:
         traces = self.mnemosyne.store.get_recent_traces(n=50)
         fresh_psi = self.siwm.mindzero.infer_mental_state(traces)
 
-        # 3. Reconcile beliefs (keep accurate, correct inaccurate)
+        # 3. Reconcile beliefs (LLM-powered when available)
         corrected_beliefs = self._reconcile_beliefs(
             state.psi.beliefs, fresh_psi.beliefs
         )
@@ -116,23 +119,106 @@ class DreamPipeline:
     def _reconcile_beliefs(self, old: list, new: list) -> list:
         """Reconcile old and new beliefs.
 
-        Keep old beliefs that are still consistent with new observations.
-        Add new beliefs that explain recent behavior.
+        Uses LLM for semantic comparison when available.
+        Falls back to confidence-based heuristic.
         """
-        # Simple reconciliation: prefer new beliefs, keep high-confidence old ones
-        reconciled = list(new)  # Start with new inferences
+        # Try LLM-powered reconciliation
+        if self.llm and self.llm.available and (old or new):
+            try:
+                result = self._llm_reconcile(old, new)
+                if result:
+                    self._llm_reconcile_count += 1
+                    return result
+            except Exception as e:
+                logger.warning(f"LLM belief reconciliation failed, using heuristic: {e}")
 
+        # Heuristic fallback: prefer new, keep high-confidence old
+        reconciled = list(new)
         for old_belief in old:
-            # Keep old belief if it has high confidence and isn't contradicted
             if old_belief.confidence > 0.7:
-                # Check if any new belief contradicts
                 contradicted = any(
                     self._beliefs_contradict(old_belief, nb) for nb in new
                 )
                 if not contradicted:
                     reconciled.append(old_belief)
-
         return reconciled
+
+    def _llm_reconcile(self, old: list, new: list) -> list:
+        """LLM-powered belief reconciliation."""
+        import json
+
+        old_str = json.dumps(
+            [{"content": b.content, "confidence": b.confidence} for b in old[-10:]],
+            ensure_ascii=False,
+        )
+        new_str = json.dumps(
+            [{"content": b.content, "confidence": b.confidence} for b in new[-10:]],
+            ensure_ascii=False,
+        )
+
+        prompt = f"""调和 AI 系统的新旧信念。保留准确的，修正过时的，合并重复的。
+
+旧信念（之前推断的）：
+{old_str}
+
+新信念（从最近行为重新推断的）：
+{new_str}
+
+调和原则：
+1. 新信念与实际行为一致时优先保留新信念
+2. 旧信念置信度高且未被新证据推翻时保留
+3. 新旧信念表达相同意图时合并（取更高置信度）
+4. 矛盾时以新信念为准
+
+输出 JSON：
+{{"reconciled": [{{"content": "调和后的信念", "confidence": 0.0到1.0, "source": "old|new|merged"}}]}}"""
+
+        resp = self.llm.chat(
+            prompt,
+            system="你是信念调和专家。只输出 JSON。",
+            max_tokens=800,
+        )
+
+        if not resp.success:
+            return None
+
+        data = self._parse_json(resp.content)
+        if not data or "reconciled" not in data:
+            return None
+
+        from arsi.foundation.schema import Belief
+        reconciled = []
+        for b in data["reconciled"]:
+            if isinstance(b, dict) and "content" in b:
+                reconciled.append(Belief(
+                    content=b["content"],
+                    confidence=max(0.0, min(1.0, b.get("confidence", 0.5))),
+                    source=f"llm_dream:{b.get('source', 'unknown')}",
+                ))
+        return reconciled if reconciled else None
+
+    @staticmethod
+    def _parse_json(content: str):
+        import json
+        c = content.strip()
+        if c.startswith("```json"):
+            c = c[7:]
+        if c.startswith("```"):
+            c = c[3:]
+        if c.endswith("```"):
+            c = c[:-3]
+        c = c.strip()
+        try:
+            return json.loads(c)
+        except json.JSONDecodeError:
+            start = c.find("{")
+            end = c.rfind("}")
+            if start != -1 and end > start:
+                try:
+                    return json.loads(c[start:end + 1])
+                except json.JSONDecodeError:
+                    pass
+        return None
 
     @staticmethod
     def _beliefs_contradict(a, b) -> bool:
@@ -142,4 +228,7 @@ class DreamPipeline:
 
     @property
     def stats(self) -> dict:
-        return {"dream_count": self._dream_count}
+        return {
+            "dream_count": self._dream_count,
+            "llm_reconcile_count": self._llm_reconcile_count,
+        }

@@ -112,7 +112,7 @@ class ARSI:
         )
         governor = AutopoieticGovernor(siwm, store, iron_laws, dim_mgr)
         empowerment = EmpowermentEngine(mnemosyne, siwm, NullAdapter())
-        dream = DreamPipeline(siwm, mnemosyne)
+        dream = DreamPipeline(siwm, mnemosyne, llm=llm)
 
         logger.info(f"ARSI initialized (db={config.db_path}, llm={'yes' if llm and llm.available else 'no'})")
 
