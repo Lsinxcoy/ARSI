@@ -135,6 +135,15 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     if not suggestions:
         print("  未检测到明显缺口")
 
+    # Step 4b: Apply empowerment recommendations to agents
+    print("\n[4b/6] 应用赋能建议...")
+    from arsi.empowerment.applier import EmpowermentApplier
+    applier = EmpowermentApplier(arsi.store)
+    apply_result = applier.apply_all(dim_results)
+    print(f"  应用: {apply_result['applied']} 项")
+    for app in apply_result.get("applications", []):
+        print(f"    {app['dimension']}: {app['action']} → {app.get('target', '?')}")
+
     # Step 5: Generate empowerment feedback
     print("\n[5/6] 生成赋能建议...")
     feedback = generate_feedback(arsi, suggestions, dim_results)
