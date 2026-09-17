@@ -44,6 +44,8 @@ from arsi.pipelines.dream import DreamPipeline
 from arsi.llm_brain import LLMPoweredGovernor, LLMPoweredMindZero, LLMPoweredDiagnosis, LLMPoweredDream
 from arsi.world_model.dynamics import DynamicsModel
 from arsi.world_model.counterfactual import CounterfactualSimulator
+from arsi.world_model.discovery_tree import DiscoveryTree
+from arsi.governor.exploration_policy import ExplorationPolicy, PolicyDevelopmentAgent
 from arsi.sealed_eval.gain_decomposition import GainDecomposer
 from arsi.foundation.cost_ledger import CostLedger
 
@@ -93,6 +95,11 @@ class ARSI:
 
         # SIWM Layer 3: Counterfactual simulator
         self.counterfactual = CounterfactualSimulator(self.dynamics, llm=llm)
+
+        # Dream-RSI: Discovery tree + programmable exploration policy
+        self.discovery_tree = DiscoveryTree()
+        self.exploration_policy = ExplorationPolicy(name="arsi_default")
+        self.policy_developer = PolicyDevelopmentAgent(llm=llm)
 
         # N1: Gain decomposition
         self.gain_decomposer = GainDecomposer(store, llm=llm)
@@ -467,6 +474,63 @@ class ARSI:
             "lifecycle": lifecycle_result.get("lifecycle_updates", {}),
             "final_stats": self.get_stats(),
         }
+
+    # ── Dream-RSI: Discovery Tree + Policy Development ─────────
+
+    def build_discovery_tree(self) -> dict:
+        """Build discovery tree from all behavior traces.
+
+        Dream-RSI mechanism: converts flat traces into structured tree
+        that enables replay simulation.
+        """
+        traces = self.store.get_recent_traces(n=500)
+        stats = self.discovery_tree.build_from_traces(traces)
+        return stats
+
+    def develop_exploration_policy(self, num_revisions: int = 3) -> dict:
+        """Develop improved exploration policy via Dream-RSI loop.
+
+        1. Build discovery tree from traces
+        2. Evaluate current policy via replay
+        3. LLM revises policy based on replay feedback
+        4. Evaluate revised policy
+        5. Select best policy
+        """
+        # Build tree if not already built
+        if not self.discovery_tree.nodes:
+            self.build_discovery_tree()
+
+        # Develop policy
+        best_policy = self.policy_developer.develop(
+            self.exploration_policy,
+            self.discovery_tree,
+            num_revisions=num_revisions,
+        )
+
+        # Update exploration policy if improved
+        if best_policy.best_score > self.exploration_policy.best_score:
+            self.exploration_policy = best_policy
+            logger.info(f"Policy improved: {best_policy.best_score:.4f}")
+
+        return {
+            "policy_name": best_policy.name,
+            "revisions": num_revisions,
+            "best_score": best_policy.best_score,
+            "avg_score": best_policy.avg_score,
+            "policy_stats": best_policy.stats,
+            "tree_stats": self.discovery_tree.get_stats(),
+        }
+
+    def replay_policy(self, policy_name: str = None) -> dict:
+        """Replay current exploration policy through discovery tree."""
+        if not self.discovery_tree.nodes:
+            self.build_discovery_tree()
+
+        result = self.discovery_tree.replay_alternative(
+            self.exploration_policy.select,
+            max_rounds=10,
+        )
+        return result
 
     def close(self) -> None:
         """Clean shutdown."""
