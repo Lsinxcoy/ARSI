@@ -19,6 +19,7 @@ class LLMConfig(BaseModel):
     use_proxy: bool = False
     proxy_url: str = "http://127.0.0.1:7890"
     fallback_to_heuristic: bool = True
+    extra_headers: dict = Field(default_factory=dict)
 
 
 class EtaConfig(BaseModel):
