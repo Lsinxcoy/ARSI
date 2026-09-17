@@ -27,6 +27,7 @@ class LLMConfig:
     max_tokens: int = 2048
     temperature: float = 0.3
     timeout: int = 60
+    extra_headers: dict = field(default_factory=dict)
     # Proxy settings
     use_proxy: bool = False
     proxy_url: str = "http://127.0.0.1:7890"
@@ -93,6 +94,8 @@ class LLMClient:
             kwargs = {"api_key": self.config.api_key or "sk-placeholder"}
             if self.config.api_base:
                 kwargs["base_url"] = self.config.api_base
+            if self.config.extra_headers:
+                kwargs["default_headers"] = self.config.extra_headers
 
             # Proxy support via httpx
             if self.config.use_proxy:

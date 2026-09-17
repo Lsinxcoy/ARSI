@@ -1,0 +1,30 @@
+# ARSI Configuration
+# API credentials — DO NOT commit real keys to public repos
+
+llm:
+  provider: openai
+  model: deepseek-v4-flash
+  api_base: https://opencode.ai/zen/go/v1
+  # api_key: set via environment variable ARSI_API_KEY
+  max_tokens: 2048
+  temperature: 0.3
+  timeout: 30
+  use_proxy: true
+  proxy_url: http://127.0.0.1:7890
+  fallback_to_heuristic: true
+  extra_headers:
+    x-opencode-session: arsi-system-001
+
+eta:
+  alpha: 0.1
+  theta_low: 0.15
+  theta_high: 0.40
+
+dimensions:
+  max_per_term: 2
+  min_data_sufficiency: 0.3
+
+db_path: arsi.db
+iron_laws_path: config/iron_laws.yaml
+sealed_tasks_path: config/sealed_tasks.yaml
+log_level: INFO

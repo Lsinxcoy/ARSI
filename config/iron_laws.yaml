@@ -1,55 +1,41 @@
-"""Iron Laws configuration.
-
-This file is HUMAN-EDITABLE and SYSTEM-READ-ONLY.
-ARSI's mechanisms cannot modify this file.
-"""
 laws:
   - id: G1
     name: 设计/执行分离
     description: 策略生成与突变落地解耦
     severity: warn
-
   - id: G2
     name: 分级安全门
     description: 层级越深阈值越高
     severity: warn
-
   - id: G3
     name: 冻结/人类主权
     description: 冻结开关优先级高于所有进化
     severity: block
-
   - id: G4
     name: 审计触发
     description: 巩固须含 why/trigger/verify
     severity: warn
-
   - id: G5
     name: 客观效用锚
-    description: 效果在[-1,+1]，机制禁自评
+    description: 效果在-1到+1之间，机制禁自评
     severity: block
-
   - id: G6
     name: 熔断
     description: CLOSED/OPEN/HALF_OPEN状态机
     severity: block
-
   - id: G7
     name: 数学收敛
     description: Lyapunov函数单调下降
     severity: warn
-
   - id: G8
     name: 因果问责
-    description: 假设→设计→结果因果链完整才激活
+    description: 假设到设计到结果因果链完整才激活
     severity: warn
-
   - id: G9
     name: 高熵校验
-    description: 高熵记忆/决策主动生成验证请求
+    description: 高熵记忆和决策主动生成验证请求
     severity: warn
-
   - id: G10
     name: 密封评估层
-    description: 任务集/评分规则/发布门槛在所有写掩码之外
+    description: 任务集和评分规则和发布门槛在所有写掩码之外
     severity: block
