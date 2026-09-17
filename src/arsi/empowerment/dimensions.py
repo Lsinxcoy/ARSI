@@ -419,7 +419,7 @@ class CalibrationDimension:
 
 
 class DimensionOrchestrator:
-    """Orchestrates the three implemented dimensions.
+    """Orchestrates all implemented dimensions.
 
     Runs sense → generate → validate for each dimension,
     records results to Mnemosyne.
@@ -432,6 +432,9 @@ class DimensionOrchestrator:
             EmpowermentDimension.KNOWLEDGE: KnowledgeDimension(store, llm),
             EmpowermentDimension.DECOMPOSITION: DecompositionDimension(store, llm),
             EmpowermentDimension.CALIBRATION: CalibrationDimension(store, llm),
+            EmpowermentDimension.ATTENTION: AttentionDimension(store, llm),
+            EmpowermentDimension.METACOGNITION: MetacognitionDimension(store, llm),
+            EmpowermentDimension.ENVIRONMENT: EnvironmentDimension(store, llm),
         }
         self._results: list[dict] = []
 
@@ -507,3 +510,288 @@ class DimensionOrchestrator:
             "max_consecutive_fails": max_consec,
             "ece": 0.5,  # Simplified
         }
+
+
+class AttentionDimension:
+    """Attention management — analyze context information density vs performance.
+
+    Sense:  compare traces with high/low param counts and their outcomes
+    Generate: recommend optimal context size and what to include/exclude
+    Validate: performance improves with optimized context
+    """
+
+    def __init__(self, store: MnemosyneStore, llm: Optional[LLMClient] = None):
+        self.store = store
+        self.llm = llm
+        self.dimension = EmpowermentDimension.ATTENTION
+
+    def sense(self, traces: list[dict], state: WorldState) -> dict:
+        """Analyze attention patterns from traces."""
+        if not traces:
+            return {"gap_detected": False, "reason": "no_traces"}
+
+        # Analyze param richness vs outcome
+        rich_params = []  # traces with substantial params
+        sparse_params = []  # traces with minimal params
+
+        for t in traces:
+            params = t.get("action_params", {})
+            param_size = len(str(params))
+            if param_size > 50:
+                rich_params.append(t)
+            else:
+                sparse_params.append(t)
+
+        rich_success = sum(1 for t in rich_params if t.get("outcome") == "success") / max(len(rich_params), 1)
+        sparse_success = sum(1 for t in sparse_params if t.get("outcome") == "success") / max(len(sparse_params), 1)
+
+        gap = abs(rich_success - sparse_success)
+        gap_detected = gap > 0.15 and len(rich_params) >= 3 and len(sparse_params) >= 3
+
+        # LLM analysis
+        analysis = None
+        if self.llm and self.llm.available and traces:
+            trace_summary = json.dumps(
+                [{"action": t.get("action"), "outcome": t.get("outcome"),
+                  "params_size": len(str(t.get("action_params", {})))} for t in traces[-15:]],
+                ensure_ascii=False,
+            )
+            prompt = f"""分析以下行为轨迹，判断信息密度是否合理。
+
+轨迹（含参数大小）：
+{trace_summary}
+
+判断：
+1. 参数丰富的轨迹是否成功率更高？
+2. 是否存在信息过载（参数太多但效果差）？
+3. 是否存在信息不足（参数太少导致失败）？
+
+输出 JSON：
+{{"attention_issue": true/false, "issue_type": "过载|不足|无问题", "evidence": "依据", "suggestion": "建议"}}"""
+
+            resp = self.llm.chat(prompt, system="你是注意力管理分析专家。只输出 JSON。", max_tokens=400)
+            if resp.success:
+                analysis = _parse_llm_json(resp.content)
+
+        return {
+            "gap_detected": gap_detected or (analysis and analysis.get("attention_issue")),
+            "rich_success_rate": round(rich_success, 3),
+            "sparse_success_rate": round(sparse_success, 3),
+            "gap": round(gap, 3),
+            "analysis": analysis,
+        }
+
+    def generate(self, sense_result: dict, traces: list[dict]) -> dict:
+        """Generate attention optimization recommendations."""
+        if not sense_result.get("gap_detected"):
+            return {"action": "none", "reason": "attention_well_balanced"}
+
+        analysis = sense_result.get("analysis") or {}
+        suggestion = analysis.get("suggestion", "") if isinstance(analysis, dict) else ""
+
+        return {
+            "action": "optimize_attention",
+            "issue_type": analysis.get("issue_type", "unknown") if isinstance(analysis, dict) else "unknown",
+            "recommendation": suggestion or "调整上下文信息密度",
+            "rich_vs_sparse_gap": sense_result.get("gap", 0),
+        }
+
+    def validate(self, generate_result: dict, before_stats: dict, after_stats: dict) -> tuple[VerificationStatus, dict]:
+        if generate_result.get("action") == "none":
+            return VerificationStatus.SUCCESS, {"reason": "already_balanced"}
+        before_gap = before_stats.get("attention_gap", 0.5)
+        after_gap = after_stats.get("attention_gap", 0.5)
+        evidence = {"before_gap": before_gap, "after_gap": after_gap}
+        if after_gap < before_gap:
+            return VerificationStatus.SUCCESS, evidence
+        return VerificationStatus.UNKNOWN, evidence
+
+
+class MetacognitionDimension:
+    """Metacognition — detect 'should have stopped' patterns.
+
+    Sense:  find sequences where agent kept trying despite repeated failures
+    Generate: recommend stopping/asking/pivoting rules
+    Validate: fewer wasted attempts after applying rules
+    """
+
+    def __init__(self, store: MnemosyneStore, llm: Optional[LLMClient] = None):
+        self.store = store
+        self.llm = llm
+        self.dimension = EmpowermentDimension.METACOGNITION
+
+    def sense(self, traces: list[dict], state: WorldState) -> dict:
+        """Detect metacognitive failures from traces."""
+        if not traces:
+            return {"gap_detected": False, "reason": "no_traces"}
+
+        # Detect: consecutive failures followed by eventual success (wasted attempts)
+        # or consecutive failures with no success (should have pivoted)
+        wasted_attempts = 0
+        should_pivot = 0
+        consec_fails = 0
+
+        for t in traces:
+            if t.get("outcome") == "failure":
+                consec_fails += 1
+            else:
+                if consec_fails >= 2:
+                    wasted_attempts += consec_fails - 1  # Could have stopped earlier
+                consec_fails = 0
+
+        # If final consecutive fails >= 3, should have pivoted
+        if consec_fails >= 3:
+            should_pivot = 1
+
+        gap_detected = wasted_attempts >= 2 or should_pivot >= 1
+
+        # LLM analysis
+        analysis = None
+        if self.llm and self.llm.available and traces:
+            trace_summary = json.dumps(
+                [{"action": t.get("action"), "outcome": t.get("outcome")} for t in traces[-20:]],
+                ensure_ascii=False,
+            )
+            prompt = f"""分析以下行为轨迹，判断元认知是否合理。
+
+轨迹：
+{trace_summary}
+
+判断：
+1. 是否有"该停未停"的模式（连续失败后仍继续同一策略）？
+2. 是否有"过早放弃"的模式（一次失败就换方向）？
+3. 最优的停止/切换时机是什么？
+
+输出 JSON：
+{{"metacog_issue": true/false, "issue_type": "该停未停|过早放弃|无问题", "wasted_attempts": 整数, "suggestion": "建议"}}"""
+
+            resp = self.llm.chat(prompt, system="你是元认知分析专家。只输出 JSON。", max_tokens=400)
+            if resp.success:
+                analysis = _parse_llm_json(resp.content)
+
+        return {
+            "gap_detected": gap_detected or (analysis and analysis.get("metacog_issue")),
+            "wasted_attempts": wasted_attempts,
+            "should_pivot": should_pivot,
+            "analysis": analysis,
+        }
+
+    def generate(self, sense_result: dict, traces: list[dict]) -> dict:
+        """Generate metacognitive rules."""
+        if not sense_result.get("gap_detected"):
+            return {"action": "none", "reason": "metacognition_ok"}
+
+        analysis = sense_result.get("analysis") or {}
+        suggestion = analysis.get("suggestion", "") if isinstance(analysis, dict) else ""
+
+        return {
+            "action": "apply_metacognitive_rules",
+            "issue_type": analysis.get("issue_type", "unknown") if isinstance(analysis, dict) else "unknown",
+            "recommendation": suggestion or "连续失败 2 次后切换策略",
+            "wasted_attempts": sense_result.get("wasted_attempts", 0),
+        }
+
+    def validate(self, generate_result: dict, before_stats: dict, after_stats: dict) -> tuple[VerificationStatus, dict]:
+        if generate_result.get("action") == "none":
+            return VerificationStatus.SUCCESS, {"reason": "metacognition_ok"}
+        before_waste = before_stats.get("wasted_attempts", 0)
+        after_waste = after_stats.get("wasted_attempts", 0)
+        evidence = {"before_wasted": before_waste, "after_wasted": after_waste}
+        if after_waste < before_waste:
+            return VerificationStatus.SUCCESS, evidence
+        return VerificationStatus.UNKNOWN, evidence
+
+
+class EnvironmentDimension:
+    """Environment shaping — analyze environment config impact on success.
+
+    Sense:  correlate environment params (params richness, action types) with outcomes
+    Generate: recommend environment improvements
+    Validate: success rate improves after environment changes
+    """
+
+    def __init__(self, store: MnemosyneStore, llm: Optional[LLMClient] = None):
+        self.store = store
+        self.llm = llm
+        self.dimension = EmpowermentDimension.ENVIRONMENT
+
+    def sense(self, traces: list[dict], state: WorldState) -> dict:
+        """Analyze environment impact from traces."""
+        if not traces:
+            return {"gap_detected": False, "reason": "no_traces"}
+
+        # Analyze by action type: which actions have consistently low success?
+        action_stats = {}
+        for t in traces:
+            a = t.get("action", "unknown")
+            action_stats.setdefault(a, {"total": 0, "success": 0})
+            action_stats[a]["total"] += 1
+            if t.get("outcome") == "success":
+                action_stats[a]["success"] += 1
+
+        # Find actions with consistently low success
+        weak_actions = []
+        for a, s in action_stats.items():
+            rate = s["success"] / max(s["total"], 1)
+            if rate < 0.5 and s["total"] >= 2:
+                weak_actions.append({"action": a, "success_rate": round(rate, 2), "count": s["total"]})
+
+        gap_detected = len(weak_actions) > 0
+
+        # LLM analysis
+        analysis = None
+        if self.llm and self.llm.available and traces:
+            trace_summary = json.dumps(
+                [{"action": t.get("action"), "outcome": t.get("outcome"),
+                  "params": list(t.get("action_params", {}).keys())} for t in traces[-15:]],
+                ensure_ascii=False,
+            )
+            prompt = f"""分析以下行为轨迹，判断环境配置是否需要改进。
+
+轨迹：
+{trace_summary}
+
+判断：
+1. 哪些操作类型成功率低？可能是环境配置问题？
+2. 是否缺少必要的工具/参数/上下文？
+3. 环境改进建议是什么？
+
+输出 JSON：
+{{"env_issue": true/false, "weak_areas": ["薄弱领域"], "suggestion": "环境改进建议"}}"""
+
+            resp = self.llm.chat(prompt, system="你是环境配置分析专家。只输出 JSON。", max_tokens=400)
+            if resp.success:
+                analysis = _parse_llm_json(resp.content)
+
+        return {
+            "gap_detected": gap_detected or (analysis and analysis.get("env_issue")),
+            "weak_actions": weak_actions,
+            "action_stats": {a: {"rate": round(s["success"] / max(s["total"], 1), 2), "n": s["total"]}
+                             for a, s in action_stats.items()},
+            "analysis": analysis,
+        }
+
+    def generate(self, sense_result: dict, traces: list[dict]) -> dict:
+        """Generate environment improvement recommendations."""
+        if not sense_result.get("gap_detected"):
+            return {"action": "none", "reason": "environment_ok"}
+
+        analysis = sense_result.get("analysis") or {}
+        suggestion = analysis.get("suggestion", "") if isinstance(analysis, dict) else ""
+        weak_actions = sense_result.get("weak_actions", [])
+
+        return {
+            "action": "improve_environment",
+            "weak_areas": [w["action"] for w in weak_actions],
+            "recommendation": suggestion or "为薄弱操作补充必要参数和上下文",
+        }
+
+    def validate(self, generate_result: dict, before_stats: dict, after_stats: dict) -> tuple[VerificationStatus, dict]:
+        if generate_result.get("action") == "none":
+            return VerificationStatus.SUCCESS, {"reason": "environment_ok"}
+        before_rate = before_stats.get("success_rate", 0)
+        after_rate = after_stats.get("success_rate", 0)
+        evidence = {"before_rate": before_rate, "after_rate": after_rate}
+        if after_rate > before_rate:
+            return VerificationStatus.SUCCESS, evidence
+        return VerificationStatus.UNKNOWN, evidence

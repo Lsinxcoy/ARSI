@@ -179,3 +179,104 @@ class TestDimensionOrchestrator:
         stats = DimensionOrchestrator._compute_stats(traces)
         assert 0 <= stats["success_rate"] <= 1
         assert stats["max_consecutive_fails"] >= 0
+
+
+class TestAttentionDimension:
+    def test_sense_no_traces(self, store, state):
+        from arsi.empowerment.dimensions import AttentionDimension
+        dim = AttentionDimension(store, llm=None)
+        result = dim.sense([], state)
+        assert result["gap_detected"] is False
+
+    def test_sense_with_params(self, store, state):
+        from arsi.empowerment.dimensions import AttentionDimension
+        dim = AttentionDimension(store, llm=None)
+        traces = [
+            {"action": "learn", "outcome": "success", "effect": 0.8,
+             "action_params": {"content": "detailed knowledge", "source": "paper", "context": "full"}},
+            {"action": "learn", "outcome": "failure", "effect": 0.2, "action_params": {}},
+            {"action": "evolve", "outcome": "success", "effect": 0.7,
+             "action_params": {"target": "mechanism_X", "direction": "optimize"}},
+            {"action": "evolve", "outcome": "failure", "effect": 0.1, "action_params": {}},
+        ]
+        result = dim.sense(traces, state)
+        assert "rich_success_rate" in result
+        assert "sparse_success_rate" in result
+
+    def test_generate_no_gap(self, store, state):
+        from arsi.empowerment.dimensions import AttentionDimension
+        dim = AttentionDimension(store, llm=None)
+        result = dim.generate({"gap_detected": False}, [])
+        assert result["action"] == "none"
+
+
+class TestMetacognitionDimension:
+    def test_sense_wasted_attempts(self, store, state):
+        from arsi.empowerment.dimensions import MetacognitionDimension
+        dim = MetacognitionDimension(store, llm=None)
+        traces = [
+            {"action": "learn", "outcome": "failure"},
+            {"action": "learn", "outcome": "failure"},
+            {"action": "learn", "outcome": "failure"},
+            {"action": "learn", "outcome": "success"},
+        ]
+        result = dim.sense(traces, state)
+        assert result["wasted_attempts"] >= 2
+        assert result["gap_detected"] is True
+
+    def test_sense_no_waste(self, store, state):
+        from arsi.empowerment.dimensions import MetacognitionDimension
+        dim = MetacognitionDimension(store, llm=None)
+        traces = [
+            {"action": "learn", "outcome": "success"},
+            {"action": "evolve", "outcome": "success"},
+            {"action": "reflect", "outcome": "success"},
+        ]
+        result = dim.sense(traces, state)
+        assert result["wasted_attempts"] == 0
+
+    def test_generate_rules(self, store, state):
+        from arsi.empowerment.dimensions import MetacognitionDimension
+        dim = MetacognitionDimension(store, llm=None)
+        result = dim.generate({"gap_detected": True, "wasted_attempts": 3}, [])
+        assert result["action"] == "apply_metacognitive_rules"
+
+
+class TestEnvironmentDimension:
+    def test_sense_weak_actions(self, store, state):
+        from arsi.empowerment.dimensions import EnvironmentDimension
+        dim = EnvironmentDimension(store, llm=None)
+        traces = [
+            {"action": "learn", "outcome": "failure", "action_params": {}},
+            {"action": "learn", "outcome": "failure", "action_params": {}},
+            {"action": "learn", "outcome": "success", "action_params": {}},
+            {"action": "evolve", "outcome": "success", "action_params": {}},
+            {"action": "evolve", "outcome": "success", "action_params": {}},
+        ]
+        result = dim.sense(traces, state)
+        assert "weak_actions" in result
+        assert "action_stats" in result
+
+    def test_generate_improvement(self, store, state):
+        from arsi.empowerment.dimensions import EnvironmentDimension
+        dim = EnvironmentDimension(store, llm=None)
+        result = dim.generate(
+            {"gap_detected": True, "weak_actions": [{"action": "learn", "success_rate": 0.3}]},
+            [],
+        )
+        assert result["action"] == "improve_environment"
+        assert "learn" in result["weak_areas"]
+
+
+class TestOrchestratorSixDimensions:
+    def test_six_dimensions_registered(self, store, state):
+        orch = DimensionOrchestrator(store, llm=None)
+        assert len(orch.dimensions) == 6
+
+    def test_run_all_six(self, store, state):
+        orch = DimensionOrchestrator(store, llm=None)
+        traces = _make_traces(30, fail_rate=0.3)
+        results = orch.run_all(traces, state)
+        expected = {"knowledge", "decomposition", "calibration",
+                     "attention", "metacognition", "environment"}
+        assert set(results.keys()) == expected
