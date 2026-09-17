@@ -73,16 +73,57 @@ class UtilityDecay:
 class EdgeDiscovery:
     """Active association discovery — find hidden links between experiences.
 
-    Inherited from SYNTHEX's edge_discovery.py.
-    Periodically scans the EXPERIENCE zone for related patterns.
+    Upgraded: uses semantic retrieval for cross-agent, cross-domain associations.
+    Falls back to tag intersection when semantic retriever unavailable.
     """
 
     def __init__(self, store: MnemosyneStore):
         self.store = store
+        self._semantic_available = False
 
     def scan(self, min_shared_tags: int = 1) -> list[dict]:
-        """Scan for experiences with shared tags (simplified association)."""
+        """Scan for associations between experiences."""
         experiences = self.store.search_memories(zone=MemoryZone.EXPERIENCE, limit=500)
+        if len(experiences) < 2:
+            return []
+
+        # Try semantic association first
+        if self._semantic_available:
+            return self._semantic_scan(experiences)
+
+        # Fallback: tag intersection
+        return self._tag_scan(experiences, min_shared_tags)
+
+    def _semantic_scan(self, experiences: list) -> list[dict]:
+        """Semantic association using retriever."""
+        try:
+            from arsi.mnemosyne.semantic_retrieval import SemanticRetriever
+            retriever = SemanticRetriever(self.store)
+            retriever.index_memories(experiences)
+
+            associations = []
+            for i, a in enumerate(experiences):
+                for b in experiences[i + 1:]:
+                    # Use semantic similarity
+                    results = retriever.search(a.content, k=3)
+                    for r, score in results:
+                        if r.id == b.id and score > 0.1:
+                            associations.append({
+                                "source": a.id,
+                                "target": b.id,
+                                "source_agent": a.agent_id,
+                                "target_agent": b.agent_id,
+                                "semantic_score": round(score, 4),
+                                "cross_agent": a.agent_id != b.agent_id,
+                            })
+
+            associations.sort(key=lambda x: x["semantic_score"], reverse=True)
+            return associations[:20]
+        except Exception:
+            return self._tag_scan(experiences, 1)
+
+    def _tag_scan(self, experiences: list, min_shared_tags: int) -> list[dict]:
+        """Fallback: tag intersection based association."""
         associations = []
         for i, a in enumerate(experiences):
             for b in experiences[i + 1:]:
@@ -91,11 +132,18 @@ class EdgeDiscovery:
                     associations.append({
                         "source": a.id,
                         "target": b.id,
+                        "source_agent": a.agent_id,
+                        "target_agent": b.agent_id,
                         "shared_tags": list(shared),
                         "strength": len(shared) / max(len(set(a.tags) | set(b.tags)), 1),
+                        "cross_agent": a.agent_id != b.agent_id,
                     })
-        associations.sort(key=lambda x: x["strength"], reverse=True)
+        associations.sort(key=lambda x: x.get("strength", 0), reverse=True)
         return associations[:20]
+
+    def enable_semantic(self) -> None:
+        """Enable semantic association discovery."""
+        self._semantic_available = True
 
 
 class Mnemosyne:

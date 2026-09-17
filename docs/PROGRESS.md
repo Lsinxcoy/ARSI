@@ -138,3 +138,46 @@ LLM 可用时用 LLM，限流时自动降级——设计行为正确。
 - **LLM 内化**：Governor/MindZero/诊断/梦境 四个模块
 - **降级策略**：LLM 不可用时自动回退到启发式
 - **ARSI Core**：一个对象拥有全部系统，step() 是完整决策+执行循环
+
+---
+
+## N1-N6 全量推进 + P1-P6 深化
+
+### 2026-09-16 搭建记录
+
+#### 已完成
+| 编号 | 内容 | 文件 | 状态 |
+|------|------|------|------|
+| P1 | 预演闭环 | `governor/pre_enactment.py` | ✅ Governor 三层决策 |
+| P2 | 代码验证真实执行 | `sealed_eval/code_verifier.py` | ✅ 子进程执行+断言 |
+| P3 | 六个赋能维度 | `empowerment/dimensions.py` | ✅ 6/9 完整闭环 |
+| P5 | 梦境 LLM 调和 | `pipelines/dream.py` | ✅ LLM 语义比对 |
+| P6 | 人类 CLI v2 | `scripts/human_cli.py` | ✅ 10+ 命令 |
+| N1 | 增益三分解 | `sealed_eval/gain_decomposition.py` | ✅ 规则+LLM 混合归因 |
+| N2 | 成本四账本 | `foundation/cost_ledger.py` | ✅ token/时间/算力/查询 |
+| N3 | 维度生命周期集成 | `empowerment/lifecycle_integration.py` | ✅ 编排器→管理器 |
+| N4 | 边发现语义升级 | `mnemosyne/core.py` | ✅ 语义关联+跨 agent 标记 |
+| N5 | 任务集扩充 | `config/sealed_tasks.yaml` | ✅ 5→15 个任务 |
+| N6 | 反事实仿真器 | `world_model/counterfactual.py` | ✅ 多步展开+深度自适应 |
+
+#### 测试结果
+```
+184 passed — 全部通过
+```
+
+#### 与方案的偏差
+| 偏差点 | 方案 | 实际 | 原因 |
+|--------|------|------|------|
+| 增益归因方法 | 密封评估 per_task_delta | 规则分类 + LLM 比例混合 | per_task_delta 需要更细粒度的任务匹配 |
+| 成本 token 计数 | 精确 API usage | 近似值（500/200 per call） | OpenRouter 不总是返回 usage |
+| 反事实仿真 | 用 Layer 2 完整物理转移 | 简化为 η 和 storage 变化 | 完整 Φ 转移需要更多特征 |
+| N7 多 agent | 计划包含 | 跳过（用户要求最后） | 用户明确指示 |
+
+#### 当前系统能力
+- **184 测试通过**
+- **6/9 赋能维度**有完整闭环
+- **三层决策**：预演 → LLM → 启发式
+- **真实代码执行**验证
+- **增益三分解** + **成本记账**
+- **语义检索** + **语义边发现**
+- **15 个密封评估任务**

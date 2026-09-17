@@ -38,9 +38,14 @@ from arsi.world_model.siwm import SIWM
 from arsi.governor.core import AutopoieticGovernor, DimensionManager
 from arsi.governor.pre_enactment import PreEnactmentEngine
 from arsi.empowerment.engine import EmpowermentEngine, NullAdapter
+from arsi.empowerment.dimensions import DimensionOrchestrator
+from arsi.empowerment.lifecycle_integration import DimensionLifecycleIntegrator
 from arsi.pipelines.dream import DreamPipeline
 from arsi.llm_brain import LLMPoweredGovernor, LLMPoweredMindZero, LLMPoweredDiagnosis, LLMPoweredDream
 from arsi.world_model.dynamics import DynamicsModel
+from arsi.world_model.counterfactual import CounterfactualSimulator
+from arsi.sealed_eval.gain_decomposition import GainDecomposer
+from arsi.foundation.cost_ledger import CostLedger
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +90,24 @@ class ARSI:
         self.dynamics = DynamicsModel(store, llm=llm)
         self.pre_enactment = PreEnactmentEngine(self.dynamics)
         self._dynamics_trained = False
+
+        # SIWM Layer 3: Counterfactual simulator
+        self.counterfactual = CounterfactualSimulator(self.dynamics, llm=llm)
+
+        # N1: Gain decomposition
+        self.gain_decomposer = GainDecomposer(store, llm=llm)
+
+        # N2: Cost ledger
+        self.cost_ledger = CostLedger()
+
+        # N3: Dimension lifecycle integration
+        self.dim_orchestrator = DimensionOrchestrator(store, llm=llm)
+        self.dim_lifecycle = DimensionLifecycleIntegrator(
+            store, self.dim_orchestrator, governor.dims, llm=llm
+        )
+
+        # Enable semantic edge discovery
+        self.mnemosyne.edge_discovery.enable_semantic()
 
     @classmethod
     def from_config(cls, config_path: str | Path) -> "ARSI":
@@ -381,31 +404,60 @@ class ARSI:
     # ── Lifecycle ───────────────────────────────────────────────
 
     def run_term(self, n_steps: int = 10) -> dict:
-        """Run a full improvement term."""
+        """Run a full improvement term with gain decomposition and cost tracking."""
         self._term_count += 1
         term_id = f"term_{self._term_count}"
-        results = []
 
+        # Reset cost ledger for this term
+        self.cost_ledger.reset()
+
+        # Record before-evaluation
+        before_eval = self.run_evaluation()
+        traces_before = len(self.store.get_recent_traces(n=1000))
+
+        results = []
         for i in range(n_steps):
             result = self.step()
             results.append(result)
+            # Track LLM costs (approximate)
+            if result.get("decision_source") == "llm":
+                self.cost_ledger.record_llm_call(input_tokens=500, output_tokens=200)
             logger.info(f"  Step {i+1}/{n_steps}: {result['decision']['action']}")
 
         # End-of-term evaluation
-        eval_result = self.run_evaluation()
+        after_eval = self.run_evaluation()
+        self.cost_ledger.record_verifier_query(1)
+
+        # Gain decomposition
+        term_traces = self.store.get_recent_traces(n=100)
+        decomposition = self.gain_decomposer.decompose(before_eval, after_eval, term_traces)
+        self.gain_decomposer.record(decomposition, term_id)
+
+        # Cost-benefit
+        cost_benefit = self.cost_ledger.cost_benefit(decomposition.get("total", 0))
+
+        # Dimension lifecycle integration
+        state = self.siwm.refresh_state()
+        lifecycle_result = self.dim_lifecycle.run_and_integrate(term_traces, state)
 
         # Record term report
         self.mnemosyne.write_self_record("term_report", {
             "term_id": term_id,
             "steps": n_steps,
             "final_stats": self.get_stats(),
-            "evaluation": eval_result,
+            "evaluation": after_eval,
+            "gain_decomposition": decomposition,
+            "cost_benefit": cost_benefit,
+            "lifecycle_recommendation": lifecycle_result.get("recommendation", {}),
         })
 
         return {
             "term_id": term_id,
             "steps": results,
-            "evaluation": eval_result,
+            "evaluation": after_eval,
+            "gain_decomposition": decomposition,
+            "cost_benefit": cost_benefit,
+            "lifecycle": lifecycle_result.get("lifecycle_updates", {}),
             "final_stats": self.get_stats(),
         }
 
