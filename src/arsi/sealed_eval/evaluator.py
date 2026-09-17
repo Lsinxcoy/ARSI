@@ -164,15 +164,10 @@ class SealedEvaluator:
         if not task.expected_keywords:
             return 0.0, {**evidence, "reason": "no_expected_keywords"}
 
-        found = []
-        for kw in task.expected_keywords:
-            if kw.lower() in output.lower():
-                found.append(kw)
-
-        score = len(found) / len(task.expected_keywords)
-        evidence["keywords_found"] = found
-        evidence["keywords_total"] = task.expected_keywords
-        return score, evidence
+        from arsi.sealed_eval.code_verifier import CodeVerifier
+        verifier = CodeVerifier()
+        score, kw_evidence = verifier.verify_keyword_match(output, task.expected_keywords)
+        return score, {**evidence, **kw_evidence, "method": "keyword_match_enhanced"}
 
     def _verify_values(self, task: SealedTask, output: str, evidence: dict) -> tuple[float, dict]:
         if not task.expected_values:
@@ -198,21 +193,75 @@ class SealedEvaluator:
         return score, evidence
 
     def _verify_behavior(self, task: SealedTask, output: str, evidence: dict) -> tuple[float, dict]:
-        """For code repair: check if the output contains corrected code.
+        """For code repair: execute code and verify with assertions."""
+        from arsi.sealed_eval.code_verifier import CodeVerifier
 
-        This is a simplified check. In production, would execute the code.
+        verifier = CodeVerifier(timeout=task.timeout)
+
+        # Parse test cases from expected_behavior
+        test_cases = self._parse_test_cases(task.expected_behavior)
+        if test_cases:
+            score, exec_evidence = verifier.verify_python_code(output, test_cases)
+            return score, {**evidence, **exec_evidence, "method": "code_execution"}
+
+        # Fallback: extract code and check syntax + basic structure
+        extracted = verifier._extract_code(output)
+        if not extracted:
+            return 0.0, {**evidence, "reason": "no_code_found"}
+
+        try:
+            import ast
+            ast.parse(extracted)
+            has_function = "def " in extracted
+            has_return = "return" in extracted
+            score = 0.5 if has_function else 0.2
+            if has_return:
+                score += 0.2
+            return min(score, 1.0), {
+                **evidence,
+                "method": "syntax_check",
+                "has_function": has_function,
+                "has_return": has_return,
+                "code_length": len(extracted),
+            }
+        except SyntaxError as e:
+            return 0.0, {**evidence, "method": "syntax_check", "syntax_error": str(e)}
+
+    def _parse_test_cases(self, expected_behavior: str) -> list[dict]:
+        """Parse test cases from expected_behavior string.
+
+        Format: "func(args)==value and func(args2)==value2"
+        or: "func(args)==value; func(args2)==value2"
         """
-        if not task.expected_behavior:
-            # Fallback: check if output looks like code
-            has_code = "def " in output or "return" in output
-            return (0.5 if has_code else 0.0), {**evidence, "reason": "no_behavior_spec"}
+        if not expected_behavior:
+            return []
 
-        # Check if expected behavior string appears in output
-        # (simplified — production would actually run the code)
-        score = 0.3 if "def " in output else 0.0
-        evidence["has_function"] = "def " in output
-        evidence["note"] = "simplified_check"
-        return score, evidence
+        test_cases = []
+        # Split by "and" or ";"
+        parts = re.split(r'\s+and\s+|\s*;\s*', expected_behavior)
+
+        for part in parts:
+            part = part.strip()
+            if not part:
+                continue
+
+            # Pattern: expr == value
+            m = re.match(r'(.+?)\s*==\s*(.+)', part)
+            if m:
+                expr = m.group(1).strip()
+                expected = m.group(2).strip()
+                test_cases.append({
+                    "assertion": f"assert {expr} == {expected}",
+                    "description": part,
+                })
+            else:
+                # Pattern: just an expression (truthy check)
+                test_cases.append({
+                    "assertion": f"assert {part}",
+                    "description": part,
+                })
+
+        return test_cases
 
     def get_history(self) -> list[BaselineReport]:
         return list(self._history)
