@@ -207,6 +207,58 @@ def read_feedback() -> str:
     return "无赋能建议（首次运行）"
 
 
+def _get_source_mtimes() -> dict:
+    """Get latest modification times for all data sources."""
+    mtimes = {}
+
+    # MiMo sessions
+    mimo_base = Path.home() / ".local" / "share" / "mimocode" / "memory" / "sessions"
+    if mimo_base.exists():
+        latest = 0
+        for d in mimo_base.iterdir():
+            if d.is_dir():
+                for f in d.iterdir():
+                    latest = max(latest, f.stat().st_mtime)
+        mtimes["mimo"] = latest
+
+    # Hermes
+    hermes_paths = [
+        Path("C:/Users/41228/hermes-personal-backup/mstar_fitness.db"),
+        Path("C:/Users/41228/hermes-personal-backup/failed_trajectories.jsonl"),
+        Path("C:/Users/41228/.hermes/skills"),
+        Path("C:/Users/41228/.hermes/plans"),
+    ]
+    latest = 0
+    for p in hermes_paths:
+        if p.exists():
+            if p.is_file():
+                latest = max(latest, p.stat().st_mtime)
+            else:
+                for f in p.rglob("*"):
+                    if f.is_file():
+                        latest = max(latest, f.stat().st_mtime)
+    mtimes["hermes"] = latest
+
+    # SYNTHEX 母巢
+    synthex_paths = [
+        Path("E:/SYNTHEX Autopoiesis/synthex_main.db"),
+        Path("E:/SYNTHEX Autopoiesis/state"),
+        Path("E:/SYNTHEX Autopoiesis/wal_logs"),
+    ]
+    latest = 0
+    for p in synthex_paths:
+        if p.exists():
+            if p.is_file():
+                latest = max(latest, p.stat().st_mtime)
+            else:
+                for f in p.iterdir():
+                    if f.is_file():
+                        latest = max(latest, f.stat().st_mtime)
+    mtimes["synthex"] = latest
+
+    return mtimes
+
+
 def main():
     parser = argparse.ArgumentParser(description="ARSI ↔ MiMo Continuous Loop")
     parser.add_argument("--session", help="Specific session ID to extract from")
@@ -228,12 +280,34 @@ def main():
 
     if args.watch:
         print(f"\n监听模式（每 {args.interval} 秒检查一次）...")
+        print(f"监控源: MiMo Desktop, Hermes, SYNTHEX 母巢")
+
+        # Track last modification times for all sources
+        last_mtimes = _get_source_mtimes()
         last_session = None
+
         while True:
+            current_mtimes = _get_source_mtimes()
+            changed = False
+
+            # Check MiMo sessions
             sessions = extractor.list_sessions()
             if sessions and sessions[0]["session_id"] != last_session:
                 last_session = sessions[0]["session_id"]
+                changed = True
+                print(f"  MiMo: 新会话 {last_session}")
+
+            # Check Hermes and SYNTHEX file changes
+            for source, mtime in current_mtimes.items():
+                old = last_mtimes.get(source, 0)
+                if mtime > old:
+                    changed = True
+                    print(f"  {source}: 数据已更新")
+
+            if changed:
                 run_loop(arsi, extractor, last_session)
+                last_mtimes = current_mtimes
+
             time.sleep(args.interval)
     else:
         run_loop(arsi, extractor, args.session)

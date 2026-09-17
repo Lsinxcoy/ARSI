@@ -32,7 +32,63 @@ class HermesAdapter:
         traces.extend(self._extract_from_mstar_db())
         traces.extend(self._extract_from_trajectories())
         traces.extend(self._extract_from_skills())
+        traces.extend(self._extract_from_plans())
+        traces.extend(self._extract_from_config())
         self._extracted_count += len(traces)
+        return traces
+
+    def _extract_from_plans(self) -> list[dict]:
+        """Extract traces from Hermes plans directory."""
+        traces = []
+        plans_dir = self.hermes_home / "plans"
+        if not plans_dir.exists():
+            return traces
+
+        for plan_file in plans_dir.glob("*.md"):
+            try:
+                content = plan_file.read_text(encoding="utf-8", errors="ignore")
+                # Extract task items from markdown
+                lines = content.split("\n")
+                task_count = sum(1 for l in lines if l.strip().startswith(("- ", "* ", "1.", "2.", "3.")))
+                traces.append({
+                    "action": f"hermes_plan:{plan_file.stem[:40]}",
+                    "outcome": "success" if task_count > 0 else "partial",
+                    "effect": min(1.0, task_count / 20),
+                    "params": {
+                        "source": "plan",
+                        "filename": plan_file.name,
+                        "content_length": len(content),
+                        "task_items": task_count,
+                    },
+                })
+            except Exception:
+                continue
+
+        return traces
+
+    def _extract_from_config(self) -> list[dict]:
+        """Extract traces from Hermes config (model settings, delegation config)."""
+        traces = []
+        config_path = self.hermes_home / "config.yaml"
+        if not config_path.exists():
+            return traces
+
+        try:
+            content = config_path.read_text(encoding="utf-8", errors="ignore")
+            traces.append({
+                "action": "hermes_config",
+                "outcome": "recorded",
+                "effect": 0.5,
+                "params": {
+                    "source": "config",
+                    "content_length": len(content),
+                    "has_model": "model:" in content,
+                    "has_delegation": "delegation:" in content,
+                },
+            })
+        except Exception:
+            pass
+
         return traces
 
     def _extract_from_mstar_db(self) -> list[dict]:
