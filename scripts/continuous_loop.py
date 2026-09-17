@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from arsi.core import ARSI
 from arsi.adapters.mimo_extractor import MiMoSessionExtractor
+from arsi.adapters.mimo_deep_extractor import MiMoDeepExtractor
 from arsi.adapters.hermes_adapter import HermesAdapter
 from arsi.adapters.synthex_adapter import SynthexAdapter
 from arsi.empowerment.dimensions import DimensionOrchestrator
@@ -50,7 +51,13 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     # Step 1: Extract traces from MiMo
     print("\n[1/6] 提取行为轨迹...")
     traces = extractor.extract_traces(session_id)
-    print(f"  MiMo: {len(traces)} 条轨迹")
+    print(f"  MiMo 基础: {len(traces)} 条轨迹")
+
+    # Step 1a: Deep extraction from MiMo session memory
+    deep_extractor = MiMoDeepExtractor()
+    deep_traces = deep_extractor.extract_traces()
+    print(f"  MiMo 深度: {len(deep_traces)} 条轨迹（任务树+意图+指令+笔记）")
+    traces.extend(deep_traces)
 
     # Step 1b: Extract traces from Hermes
     hermes = HermesAdapter()
