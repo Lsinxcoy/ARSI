@@ -1,33 +1,39 @@
-"""ARSI Human Supervision CLI — monitor, interact, and override.
+"""ARSI Human Supervision CLI v2 — enhanced monitoring and control.
 
 Usage:
     set ARSI_API_KEY=sk-...
     python scripts/human_cli.py
 
 Commands:
-    stats       — show system stats
-    state       — show world state (Φ+Ψ+η)
-    step        — run one step
-    term [N]    — run a term with N steps (default 10)
-    dream       — force dream cycle
-    empower ID  — empower an agent
-    traces [N]  — show recent traces (default 10)
-    beliefs     — show current beliefs
-    laws        — show iron laws
-    eval        — run evaluation
-    help        — show this help
-    quit        — exit
+    stats           — show system stats
+    state           — show world state (Φ+Ψ+η)
+    step            — run one step
+    term [N]        — run a term with N steps (default 10)
+    dream           — force dream cycle
+    empower ID      — empower an agent
+    dims            — run all 6 empowerment dimension analyses
+    dim NAME        — run one dimension (knowledge/decomposition/calibration/attention/metacognition/environment)
+    dynamics        — show dynamics model status
+    preenact        — show pre-enactment evaluation of candidates
+    traces [N]      — show recent traces (default 10)
+    beliefs         — show current beliefs
+    laws            — show iron laws
+    eval            — run evaluation
+    log [N]         — show recent dream sessions and term reports (default 5)
+    help            — show this help
+    quit            — exit
 """
 from __future__ import annotations
 
 import json
-import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from arsi.core import ARSI
+from arsi.empowerment.dimensions import DimensionOrchestrator
+from arsi.foundation.schema import EmpowermentDimension
 
 
 def format_dict(d: dict, indent: int = 2) -> str:
@@ -40,6 +46,8 @@ def cmd_stats(arsi: ARSI) -> None:
     for k, v in stats.items():
         if k == "iron_laws":
             print(f"  {k}: {len(v)} laws")
+        elif isinstance(v, float):
+            print(f"  {k}: {v:.4f}")
         else:
             print(f"  {k}: {v}")
 
@@ -69,6 +77,7 @@ def cmd_step(arsi: ARSI) -> None:
     print(f"  动作: {d['action']}")
     print(f"  理由: {d['reason'][:100]}")
     print(f"  来源: {d['source']}")
+    print(f"  置信度: {d.get('confidence', 0):.3f}")
     for a in result["actions"]:
         print(f"  执行: {a.get('type', '?')} — {str(a)[:80]}")
 
@@ -89,6 +98,7 @@ def cmd_dream(arsi: ARSI) -> None:
     print(f"\n── 梦境周期 ──")
     print(f"  η: {eta_before:.4f} → {new_state.eta:.4f}")
     print(f"  信念数: {len(state.psi.beliefs)} → {len(new_state.psi.beliefs)}")
+    print(f"  LLM 调和次数: {arsi.dream._llm_reconcile_count}")
 
 
 def cmd_empower(arsi: ARSI, agent_id: str) -> None:
@@ -99,11 +109,92 @@ def cmd_empower(arsi: ARSI, agent_id: str) -> None:
     print(f"  验证状态: {result['verification']}")
 
 
+def cmd_dims(arsi: ARSI) -> None:
+    print(f"\n── 六维度分析 ──")
+    traces = arsi.store.get_recent_traces(n=50)
+    state = arsi.siwm.refresh_state()
+    orch = DimensionOrchestrator(arsi.store, llm=arsi.llm)
+    results = orch.run_all(traces, state)
+
+    for dim_name, result in results.items():
+        if "error" in result:
+            print(f"  {dim_name}: 错误 - {result['error']}")
+            continue
+        sense = result.get("sense", {})
+        gen = result.get("generate", {})
+        val = result.get("validation_status", "?")
+        gap = sense.get("gap_detected", False)
+        action = gen.get("action", "none")
+        print(f"  {dim_name}: gap={gap} → {action} → {val}")
+
+
+def cmd_dim(arsi: ARSI, dim_name: str) -> None:
+    dim_map = {
+        "knowledge": EmpowermentDimension.KNOWLEDGE,
+        "decomposition": EmpowermentDimension.DECOMPOSITION,
+        "calibration": EmpowermentDimension.CALIBRATION,
+        "attention": EmpowermentDimension.ATTENTION,
+        "metacognition": EmpowermentDimension.METACOGNITION,
+        "environment": EmpowermentDimension.ENVIRONMENT,
+    }
+    if dim_name not in dim_map:
+        print(f"  未知维度: {dim_name}")
+        print(f"  可用: {', '.join(dim_map.keys())}")
+        return
+
+    print(f"\n── {dim_name.upper()} 维度分析 ──")
+    traces = arsi.store.get_recent_traces(n=50)
+    state = arsi.siwm.refresh_state()
+    orch = DimensionOrchestrator(arsi.store, llm=arsi.llm)
+    result = orch.run_dimension(dim_map[dim_name], traces, state)
+
+    sense = result.get("sense", {})
+    gen = result.get("generate", {})
+    val = result.get("validation_status", "?")
+    evidence = result.get("validation_evidence", {})
+
+    print(f"  感知: gap_detected={sense.get('gap_detected')}")
+    for k, v in sense.items():
+        if k != "gap_detected":
+            print(f"    {k}: {str(v)[:80]}")
+    print(f"  生成: {gen.get('action', '?')}")
+    for k, v in gen.items():
+        if k != "action":
+            print(f"    {k}: {str(v)[:80]}")
+    print(f"  验证: {val}")
+    if evidence:
+        print(f"    证据: {str(evidence)[:100]}")
+
+
+def cmd_dynamics(arsi: ARSI) -> None:
+    print(f"\n── 动力学模型状态 ──")
+    stats = arsi.dynamics.stats
+    tm = stats.get("transition_model", {})
+    print(f"  已训练: {tm.get('trained', False)}")
+    print(f"  动作数: {tm.get('action_count', 0)}")
+    print(f"  总转移: {tm.get('total_transitions', 0)}")
+    print(f"  每动作: {tm.get('actions', {})}")
+    print(f"  预测次数: {stats.get('prediction_count', 0)}")
+    print(f"  LLM 规则: {stats.get('llm_extractor', {}).get('rule_count', 0)}")
+
+
+def cmd_preenact(arsi: ARSI) -> None:
+    print(f"\n── 预演评估 ──")
+    state = arsi.siwm.refresh_state()
+    candidates = ["dream", "learn", "evolve", "maintain", "remember"]
+    results = arsi.pre_enactment.evaluate_candidates(state, candidates)
+    for r in results:
+        print(f"  {r['action']}: score={r['score']:.4f} conf={r['confidence']:.3f} src={r['source']}")
+    pe_stats = arsi.pre_enactment.stats
+    print(f"\n  预演总次数: {pe_stats.get('pre_enactment_count', 0)}")
+
+
 def cmd_traces(arsi: ARSI, n: int = 10) -> None:
     traces = arsi.store.get_recent_traces(n=n)
     print(f"\n── 最近 {len(traces)} 条轨迹 ──")
     for t in traces:
-        print(f"  [{t.get('timestamp', '?')[:19]}] {t.get('agent_id', '?')} "
+        ts = t.get("timestamp", "?")[:19] if isinstance(t.get("timestamp"), str) else "?"
+        print(f"  [{ts}] {t.get('agent_id', '?')} "
               f"{t.get('action', '?')} → {t.get('outcome', '?')} "
               f"(effect={t.get('effect', 0):.2f})")
 
@@ -131,9 +222,25 @@ def cmd_eval(arsi: ARSI) -> None:
     print(format_dict(result))
 
 
+def cmd_log(arsi: ARSI, n: int = 5) -> None:
+    print(f"\n── 最近日志 ──")
+    dreams = arsi.store.get_self_records("dream_session", limit=n)
+    terms = arsi.store.get_self_records("term_report", limit=n)
+    print(f"  梦境会话 ({len(dreams)}):")
+    for d in dreams:
+        data = json.loads(d.get("data", "{}"))
+        print(f"    η: {data.get('eta_before', '?')} → {data.get('eta_after', '?')} "
+              f"(改善: {data.get('eta_improved', '?')})")
+    print(f"  Term 报告 ({len(terms)}):")
+    for t in terms:
+        data = json.loads(t.get("data", "{}"))
+        print(f"    {data.get('term_id', '?')}: steps={data.get('steps', '?')} "
+              f"η={data.get('final_stats', {}).get('eta', '?')}")
+
+
 def main():
     print("=" * 60)
-    print("ARSI 人类监督界面")
+    print("ARSI 人类监督界面 v2")
     print("=" * 60)
     print("输入 help 查看命令列表\n")
 
@@ -154,7 +261,7 @@ def main():
         args = parts[1:]
 
         try:
-            if cmd == "quit" or cmd == "exit":
+            if cmd in ("quit", "exit"):
                 break
             elif cmd == "help":
                 print(__doc__)
@@ -172,6 +279,15 @@ def main():
             elif cmd == "empower":
                 agent = args[0] if args else "agent_alpha"
                 cmd_empower(arsi, agent)
+            elif cmd == "dims":
+                cmd_dims(arsi)
+            elif cmd == "dim":
+                dim = args[0] if args else "knowledge"
+                cmd_dim(arsi, dim)
+            elif cmd == "dynamics":
+                cmd_dynamics(arsi)
+            elif cmd == "preenact":
+                cmd_preenact(arsi)
             elif cmd == "traces":
                 n = int(args[0]) if args else 10
                 cmd_traces(arsi, n)
@@ -181,6 +297,9 @@ def main():
                 cmd_laws(arsi)
             elif cmd == "eval":
                 cmd_eval(arsi)
+            elif cmd == "log":
+                n = int(args[0]) if args else 5
+                cmd_log(arsi, n)
             else:
                 print(f"未知命令: {cmd}。输入 help 查看帮助。")
         except Exception as e:
