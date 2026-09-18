@@ -3,14 +3,14 @@
 
 llm:
   provider: openai
-  model: gpt-5.5
+  model: deepseek-v4.1-flash
   api_base: https://mcgrox.top/v1
   # api_key: set via environment variable ARSI_API_KEY
   max_tokens: 2048
   temperature: 0.3
   timeout: 30
-  use_proxy: false
-  proxy_url: ""
+  use_proxy: true
+  proxy_url: http://127.0.0.1:7890
   fallback_to_heuristic: true
   extra_headers: {}
 

@@ -1,14 +1,12 @@
 @echo off
-REM ARSI 24/7 Daemon - Start script
-REM Set ARSI_API_KEY before running
-
+REM ARSI Daemon Startup Script
 set PYTHONPATH=E:\ARSI\src
-set HTTP_PROXY=http://127.0.0.1:7890
-set HTTPS_PROXY=http://127.0.0.1:7890
+set ARSI_API_KEY=sk-3801816ed09d2f5872997ba6c66b4b7a1b6da2acfa34ec5092c0057cbf56d441
+set PYTHONHOME=E:\MIMOdesktop\Xiaomi MiMo\resources\runtimes\win32-x64\python
 
-echo Starting ARSI Daemon (24/7 mode)...
-echo Tick sleep: 300s (5 minutes)
-echo Press Ctrl+C to stop gracefully.
+echo Starting ARSI Daemon...
+echo Python: %PYTHONHOME%\python.exe
+echo API Key: %ARSI_API_KEY:~0~20%...
 echo.
 
-python E:\ARSI\scripts\arsi_daemon.py --tick-sleep 300
+"%PYTHONHOME%\python.exe" E:\ARSI\scripts\arsi_daemon.py --tick-sleep 300
