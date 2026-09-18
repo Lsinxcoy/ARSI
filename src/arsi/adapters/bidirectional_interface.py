@@ -37,6 +37,7 @@ class ARSIBrief:
         warnings: list[str],
         past_lessons: list[str],
         confidence: float = 0.5,
+        history_simulator: Optional[dict] = None,
     ):
         self.task_description = task_description
         self.agent_id = agent_id
@@ -45,8 +46,28 @@ class ARSIBrief:
         self.warnings = warnings
         self.past_lessons = past_lessons
         self.confidence = confidence
+        self.history_simulator = history_simulator  # Dream-RSI: queryable history
         self.timestamp = datetime.now().isoformat()
         self.brief_id = f"brief_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+
+    def query_history(self, task_type: str) -> dict:
+        """Dream-RSI: Agent can query historical performance.
+
+        Returns structured data, not advice text.
+        """
+        if not self.history_simulator or not self.history_simulator.get("available"):
+            return {"available": False, "reason": "no_history_data"}
+
+        hs = self.history_simulator
+        return {
+            "available": True,
+            "task_type": task_type,
+            "historical_success_rate": hs.get("success_rate", 0),
+            "sample_size": hs.get("sample_size", 0),
+            "common_failure_patterns": hs.get("common_failure_patterns", []),
+            "best_practice": hs.get("best_practice", ""),
+            "confidence": hs.get("confidence", 0),
+        }
 
     def to_dict(self) -> dict:
         return {
@@ -58,6 +79,7 @@ class ARSIBrief:
             "warnings": self.warnings,
             "past_lessons": self.past_lessons,
             "confidence": self.confidence,
+            "history_available": self.history_simulator is not None and self.history_simulator.get("available", False),
             "timestamp": self.timestamp,
         }
 
@@ -185,6 +207,9 @@ class ARSIInterface:
         # 7. Confidence based on experience volume
         confidence = min(1.0, len(relevant_exp) / 10.0)
 
+        # 8. Dream-RSI: Build history simulator from discovery tree
+        history_simulator = self._build_history_simulator(task_description)
+
         brief = ARSIBrief(
             task_description=task_description,
             agent_id=agent_id,
@@ -193,6 +218,7 @@ class ARSIInterface:
             warnings=warnings,
             past_lessons=lessons,
             confidence=confidence,
+            history_simulator=history_simulator,
         )
 
         self._active_briefs[brief.brief_id] = brief
@@ -336,6 +362,61 @@ class ARSIInterface:
             if lesson.agent_id and lesson.agent_id != "unknown":
                 lessons.append(f"[{lesson.agent_id}] {lesson.content[:80]}")
         return lessons
+
+    def _build_history_simulator(self, task_description: str) -> dict:
+        """Dream-RSI: Build queryable history from discovery tree.
+
+        Key insight: history must be used as an interactive replay
+        simulator, not as directionless advice.
+        """
+        tree = self.arsi.discovery_tree
+        if not tree.nodes or len(tree.nodes) < 3:
+            return {"available": False, "reason": "insufficient_history"}
+
+        # Find relevant nodes by action/task similarity
+        task_lower = task_description.lower()
+        relevant = []
+        for node in tree.nodes.values():
+            if node.action == "start":
+                continue
+            # Simple relevance: check if task words appear in action
+            action_lower = node.action.lower()
+            if any(w in action_lower for w in task_lower.split() if len(w) > 2):
+                relevant.append(node)
+
+        if len(relevant) < 2:
+            # Fallback: use all non-root nodes
+            relevant = [n for n in tree.nodes.values() if n.action != "start"]
+
+        if len(relevant) < 2:
+            return {"available": False, "reason": "insufficient_relevant_data"}
+
+        successes = [n for n in relevant if n.outcome == "success"]
+        failures = [n for n in relevant if n.outcome == "failure"]
+
+        # Extract common failure patterns
+        fail_patterns = []
+        for f in failures[:5]:
+            fail_patterns.append(f.action[:40])
+
+        # Extract best practice from highest-scoring success
+        best_practice = ""
+        if successes:
+            best = max(successes, key=lambda n: n.score)
+            best_practice = f"Best result: {best.action[:40]} (score={best.score:.2f})"
+
+        success_rate = len(successes) / len(relevant)
+
+        return {
+            "available": True,
+            "success_rate": round(success_rate, 3),
+            "sample_size": len(relevant),
+            "success_count": len(successes),
+            "failure_count": len(failures),
+            "common_failure_patterns": fail_patterns[:3],
+            "best_practice": best_practice,
+            "confidence": min(1.0, len(relevant) / 20.0),
+        }
 
     def _evaluate_recommendations(self, brief: ARSIBrief, report: ARSIReport) -> dict:
         """Evaluate how effective ARSI's recommendations were."""
