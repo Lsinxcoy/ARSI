@@ -151,3 +151,34 @@
 2026-09-18 10:50:57 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
 2026-09-18 10:51:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
 2026-09-18 10:51:01 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 10:59:13 [arsi.pipelines.dream] INFO:  Dream #1: η 0.000 → 0.000, consolidated {'archived': 376, 'associations_found': 20}
+2026-09-18 10:59:14 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 10:59:19 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:25 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:29 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:33 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:36 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:40 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 10:59:40 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:08:54 [arsi.pipelines.dream] INFO:  Dream #2: η 0.100 → 0.050, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 11:08:54 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:08:56 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:08:56 [openai._base_client] INFO: Retrying request in 0.469362 seconds (retry 1 of 2)
+2026-09-18 11:08:57 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:08:57 [openai._base_client] INFO: Retrying request in 0.791699 seconds (retry 2 of 2)
+2026-09-18 11:08:58 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:08:58 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:08:58 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:08:58 [openai._base_client] INFO: Retrying request in 0.474851 seconds (retry 1 of 2)
+2026-09-18 11:08:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:08:59 [openai._base_client] INFO: Retrying request in 0.953508 seconds (retry 2 of 2)
+2026-09-18 11:09:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:07 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:11 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:14 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:18 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:09:22 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:18:56 [arsi.pipelines.dream] INFO:  Dream #3: η 0.145 → 0.073, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 11:18:56 [arsi.daemon] INFO:   Step: dream [heuristic]

@@ -1,0 +1,36 @@
+{
+  "tick": 1,
+  "timestamp": "2026-09-18T11:18:56.726898",
+  "uptime_s": 1725.4,
+  "stats": {
+    "self_count": 0,
+    "experience_count": 4400,
+    "proxy_count": 540,
+    "trace_count": 15563,
+    "causal_link_count": 4377,
+    "generation": 0,
+    "dopamine_threshold": 0.6,
+    "decay_rate": 0.01,
+    "step_count": 3,
+    "term_count": 0,
+    "eta": 0.1653,
+    "governor_decisions": 0,
+    "empowerments": 0,
+    "dreams": 3,
+    "llm_available": true,
+    "llm_governor_calls": 0,
+    "llm_mindzero_calls": 0,
+    "llm_diagnosis_calls": 0,
+    "pre_enactment_count": 3,
+    "dynamics_trained": true,
+    "dynamics_actions": 0,
+    "cost_tokens": 0,
+    "cost_llm_calls": 0,
+    "cost_verifier_queries": 0
+  },
+  "last_mtimes": {
+    "mimo": 1784711894.5863023,
+    "hermes": 1789699201.4867604,
+    "synthex": 1789676607.9954894
+  }
+}
