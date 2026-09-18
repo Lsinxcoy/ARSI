@@ -3,17 +3,16 @@
 
 llm:
   provider: openai
-  model: stealth/union-alpha
-  api_base: https://openrouter.ai/api/v1
+  model: grok-4.6
+  api_base: https://mcgrox.top/v1
   # api_key: set via environment variable ARSI_API_KEY
   max_tokens: 2048
   temperature: 0.3
   timeout: 30
-  use_proxy: true
-  proxy_url: http://127.0.0.1:7890
+  use_proxy: false
+  proxy_url: ""
   fallback_to_heuristic: true
-  extra_headers:
-    x-opencode-session: arsi-system-001
+  extra_headers: {}
 
 eta:
   alpha: 0.1
