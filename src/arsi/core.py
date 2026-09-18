@@ -188,13 +188,14 @@ class ARSI:
         outcome: str,
         effect: float = 0.0,
         params: Optional[dict] = None,
+        capture_state: bool = False,
     ) -> BehaviorTrace:
         """Ingest a behavior trace from a host agent.
 
-        Captures state snapshots before/after for dynamics model training.
+        Set capture_state=True to record state snapshots (slower,
+        only for ARSI's own execution traces, not bulk adapter ingestion).
         """
-        # Capture state before
-        state_before = self.siwm.get_state()
+        state_before = self.siwm.get_state() if capture_state else WorldState()
 
         trace = BehaviorTrace(
             agent_id=agent_id,
@@ -207,9 +208,8 @@ class ARSI:
         )
         self.mnemosyne.ingest_trace(trace)
 
-        # Capture state after (storage counts may have changed)
-        state_after = self.siwm.refresh_state()
-        trace.state_after = state_after
+        if capture_state:
+            trace.state_after = self.siwm.refresh_state()
 
         return trace
 
