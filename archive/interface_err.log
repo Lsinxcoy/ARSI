@@ -1,0 +1,24 @@
+2026-09-18 11:27:05 [arsi.interface] INFO: Building ARSI...
+2026-09-18 11:27:05 [arsi.foundation.store] INFO: MnemosyneStore initialized at arsi.db
+2026-09-18 11:27:05 [arsi.foundation.iron_laws] INFO: Loaded 10 iron laws
+2026-09-18 11:27:05 [arsi.foundation.llm] INFO: Proxy enabled: http://127.0.0.1:7890
+2026-09-18 11:27:09 [arsi.foundation.llm] INFO: OpenAI client initialized (model=deepseek-v4.1-flash)
+2026-09-18 11:27:09 [arsi.core] INFO: ARSI initialized (db=arsi.db, llm=yes)
+2026-09-18 11:27:09 [arsi.interface] INFO: ARSI Interface listening on port 9300
+2026-09-18 11:27:09 [arsi.interface] INFO: Endpoints:
+2026-09-18 11:27:09 [arsi.interface] INFO:   POST http://localhost:9300/arsi/brief
+2026-09-18 11:27:09 [arsi.interface] INFO:   POST http://localhost:9300/arsi/report
+2026-09-18 11:27:09 [arsi.interface] INFO:   GET  http://localhost:9300/arsi/stats
+2026-09-18 11:27:09 [arsi.interface] INFO:   GET  http://localhost:9300/arsi/health
+2026-09-18 11:30:12 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 4523 memories, 427 unique tokens
+2026-09-18 11:30:12 [arsi.adapters.bidirectional_interface] INFO: Brief generated for mimo-desktop: brief_20260918_113012
+2026-09-18 11:30:12 [arsi.interface] INFO: 127.0.0.1 "POST /arsi/brief HTTP/1.1" 200 -
+2026-09-18 11:30:14 [arsi.mnemosyne.core] INFO: Distilled 96b6db62be0849acbda3f2d8ab0ac264 → afa9d11bb87149a591ec5c4096f051a3
+2026-09-18 11:30:14 [arsi.adapters.bidirectional_interface] INFO: Report processed: mimo-desktop → success
+2026-09-18 11:30:14 [arsi.interface] INFO: 127.0.0.1 "POST /arsi/report HTTP/1.1" 200 -
+2026-09-18 11:30:17 [arsi.adapters.bidirectional_interface] INFO: Brief generated for hermes: brief_20260918_113017
+2026-09-18 11:30:17 [arsi.interface] INFO: 127.0.0.1 "POST /arsi/brief HTTP/1.1" 200 -
+2026-09-18 11:30:19 [arsi.mnemosyne.core] INFO: Distilled dc9018d416ff477ea8960ab0b464ba65 → 5d3fb92a98d7476b8406f15d5a46639f
+2026-09-18 11:30:19 [arsi.adapters.bidirectional_interface] INFO: Report processed: hermes → success
+2026-09-18 11:30:19 [arsi.interface] INFO: 127.0.0.1 "POST /arsi/report HTTP/1.1" 200 -
+2026-09-18 11:30:21 [arsi.interface] INFO: 127.0.0.1 "GET /arsi/stats HTTP/1.1" 200 -

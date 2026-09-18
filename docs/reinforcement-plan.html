@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARSI 论文驱动强化方案</title>
+<style>
+:root{--bg:#faf9f7;--card:#fff;--dark:#16131e;--code:#1e1a28;--ink:#2a2435;--il:#6b6178;--im:#9a8fa8;--ac:#5b3d8f;--acl:#f0eaf8;--tl:#1a7a6d;--tll:#e8f5f3;--am:#b8701a;--aml:#fdf4e8;--rd:#b03535;--rdl:#fdf0f0;--bl:#2a5f9e;--bll:#eaf1f9;--bd:#e5e0d6;--serif:Georgia,'Noto Serif SC',serif;--sans:-apple-system,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;--mono:'Cascadia Code','Consolas','Courier New',monospace}
+*{margin:0;padding:0;box-sizing:border-box}html{scroll-behavior:smooth}body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.8;font-size:15.5px}
+.cover{min-height:70vh;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;background:var(--dark);color:#e0d8ec;padding:60px 24px}
+.cover h1{font-family:var(--serif);font-size:clamp(26px,4vw,40px);font-weight:700;margin-bottom:12px}
+.cover .sub{font-size:15px;color:rgba(255,255,255,.45);margin-bottom:24px}
+.cover .meta{font-size:12px;color:rgba(255,255,255,.3)}
+.topnav{position:sticky;top:0;z-index:100;background:rgba(250,249,247,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--bd);padding:0 20px}
+.topnav-inner{max-width:900px;margin:0 auto;display:flex;height:44px;align-items:center;gap:4px;overflow-x:auto;scrollbar-width:none}
+.topnav-inner::-webkit-scrollbar{display:none}
+.topnav a{font-size:12px;color:var(--il);text-decoration:none;padding:4px 8px;border-radius:4px;white-space:nowrap}
+.topnav a:hover{background:var(--acl);color:var(--ac)}
+.main{max-width:820px;margin:0 auto;padding:0 24px 80px}
+section{margin-top:56px}
+h2{font-family:var(--serif);font-size:22px;font-weight:700;margin-bottom:6px}
+h2 .sn{display:block;font-family:var(--sans);font-size:10px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--ac);margin-bottom:6px}
+h3{font-family:var(--serif);font-size:17px;font-weight:700;margin:24px 0 10px}
+h4{font-size:13.5px;font-weight:700;margin:18px 0 6px}
+p{margin-bottom:12px}.lede{font-size:16px;color:var(--il);margin-bottom:18px}
+.tw{overflow-x:auto;margin:16px 0;border-radius:8px;border:1px solid var(--bd)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--card)}
+thead{background:var(--dark);color:#e0d8ec}th{text-align:left;padding:9px 12px;font-weight:600;font-size:11.5px}
+td{padding:8px 12px;border-top:1px solid var(--bd);vertical-align:top}
+td:first-child{font-weight:600;white-space:nowrap}
+.code{background:var(--code);color:#cfc6de;border-radius:8px;padding:16px 20px;margin:14px 0;font-family:var(--mono);font-size:12.5px;line-height:1.7;overflow-x:auto}
+.code .c{color:#6e6480}.code .k{color:#c49a6c}.code .v{color:#9b8ec4}.code .s{color:#7ab8a8}
+.co{border-radius:8px;padding:14px 18px;margin:14px 0;font-size:14px;line-height:1.7}
+.co-p{background:var(--acl);border-left:3px solid var(--ac)}.co-t{background:var(--tll);border-left:3px solid var(--tl)}.co-a{background:var(--aml);border-left:3px solid var(--am)}.co-r{background:var(--rdl);border-left:3px solid var(--rd)}
+.co-title{font-weight:700;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.co-p .co-title{color:var(--ac)}.co-t .co-title{color:var(--tl)}.co-a .co-title{color:var(--am)}.co-r .co-title{color:var(--rd)}
+.mc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:14px 0}
+@media(max-width:600px){.mc{grid-template-columns:1fr}}
+.mcard{background:var(--card);border:1px solid var(--bd);border-radius:8px;padding:14px 16px}
+.mcard .ml{font-size:9.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--im);margin-bottom:4px}
+.mcard .mv{font-family:var(--serif);font-size:18px;font-weight:700;color:var(--ac);margin-bottom:2px}
+.mcard p{font-size:12px;color:var(--il);margin:0}
+hr{border:none;height:1px;background:var(--bd);margin:40px 0}
+.footer{text-align:center;padding:32px;font-size:12px;color:var(--im);border-top:1px solid var(--bd);margin-top:40px}
+</style>
+</head>
+<body>
+
+<header class="cover">
+  <h1>ARSI 论文驱动代码级强化方案</h1>
+  <div class="sub">基于四篇 RSI 论文的最细颗粒度实施方案</div>
+  <div class="meta">arXiv:2609.11873 · 2609.06396 · 2609.14858 · 2609.08183</div>
+</header>
+
+<nav class="topnav"><div class="topnav-inner">
+  <a href="#p1">质量管线</a>
+  <a href="#p2">调度层</a>
+  <a href="#p3">历史模拟器</a>
+  <a href="#p4">增益分解</a>
+  <a href="#p5">自主性阶梯</a>
+  <a href="#road">路线图</a>
+</div></nav>
+
+<div class="main">
+
+<!-- ═══ 强化一：质量管线 ═══ -->
+<section id="p1">
+  <h2><span class="sn">Reinforcement 01</span>质量管线 + 课程调度（论文④ NeoHorse-1）</h2>
+  <p class="lede">NeoHorse 的核心发现：生产流量的真实交互比合成数据高 6.26 分。ARSI 已有三个 agent 的真实轨迹，但没有质量过滤和难度调度。</p>
+
+  <h3>1.1 轨迹质量三道闸</h3>
+  <div class="code">
+<span class="c"># src/arsi/foundation/quality_gate.py</span>
+
+<span class="k">class</span> <span class="v">TraceQualityGate</span>:
+    <span class="s">"""NeoHorse-inspired quality pipeline for trace ingestion."""</span>
+
+    <span class="k">def</span> <span class="v">structural_check</span>(self, trace: dict) -> tuple[bool, str]:
+        <span class="s">"""Gate 1: Structural validation."""</span>
+        <span class="c"># Required fields present</span>
+        <span class="k">if</span> <span class="k">not</span> trace.get(<span class="s">"action"</span>): <span class="k">return</span> <span class="k">False</span>, <span class="s">"missing_action"</span>
+        <span class="k">if</span> <span class="k">not</span> trace.get(<span class="s">"outcome"</span>): <span class="k">return</span> <span class="k">False</span>, <span class="s">"missing_outcome"</span>
+        <span class="c"># Effect in valid range</span>
+        effect = trace.get(<span class="s">"effect"</span>, <span class="k">None</span>)
+        <span class="k">if</span> effect <span class="k">is</span> <span class="k">None</span> <span class="k">or</span> <span class="k">not</span> (-1 <= effect <= 1):
+            <span class="k">return</span> <span class="k">False</span>, <span class="s">"invalid_effect"</span>
+        <span class="k">return</span> <span class="k">True</span>, <span class="s">"ok"</span>
+
+    <span class="k">def</span> <span class="v">semantic_score</span>(self, trace: dict) -> dict:
+        <span class="s">"""Gate 2: Six-dimension semantic evaluation."""</span>
+        <span class="c"># LLM-based scoring (or heuristic fallback)</span>
+        <span class="k">return</span> {
+            <span class="s">"goal_achievement"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+            <span class="s">"instruction_following"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+            <span class="s">"tool_usage"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+            <span class="s">"evidence_consistency"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+            <span class="s">"error_recovery"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+            <span class="s">"termination"</span>: <span class="s">"PASS|WARN|FAIL"</span>,
+        }
+
+    <span class="k">def</span> <span class="v">difficulty_label</span>(self, trace: dict) -> str:
+        <span class="s">"""Gate 3: C0-C3 difficulty classification."""</span>
+        <span class="c"># C0: simple/repetitive  C1: standard</span>
+        <span class="c"># C2: complex/multi-step C3: novel/ambiguous</span>
+        action = trace.get(<span class="s">"action"</span>, <span class="s">""</span>)
+        effect = trace.get(<span class="s">"effect"</span>, 0.5)
+        outcome = trace.get(<span class="s">"outcome"</span>, <span class="s">""</span>)
+
+        <span class="k">if</span> outcome == <span class="s">"failure"</span> <span class="k">and</span> effect < 0.3:
+            <span class="k">return</span> <span class="s">"C2"</span>  <span class="c"># Hard task that failed</span>
+        <span class="k">elif</span> outcome == <span class="s">"success"</span> <span class="k">and</span> effect > 0.8:
+            <span class="k">return</span> <span class="s">"C1"</span>  <span class="c"># Standard task done well</span>
+        <span class="k">elif</span> effect < 0.4:
+            <span class="k">return</span> <span class="s">"C2"</span>  <span class="c"># Low effect suggests difficulty</span>
+        <span class="k">else</span>:
+            <span class="k">return</span> <span class="s">"C0"</span>  <span class="c"># Default</span>
+  </div>
+
+  <h3>1.2 课程调度信号</h3>
+  <div class="code">
+<span class="c"># src/arsi/governor/curriculum.py</span>
+
+<span class="k">class</span> <span class="v">CurriculumScheduler</span>:
+    <span class="s">"""NeoHorse-inspired curriculum: learn from easy first, then hard."""</span>
+
+    <span class="k">def</span> <span class="v">select_traces_for_training</span>(self, traces, term: int) -> list:
+        <span class="s">"""Select traces based on curriculum schedule."""</span>
+        <span class="c"># Phase 1 (terms 1-2): mostly C0-C1</span>
+        <span class="c"># Phase 2 (terms 3-4): mix C0-C2</span>
+        <span class="c"># Phase 3 (terms 5+): full range C0-C3</span>
+        <span class="k">if</span> term <= 2:
+            allowed = {<span class="s">"C0"</span>, <span class="s">"C1"</span>}
+        <span class="k">elif</span> term <= 4:
+            allowed = {<span class="s">"C0"</span>, <span class="s">"C1"</span>, <span class="s">"C2"</span>}
+        <span class="k">else</span>:
+            allowed = {<span class="s">"C0"</span>, <span class="s">"C1"</span>, <span class="s">"C2"</span>, <span class="s">"C3"</span>}
+
+        <span class="k">return</span> [t <span class="k">for</span> t <span class="k">in</span> traces
+                <span class="k">if</span> t.get(<span class="s">"difficulty"</span>, <span class="s">"C0"</span>) <span class="k">in</span> allowed]
+  </div>
+
+  <div class="mc">
+    <div class="mcard"><div class="ml">Gate 1</div><div class="mv">结构校验</div><p>字段完整性 + effect 范围 + 因果顺序</p></div>
+    <div class="mcard"><div class="ml">Gate 2</div><div class="mv">语义评估</div><p>LLM 六维度打分（缺证据不折算正面）</p></div>
+    <div class="mcard"><div class="ml">Gate 3</div><div class="mv">难度标注</div><p>C0-C3 四级，用于课程调度</p></div>
+    <div class="mcard"><div class="ml">调度</div><div class="mv">课程信号</div><p>前期学简单，后期引入复杂</p></div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ═══ 强化二：调度层 ═══ -->
+<section id="p2">
+  <h2><span class="sn">Reinforcement 02</span>调度层升级（论文② MetaRSI）</h2>
+  <p class="lede">MetaRSI 的核心发现：调度本身值 3.6 分。ARSI 的 DimensionManager 需要从"选维度"升级为"真正的调度器"。</p>
+
+  <h3>2.1 算子化：九个维度 = 九个可调度算子</h3>
+  <div class="code">
+<span class="c"># src/arsi/governor/operator_scheduler.py</span>
+
+<span class="k">class</span> <span class="v">ImprovementOperator</span>:
+    <span class="s">"""A schedulable improvement operator (one empowerment dimension)."""</span>
+    <span class="k">def</span> <span class="v">__init__</span>(self, dimension, cost: float, expected_gain: float):
+        self.dimension = dimension
+        self.cost = cost                    <span class="c"># estimated cost</span>
+        self.expected_gain = expected_gain  <span class="c"># estimated benefit</span>
+        self.last_used_generation = 0
+        self.signal_freshness = 1.0         <span class="c"># MetaRSI Law 2</span>
+
+<span class="k">class</span> <span class="v">OperatorScheduler</span>:
+    <span class="s">"""MetaRSI-inspired two-axis scheduler.
+
+    Horizontal: which operators to apply, in what order
+    Vertical: rewrite each operator's proposal policy
+    """</span>
+
+    <span class="k">def</span> <span class="v">schedule</span>(self, operators, budget, generation) -> list:
+        <span class="s">"""Select operators based on MetaRSI rules."""</span>
+        <span class="c"># Rule 1: Signal freshness (Law 2)</span>
+        <span class="c"># Operators used after a capability change have stale signals</span>
+        fresh_ops = [op <span class="k">for</span> op <span class="k">in</span> operators
+                     <span class="k">if</span> op.signal_freshness > 0.3]
+
+        <span class="c"># Rule 2: Cost-benefit ratio</span>
+        scored = [(op, op.expected_gain / max(op.cost, 0.01))
+                  <span class="k">for</span> op <span class="k">in</span> fresh_ops]
+
+        <span class="c"># Rule 3: Budget constraint</span>
+        selected = []
+        remaining = budget
+        <span class="k">for</span> op, score <span class="k">in</span> sorted(scored, key=lambda x: -x[1]):
+            <span class="k">if</span> op.cost <= remaining:
+                selected.append(op)
+                remaining -= op.cost
+
+        <span class="k">return</span> selected
+
+    <span class="k">def</span> <span class="v">mark_capability_change</span>(self, operators):
+        <span class="s">"""MetaRSI Law 2: capability change invalidates prior signals."""</span>
+        <span class="k">for</span> op <span class="k">in</span> operators:
+            op.signal_freshness *= 0.5  <span class="c"># Decay freshness</span>
+  </div>
+
+  <h3>2.2 信号新鲜度追踪</h3>
+  <div class="code">
+<span class="c"># 在 ARSI Core 的 step() 中集成</span>
+
+<span class="k">def</span> <span class="v">step</span>(self):
+    <span class="c"># ... existing code ...</span>
+
+    <span class="c"># After capability change (evolve, learn, dream):</span>
+    <span class="k">if</span> action <span class="k">in</span> [<span class="s">"evolve"</span>, <span class="s">"learn"</span>, <span class="s">"dream"</span>]:
+        self.scheduler.mark_capability_change(self.scheduler.operators)
+        <span class="c"># All effect records before this point are now "stale"</span>
+        self.store.record_signal_freshness(generation, freshness=<span class="s">"stale"</span>)
+
+    <span class="c"># Before scheduling, check freshness</span>
+    selected = self.scheduler.schedule(
+        operators=self.scheduler.operators,
+        budget=self.cost_ledger.remaining(),
+        generation=self.store.current_generation
+    )
+  </div>
+
+  <div class="co co-p">
+    <div class="co-title">关键洞见</div>
+    MetaRSI 实验：三个算子单独跑差距只有 3.8 分，完整系统多出 3.6 分全部来自<strong>调度本身</strong>。ARSI 的 Governor 不只是"选一个动作"，而是需要一个决定"哪个维度、什么顺序、多少预算"的调度层。
+  </div>
+</section>
+
+<hr>
+
+<!-- ═══ 强化三：历史即模拟器 ═══ -->
+<section id="p3">
+  <h2><span class="sn">Reinforcement 03</span>历史即模拟器（论文③ Dream-RSI）</h2>
+  <p class="lede">Dream-RSI 的核心发现：历史必须作为可交互的重放模拟器来用，而不是当方向性建议。ARSI 的 brief 应该返回可查询的历史数据，而不是建议文本。</p>
+
+  <h3>3.1 Brief 升级：从建议文本到可查询模拟器</h3>
+  <div class="code">
+<span class="c"># src/arsi/adapters/bidirectional_interface.py — 升级 brief</span>
+
+<span class="k">class</span> <span class="v">ARSIBrief</span>:
+    <span class="s">"""Upgraded brief: returns queryable history, not just advice text."""</span>
+
+    <span class="k">def</span> <span class="v">__init__</span>(self, ...):
+        <span class="c"># ... existing fields ...</span>
+        self.history_simulator = <span class="k">None</span>  <span class="c"># Dream-RSI: replay simulator</span>
+
+    <span class="k">def</span> <span class="v">query_history</span>(self, task_type: str) -> dict:
+        <span class="s">"""Agent can query: 'what happened historically with this type of task?'"""</span>
+        <span class="c"># Returns structured data, not advice text</span>
+        <span class="k">return</span> {
+            <span class="s">"task_type"</span>: task_type,
+            <span class="s">"historical_success_rate"</span>: 0.72,
+            <span class="s">"common_failures"</span>: [<span class="s">"missing_validation"</span>, <span class="s">"premature_finish"</span>],
+            <span class="s">"recommended_approach"</span>: <span class="s">"validate_before_complete"</span>,
+            <span class="s">"sample_size"</span>: 45,
+            <span class="s">"confidence"</span>: 0.8,
+        }
+
+<span class="c"># In the brief() method:</span>
+<span class="k">def</span> <span class="v">brief</span>(self, task_description, agent_id):
+    <span class="c"># ... existing code ...</span>
+
+    <span class="c"># Dream-RSI: build history simulator from discovery tree</span>
+    tree = self.arsi.discovery_tree
+    <span class="k">if</span> tree.nodes:
+        history = self._build_history_simulator(tree, task_description)
+        brief.history_simulator = history
+
+    <span class="k">return</span> brief
+
+<span class="k">def</span> <span class="v">_build_history_simulator</span>(self, tree, task_type) -> dict:
+    <span class="s">"""Build queryable history from discovery tree (Dream-RSI style)."""</span>
+    <span class="c"># Find relevant nodes by action category</span>
+    relevant = [n <span class="k">for</span> n <span class="k">in</span> tree.nodes.values()
+                <span class="k">if</span> task_type.lower() <span class="k">in</span> n.action.lower()]
+
+    <span class="k">if</span> <span class="k">not</span> relevant:
+        <span class="k">return</span> {<span class="s">"available"</span>: <span class="k">False</span>}
+
+    successes = sum(1 <span class="k">for</span> n <span class="k">in</span> relevant <span class="k">if</span> n.outcome == <span class="s">"success"</span>)
+    failures = [n <span class="k">for</span> n <span class="k">in</span> relevant <span class="k">if</span> n.outcome == <span class="s">"failure"</span>]
+
+    <span class="k">return</span> {
+        <span class="s">"available"</span>: <span class="k">True</span>,
+        <span class="s">"success_rate"</span>: successes / max(len(relevant), 1),
+        <span class="s">"sample_size"</span>: len(relevant),
+        <span class="s">"common_failure_patterns"</span>: self._extract_failure_patterns(failures),
+        <span class="s">"best_practice"</span>: self._extract_best_practice(relevant),
+    }
+  </div>
+
+  <div class="co co-a">
+    <div class="co-title">Dream-RSI 消融实验的教训</div>
+    把历史当作<strong>方向性建议</strong>注入提示词，反而持续劣于不用引导的版本。历史必须作为<strong>可交互的重放模拟器</strong>——agent 可以问"如果我用策略 X 做这类任务，历史表现如何？"而不是"给我建议"。
+  </div>
+</section>
+
+<hr>
+
+<!-- ═══ 强化四：增益分解 ═══ -->
+<section id="p4">
+  <h2><span class="sn">Reinforcement 04</span>增益三分解升级（论文②定律五）</h2>
+  <p class="lede">MetaRSI 定律五：回路不创造能力，所有增益都是进口的。ARSI 需要严格区分三类增益来源。</p>
+
+  <h3>4.1 三类增益的精确标记</h3>
+  <div class="code">
+<span class="c"># src/arsi/sealed_eval/gain_decomposition.py — 升级</span>
+
+<span class="k">class</span> <span class="v">GainSource</span>(str, Enum):
+    AMPLIFIED = <span class="s">"amplified"</span>      <span class="c"># 已有能力的改进</span>
+    IMPORTED = <span class="s">"imported"</span>       <span class="c"># 从外部导入的新知识</span>
+    SELF_ORGANIZED = <span class="s">"self_organized"</span>  <span class="c"># 系统重组带来的改进</span>
+
+<span class="k">class</span> <span class="v">EnhancedGainDecomposer</span>:
+    <span class="s">"""MetaRSI Law 5: every gain is either amplified or imported."""</span>
+
+    <span class="k">def</span> <span class="v">decompose</span>(self, traces, before_eval, after_eval):
+        <span class="c"># ... existing rule-based + LLM logic ...</span>
+
+        <span class="c"># NEW: Mark each gain with its source</span>
+        <span class="k">for</span> t <span class="k">in</span> traces:
+            action = t.get(<span class="s">"action"</span>, <span class="s">""</span>)
+            params = t.get(<span class="s">"params"</span>, {})
+
+            <span class="k">if</span> params.get(<span class="s">"source"</span>) == <span class="s">"empowerment"</span>:
+                t[<span class="s">"gain_source"</span>] = GainSource.IMPORTED
+            <span class="k">elif</span> action.startswith((<span class="s">"evolve"</span>, <span class="s">"reflect"</span>)):
+                t[<span class="s">"gain_source"</span>] = GainSource.AMPLIFIED
+            <span class="k">elif</span> action.startswith((<span class="s">"dream"</span>, <span class="s">"maintain"</span>)):
+                t[<span class="s">"gain_source"</span>] = GainSource.SELF_ORGANIZED
+            <span class="k">else</span>:
+                t[<span class="s">"gain_source"</span>] = GainSource.AMPLIFIED
+
+        <span class="k">return</span> {
+            <span class="s">"amplified"</span>: ...,
+            <span class="s">"imported"</span>: ...,
+            <span class="s">"self_organized"</span>: ...,
+            <span class="s">"source_marked_traces"</span>: traces,
+        }
+  </div>
+
+  <div class="mc">
+    <div class="mcard"><div class="ml">放大</div><div class="mv">AMPLIFIED</div><p>evolve/reflect：已有能力的改进</p></div>
+    <div class="mcard"><div class="ml">进口</div><div class="mv">IMPORTED</div><p>empowerment：从外部导入的新知识</p></div>
+    <div class="mcard"><div class="ml">自组织</div><div class="mv">SELF_ORG</div><p>dream/maintain：系统重组带来的改进</p></div>
+    <div class="mcard"><div class="ml">定律五</div><div class="mv">回路不创造</div><p>所有增益都是进口的，回路只重组和放大</p></div>
+  </div>
+</section>
+
+<hr>
+
+<!-- ═══ 强化五：自主性阶梯 ═══ -->
+<section id="p5">
+  <h2><span class="sn">Reinforcement 05</span>自主性阶梯升级路径（论文①）</h2>
+  <p class="lede">论文①的五级自主性阶梯为 ARSI 提供了明确的升级路径。</p>
+
+  <h3>5.1 ARSI 当前位置与升级目标</h3>
+  <div class="tw">
+    <table>
+      <thead><tr><th>级别</th><th>能力</th><th>ARSI 现状</th><th>升级方案</th></tr></thead>
+      <tbody>
+        <tr><td>L1</td><td>执行自主</td><td>✅ 已有</td><td>—</td></tr>
+        <tr><td>L2</td><td>策略自主</td><td>✅ 已有</td><td>—</td></tr>
+        <tr><td>L3</td><td>经验获取自主</td><td>⚠️ 部分</td><td>ARSI 自己选择分析哪些轨迹</td></tr>
+        <tr><td>L4</td><td>环境适应自主</td><td>❌ 未实现</td><td>双向接口 report → 修订持久策略</td></tr>
+        <tr><td>L5</td><td>递归继承自主</td><td>❌ 未实现</td><td>诊断算法本身被改进</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.2 L3: 经验获取自主</h3>
+  <div class="code">
+<span class="c"># src/arsi/adapters/adaptive_extractor.py</span>
+
+<span class="k">class</span> <span class="v">AdaptiveTraceSelector</span>:
+    <span class="s">"""L3: ARSI decides which traces to analyze deeply."""</span>
+
+    <span class="k">def</span> <span class="v">select_for_analysis</span>(self, all_traces: list) -> list:
+        <span class="s">"""Select traces worth deep analysis based on novelty and impact."""</span>
+        scored = []
+        <span class="k">for</span> t <span class="k">in</span> all_traces:
+            novelty = self._compute_novelty(t)
+            impact = abs(t.get(<span class="s">"effect"</span>, 0))
+            relevance = self._compute_relevance(t)
+            score = 0.4 * novelty + 0.3 * impact + 0.3 * relevance
+            scored.append((t, score))
+
+        scored.sort(key=lambda x: -x[1])
+        <span class="k">return</span> [t <span class="k">for</span> t, _ <span class="k">in</span> scored[:50]]  <span class="c"># Top 50</span>
+
+    <span class="k">def</span> <span class="v">_compute_novelty</span>(self, trace) -> float:
+        <span class="s">"""How novel is this trace? (unseen action/outcome combos)"""</span>
+        <span class="c"># Compare against historical patterns</span>
+        <span class="k">return</span> 0.5  <span class="c"># Placeholder</span>
+  </div>
+
+  <h3>5.3 L5: 递归继承自主</h3>
+  <div class="code">
+<span class="c"># src/arsi/governor/meta_improver.py</span>
+
+<span class="k">class</span> <span class="v">MetaImprover</span>:
+    <span class="s">"""L5: Improves the improvement mechanism itself.
+
+    MetaRSI: the outermost agent revises the scheduling policy.
+    ARSI: the diagnostic algorithms themselves get improved.
+    """</span>
+
+    <span class="k">def</span> <span class="v">evaluate_diagnostic_quality</span>(self) -> dict:
+        <span class="s">"""How good are ARSI's own diagnostics?"""</span>
+        <span class="c"># Track: when ARSI diagnosed X, did the agent actually improve?</span>
+        <span class="c"># If not, the diagnostic algorithm needs revision</span>
+        <span class="k">return</span> {
+            <span class="s">"knowledge_diagnosis_accuracy"</span>: 0.7,
+            <span class="s">"calibration_diagnosis_accuracy"</span>: 0.6,
+            <span class="s">"metacognition_diagnosis_accuracy"</span>: 0.8,
+        }
+
+    <span class="k">def</span> <span class="v">revise_diagnostic_algorithm</span>(self, dimension, feedback):
+        <span class="s">"""L5: Revise how ARSI diagnoses a dimension."""</span>
+        <span class="c"># If knowledge diagnosis keeps missing the real issue,</span>
+        <span class="c"># change HOW it diagnoses (not just WHAT it recommends)</span>
+        <span class="k">pass</span>
+  </div>
+</section>
+
+<hr>
+
+<!-- ═══ 路线图 ═══ -->
+<section id="road">
+  <h2><span class="sn">Roadmap</span>实施路线图</h2>
+
+  <div class="tw">
+    <table>
+      <thead><tr><th>阶段</th><th>内容</th><th>论文来源</th><th>交付物</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>R1 (Week 1-2)</td>
+          <td>质量管线 + 课程调度</td>
+          <td>论文④ NeoHorse</td>
+          <td>quality_gate.py + curriculum.py</td>
+        </tr>
+        <tr>
+          <td>R2 (Week 3-4)</td>
+          <td>调度层升级 + 信号新鲜度</td>
+          <td>论文② MetaRSI</td>
+          <td>operator_scheduler.py</td>
+        </tr>
+        <tr>
+          <td>R3 (Week 5-6)</td>
+          <td>历史即模拟器</td>
+          <td>论文③ Dream-RSI</td>
+          <td>升级 bidirectional_interface.py</td>
+        </tr>
+        <tr>
+          <td>R4 (Week 7-8)</td>
+          <td>增益三分解 + 自主性阶梯</td>
+          <td>论文① + ②</td>
+          <td>adaptive_extractor.py + meta_improver.py</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="co co-t">
+    <div class="co-title">核心原则</div>
+    <p style="margin:8px 0 0">四篇论文合起来的判断：<strong>RSI 的增益不来自模型变大，而来自回路变好。</strong> ARSI 的强化方向不是加更多功能，而是把已有的回路做得更精细——质量更高、调度更准、历史用得更好、增益归因更诚实。</p>
+  </div>
+</section>
+
+</div>
+
+<footer class="footer">
+  <p>ARSI 论文驱动代码级强化方案 · 基于 arXiv:2609.11873 / 2609.06396 / 2609.14858 / 2609.08183</p>
+  <p style="margin-top:4px;opacity:.5">2026 年 9 月 · Lsinxcoy</p>
+</footer>
+
+</body>
+</html>

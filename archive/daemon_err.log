@@ -182,3 +182,727 @@
 2026-09-18 11:09:22 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
 2026-09-18 11:18:56 [arsi.pipelines.dream] INFO:  Dream #3: η 0.145 → 0.073, consolidated {'archived': 0, 'associations_found': 20}
 2026-09-18 11:18:56 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:23:56 [arsi.daemon] INFO: ── Tick 2 ──
+2026-09-18 11:23:56 [arsi.daemon] INFO:   Changes: hermes
+2026-09-18 11:23:56 [arsi.adapters.mimo_extractor] INFO: Extracted 13 traces from session ses_0773d97f1ffeDXeGW7MdFvUt6c
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 0db4a4c6867645d486c5a119db733842 → 66c8755eda664023af56ab896326dfa4
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 55e53b7ac80b494c9002acf8f5d4e96c → 23b78d0314c14840998ce24ffad6305c
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled cd34acd3169f4fefbaccee2b6e0c0da0 → 45ba4cec965e4f04a9a2696074f3d15b
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 3b3bb977b97246e8a3829d99c1308b3e → 3b282b41373849daa09ddadfb446c5e2
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 1bd85566108a4462877a89141e1ef5f7 → 8667adcf1591488eb247d962da48cf07
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled ceffa4f58da348fab0209d18a49c02ec → 3dbde28e1162499a9fea1aeef2d2d0ba
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 87b8388ab8704702a1b277b8172b00d3 → 6131183c093048c3940867cddb9e6610
+2026-09-18 11:23:56 [arsi.mnemosyne.core] INFO: Distilled 8d4f618dc8164ccea11265b4f4814693 → a40c6e1a2d5140d180e0b99d868efcb9
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 9a8d4ad86322453c8e3d5880b7264fdd → cd4c559c8edc429a8e12e1d57576dd96
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 8dd65864585146e8b3fee898836844da → 25c7feb177304a9c9abe917ec5278b58
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 3492c187c10d4bbb9eeeb2ac36f4b5f2 → 1abc979588544cd286957bc0f3d5084d
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled cf1c603243c5437981abe7e26ab87905 → 75b6cd727a51411d9b06098fcdc75a0e
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled f5e2636c2f4d494b893072071c9997f7 → c816a3cc6dba40b0b82c4cba16e0c28d
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 32b55a0ad6164432af82e027c98df654 → 0c4fba14b706465c97dd2e2f2cbe3a5c
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled f9303871fea1496f9d3fd57911588e68 → c76570790b7a481eaddaece09fe2e2a7
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 74cfa0e8256d40b19833ba4647490ad2 → ed3e4dd80cb14998b4c80bfa4a8f98c3
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 5492d1519d1348e696c35f9c0b7e1d8e → 93d28f256973452fa7e256dc9e50e773
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 3e6f99152cc843eda51225475a90bdcd → c9f6013d74d34ceb82d9937a8686e40b
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 29567faf101148c6be7d8caecacbbe3d → 47bc0b9ad8ef4a78ab8688654d1f4d40
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 9b095352565e4dc5a3f465f4a6c7ed10 → 4cfe4892f59f4c0da319ed299cba360a
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 3076adc712534a6081b6c4592f24d3e5 → b3c6d983dcd14e078861a8eafbae56e5
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 857a2057d3ed4834b4bdc3251edcb193 → 30e645d3a6bb41749394a1f73e195e1e
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 20e53595468b454db0696387af7bd42a → 18f55257379745dda9dfd7e28db521d7
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 28fbc24526734039b708cebaee6fca7e → 71da8c4c65334e64a262107c25fddc44
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 8fe30f455a634034b84c15855e27dfd1 → f38abd4f04444a1796ebe150c641e1d1
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 0c66aa6d69c74bff8a36aec1ea3adc92 → 711774e74b0e4aabba77d5692221918d
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled a432377c439146658f6d94def7dd4fbd → cd17b27b45d14ed8a672c8ad1d0c55bb
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled c63dc22fb7304b76a350ddadcc9e44cc → ea7ff8e0adf94f33ab8905add665f3d9
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 1af2b783cc264078b5d53e4582ea82b5 → 63da23f2d9fb447285d7e22272d9a06c
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 88f47cd33ef34138913b46b2ca5a9fb8 → ffae4c8ccc6e4593a43cafb9514bbcbd
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled f875d4cf84bb4a8caa17bb64bff4c765 → a684dc21f5704d6f9436674c222cf473
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled fe548ea19193489cb9588e62a52aedf9 → db97ab925aa44aee838d5d8b16bd159b
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled d501e48e3380448592c071157f42da05 → f5f39830304f43edbaba522b090e0e91
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled dac343ab3f424114871224011c82a183 → 036672150f6a433abca4d1bb354d17a4
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 0a1c1a015353450fbdf21fb0362b4d3f → 67689e7fce79453f983b658ff5a123e8
+2026-09-18 11:23:57 [arsi.mnemosyne.core] INFO: Distilled 90faac0eb1324af0a770794f42293cfd → 44da63fcd5d5400ca575681cd205ff27
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 628ff1ee06554a2a92a73990ceb68296 → dd2ed4e46cd74f6e86f95bd2bac55330
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 71b8e90cb04e498199d6f3ea7662b214 → 430ad722091a4f588e86478df5d29fef
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled ecea8395b3864b719af0eba30c011eb9 → b9e93b8b06e34cfab5e958436fe6f9ca
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 5cc32c125e344d53aa0ebe28b476026d → 83489b00f75d45bab3c73317b2da4203
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 5f63b5323d034a7db2e07bb65b423555 → ee0437585a104c3785a30cb6e7d6cfd9
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 541511b41d8544fc9b4a3bcb7e3cd20b → 36e16657f35a4cf8bdf865ba2cef6288
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled bb59e8c66553420eb09639d0ae92e2b0 → 24ee7622f8fe461987cc61166968361d
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 5adcfcb500764be495baf896d3fe110a → e9870bf6d2014793a1fcab2f09d44531
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled df6edbd26e254159902cdb7de2ce7ed6 → 0baca9eb3e0e4dc1ac0ccbdaad7fca25
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 66f4b0e41b3242a08abd0cdb61b6fde8 → d7ef68f2c627456a9958305bd4f4308a
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 24994e0ad52648709624ad7eff092bc6 → 6aba8f82804e404fa9fa6fc3f14bcbd5
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 50ea54b06dfa4f468282c0ee5282c15b → 64b6807f51e849f1bac01e352fb465eb
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled f3920343897146ed9f1d534441c324af → 84a7bb6bdc8a44c1917c5dc6ba34599e
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled bd4cf12c87bd48e29ca2a8c8cf57fa8e → 87306194030849b1a7b100ad0c6f45f5
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 42bfa9de1016441899b8218d5fbcd6f7 → 199bf14619f14cb194e6ea18d82ef3a7
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 119ce6e604104aeab16f8ba8f82127c2 → a706e279938f401282660c5d0541fb55
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled dd436526ca6c44d6b935186898b981b7 → daad5ee26d5f45f588367d1f71d8d735
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 55ce3c9ed66e4fe9bc3f9448eeff79ba → dad19d289f1f4244a16f58788a2725ac
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 88fb326c4bee4d6599a84062683eb3bf → a65e696a3fa040ff985c68889c9ae339
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 9c24f675fcd4486587e6509c1eeb27d1 → edf3c719ed9e4669980d29a5dbb60e5b
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 03b51a0c35554acfafc1113b8d56f6aa → dcf6ead03e934b69832b96e440fbfcc6
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 4793a5a9602e482ea305aa48b05ab453 → 13e6574f7acf4c9a8e7472b732371b37
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 969f2ef0f6ab4f40b4654e627140c0fa → fe8e203bff1b45eaa7048975542d65d8
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 352f7ae5ebb1480f9d2ecf5415baaf51 → 61b50909674347fb879ecebeab279e79
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled e5c44e5266034d82ac314608dfd38428 → 74cddeb3d5104b2faaaf9a6fdb221d55
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled faf3b97c2edf44969ca62af3e52be2bf → b520d1ce6b654d5287062d27dfa8bde5
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 8222bc7c2dd54e53959ce537f57bf3bc → 16f98931f02644b894da92f075cd7964
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled 5b9274996b66466eac11f4348b0916c1 → a879e1b2bc5c44878387b33cd6ba0127
+2026-09-18 11:24:03 [arsi.mnemosyne.core] INFO: Distilled ae92295923b34454ae086e9203e53351 → 0c1fc380de35478faa808375ee3a845c
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled ab4ead17368f4a16b6fc2632417a8b7a → 1a637bd57f90414da921d22a50c9bd83
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 599f0d5bbac94283854c1b2c20591d77 → 52d67ca6d24746d4a9af8fbad63abc34
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 11ac677a87d34bf6843d19220737afec → ba5a900b1e774c88a467e83ebbe362c7
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled f8dc3cd0e4fd4a95bd739774ccdb13cb → 5c6867bc958b4eb087f7180e5377220a
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled bd8ddc3b998547fcb8f7681054f3c135 → 18e1a845b5ad4f12b2cacf1c5c83cdba
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 01c92926460c41c29cf8f39244c80b3b → a7852f7cdd02487a974d66f1dc77e391
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 31e1f7072f9b462793ea4fd867f7c2a1 → c3b6bfa61ee14f12b480db1f65bc4ae4
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 874d69ae4f904e9fac214185d8ad7928 → c794cf6add414a79853239a0bf2e0ba7
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 031b853d7dc142cd931bc76af4386934 → 1e5afefe89154a2cbce5c0ae4e957d3a
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 4646de69979c4412ab38e8157443a635 → c71b2f122d0a4357ac3e9a7cc835124f
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled f77b7810abc548139854a6db56b8fc1e → 4ee5cf2e83ef428f84fb9965f23c7bdd
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled eed1d61fd2024fa4881bc73dc17aeca7 → d55b034f3e784b5686c90d9e8e3a731f
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled d186e4341fbf419ab303ad1619130760 → aa85ed88abb345b48c38151d8ca045c3
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled bc440969fdc54a429f0682163d2ac46c → adcd4908353f4ecebda11f2561f08690
+2026-09-18 11:24:04 [arsi.mnemosyne.core] INFO: Distilled 9e59dabe22bf46269d56175a1d1d07ae → 51a2da40c21f4df18e5f1fe5ce565aed
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 14223d7402c046a7947942228a7b429b → f89546c9673e4311b9705b84c09457bf
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled bc08b90d219540c0bc952f2e1fa39cad → 07836f6a392a4c93a072414f7772e4cc
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 202fea1b429b4da2b8b75aa1c555fb24 → 79f94948972f4214a2d4f47647d7ab8e
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled b2695de389644c37bd37cf490ca38f0b → f533977533e541db9194b7c992b23c92
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 11567d8d4a354e0092a7722dbc8ff4e3 → 5609a817c04e4b1799a0fba440323d4a
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled f2deb49c37f044acb9a2412f59aca73c → f117f16b79dc41a5a8bab188a066a68b
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 42c044cb49a442e8ae4052382d5cecd1 → f2fbe45320cd4947b9ba652b3d9bfca2
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 53e1621f3897433aa02bc883486fce7b → 3c9271fb1ec440e28f4ffe07fb95e21a
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 3dd071c8d3874891bc8f310a0a21d2fa → a36901cc70204a9a8c943058a3ca7506
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled d92695b329b746c08a71b43b6eea9883 → 93027be8781d44aa9842bbec6042ab83
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 03f136b6adce4bd9bb500a7c9279ca5b → 9add8e3ab1bf439d9d240dd2ccb21e04
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 16a04d9b19fb424c9ea82078f3355635 → 551c5ab098d547c8a8d7ae4be2b8d312
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled d2390da49b1048088a10b12812a8d113 → d23e10a65c9747a4b111a2fafa930e8a
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 568530df2f7c45939b9b4d4fd870f9ac → ac175abc32494a1c9308832d30bcd7da
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 80e4ec21e4ca4b629e1dce5f6e6e0306 → 5e8fae8542a44efda6c0f04b6d88c44a
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 93d64f54522043e3855d1a6734a60b3e → a4a7bfce14894b97b2b75b48f818eeb3
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 72a23cac11784859afb19cb9a5929b43 → 2326b800f26545cb95f1f2f69306b6a6
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 82aab80a1897472b9ec0f22c348bba7e → dc6184e23033424993252f29f2ce0aa2
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled a21ddeaf0d534119952f9acab6fc33d7 → 0fa87b2b087e4010a23744111fb792dc
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 9a9eded75740463da84ef5287d9632b7 → dd83bad5a6b24aeeb8aa0ed3ecbd64ce
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 5bb746747f56478bb0560506a4c68ae1 → 124b6d5d39774c7c99a9dcf61fd0c836
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled f1a31a623a3b4b7aa044189efa2643ef → 360f18036b314a208558a014676b2fa5
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled db24e6a3007947dc87baf43a9d4c72b7 → dc65219541264729baa07b7baf77c69b
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled c67c988d82444383bcc4e83202a19200 → bfda188c901a4ac3b20ce7d70b29ba02
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled dc3b2a8a8f5e46bca546cfb7f4b46a15 → 0027420b08a84dc3bdf7c6c5c80b3f2b
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled ba2dcb6510f44a14aaaf266d421a80af → 52e7183b792e40fb99501d2b361f2832
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 0e970acd6d0d4a7fbf7859c9062d67dd → 4cada6ad1f19461da4a0346f1c9f7ff5
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 9de04c3e80dd4b69a1ee5deb2203ad5c → 7eae42cd6b974d8a84b79b9ed82b2270
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 613c1e07381e4cda88ae8f8324bdedbd → 91d9eb0581214d7ab0fb0bd3a65bc94d
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 8f15b96aeb2147aa83b8de41e36978ce → 9ab832a7a65444f482fa4e25cb0995c1
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 637a7b3194634551aee5b95ec2c8062c → 718ebb68e0c845b598945195cd1f9685
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 7bbadad3b846452aa44182d768d60460 → 4f29ad5530c4466b8d1765c7e8a17c46
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 7bc611d77c0b415ea194bdaf64b4dd94 → d3dc7f18282b4a9297122ab418394c67
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 6d27a34f99004a848190de379dc82445 → f6ae4387eb614e9bbb2fda58aced6715
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 1b2eb131d6884d14a901c9addd5468e8 → 47276c4e8e9b480eace95a7a6c267fe4
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 1078635f7c184f128dc150117c918b0e → 07141d7c5dcf4814820338d579f77ff1
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 2247c3f8f18d46c897b69515dd7de811 → 405a48fcea1043ecbbfd964afc03789c
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 96d1a36449a244c1b17e017b5bd0300e → 624839a681e34e799f5bdfc7df7a4c96
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled b743a18924214089a5598d0045141cfb → 4a6b11260b174b37bfdc019db250cad6
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 214d88ff9d5040639ce1e0422a012992 → 06e74639738743478d2358354855072c
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 86ce0a7fe7614c9393c005c84d6dd97a → a25ae3bb54584f859bc30d236ea6fc9c
+2026-09-18 11:24:05 [arsi.mnemosyne.core] INFO: Distilled 99c25830232045d9b80e78513b5a4810 → 6d7b803f9d4a43a59029245434ff0ed6
+2026-09-18 11:24:06 [arsi.mnemosyne.core] INFO: Distilled 2f0ff3bef8a54deeaa154afc73a65584 → 6e66a309e3984e41b59348c44f70e3f2
+2026-09-18 11:24:06 [arsi.daemon] INFO:   Ingested: 376 new traces
+2026-09-18 11:24:07 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:07 [openai._base_client] INFO: Retrying request in 0.443691 seconds (retry 1 of 2)
+2026-09-18 11:24:08 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:08 [openai._base_client] INFO: Retrying request in 0.834061 seconds (retry 2 of 2)
+2026-09-18 11:24:09 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:09 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:24:10 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:10 [openai._base_client] INFO: Retrying request in 0.395312 seconds (retry 1 of 2)
+2026-09-18 11:24:13 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:24:17 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:24:21 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:24:21 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:21 [openai._base_client] INFO: Retrying request in 0.393200 seconds (retry 1 of 2)
+2026-09-18 11:24:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:22 [openai._base_client] INFO: Retrying request in 0.918786 seconds (retry 2 of 2)
+2026-09-18 11:24:23 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:23 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:24:24 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:24 [openai._base_client] INFO: Retrying request in 0.461513 seconds (retry 1 of 2)
+2026-09-18 11:24:25 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:25 [openai._base_client] INFO: Retrying request in 0.770265 seconds (retry 2 of 2)
+2026-09-18 11:24:26 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:24:26 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:24:29 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 11:24:31 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:32:24 [arsi.pipelines.dream] INFO:  Dream #4: η 0.165 → 0.083, consolidated {'archived': 916, 'associations_found': 20}
+2026-09-18 11:32:24 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:32:25 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:25 [openai._base_client] INFO: Retrying request in 0.452264 seconds (retry 1 of 2)
+2026-09-18 11:32:27 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:27 [openai._base_client] INFO: Retrying request in 0.842753 seconds (retry 2 of 2)
+2026-09-18 11:32:28 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:28 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:28 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:28 [openai._base_client] INFO: Retrying request in 0.405478 seconds (retry 1 of 2)
+2026-09-18 11:32:29 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:29 [openai._base_client] INFO: Retrying request in 0.895219 seconds (retry 2 of 2)
+2026-09-18 11:32:30 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:30 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:31 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:31 [openai._base_client] INFO: Retrying request in 0.405923 seconds (retry 1 of 2)
+2026-09-18 11:32:31 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:31 [openai._base_client] INFO: Retrying request in 0.769222 seconds (retry 2 of 2)
+2026-09-18 11:32:32 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:32 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:33 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:33 [openai._base_client] INFO: Retrying request in 0.416201 seconds (retry 1 of 2)
+2026-09-18 11:32:34 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:34 [openai._base_client] INFO: Retrying request in 0.941871 seconds (retry 2 of 2)
+2026-09-18 11:32:35 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:35 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:35 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:35 [openai._base_client] INFO: Retrying request in 0.392114 seconds (retry 1 of 2)
+2026-09-18 11:32:36 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:36 [openai._base_client] INFO: Retrying request in 0.987228 seconds (retry 2 of 2)
+2026-09-18 11:32:37 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:37 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:38 [openai._base_client] INFO: Retrying request in 0.429218 seconds (retry 1 of 2)
+2026-09-18 11:32:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:38 [openai._base_client] INFO: Retrying request in 0.944651 seconds (retry 2 of 2)
+2026-09-18 11:32:40 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:40 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:40 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:40 [openai._base_client] INFO: Retrying request in 0.450085 seconds (retry 1 of 2)
+2026-09-18 11:32:41 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:41 [openai._base_client] INFO: Retrying request in 0.832912 seconds (retry 2 of 2)
+2026-09-18 11:32:42 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:32:42 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:32:42 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:36:50 [arsi.pipelines.dream] INFO:  Dream #5: η 0.174 → 0.087, consolidated {'archived': 4, 'associations_found': 20}
+2026-09-18 11:36:50 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:36:51 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:51 [openai._base_client] INFO: Retrying request in 0.487610 seconds (retry 1 of 2)
+2026-09-18 11:36:52 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:52 [openai._base_client] INFO: Retrying request in 0.815639 seconds (retry 2 of 2)
+2026-09-18 11:36:53 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:53 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:36:53 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:53 [openai._base_client] INFO: Retrying request in 0.481765 seconds (retry 1 of 2)
+2026-09-18 11:36:54 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:54 [openai._base_client] INFO: Retrying request in 0.804368 seconds (retry 2 of 2)
+2026-09-18 11:36:55 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:55 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:36:55 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:55 [openai._base_client] INFO: Retrying request in 0.464351 seconds (retry 1 of 2)
+2026-09-18 11:36:56 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:56 [openai._base_client] INFO: Retrying request in 0.809378 seconds (retry 2 of 2)
+2026-09-18 11:36:57 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:57 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:36:58 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:58 [openai._base_client] INFO: Retrying request in 0.494133 seconds (retry 1 of 2)
+2026-09-18 11:36:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:36:59 [openai._base_client] INFO: Retrying request in 0.933671 seconds (retry 2 of 2)
+2026-09-18 11:37:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:00 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:37:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:00 [openai._base_client] INFO: Retrying request in 0.414514 seconds (retry 1 of 2)
+2026-09-18 11:37:01 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:01 [openai._base_client] INFO: Retrying request in 0.881667 seconds (retry 2 of 2)
+2026-09-18 11:37:02 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:02 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:37:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:03 [openai._base_client] INFO: Retrying request in 0.415370 seconds (retry 1 of 2)
+2026-09-18 11:37:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:03 [openai._base_client] INFO: Retrying request in 0.846926 seconds (retry 2 of 2)
+2026-09-18 11:37:05 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:05 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:37:05 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:05 [openai._base_client] INFO: Retrying request in 0.417571 seconds (retry 1 of 2)
+2026-09-18 11:37:06 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:06 [openai._base_client] INFO: Retrying request in 0.829748 seconds (retry 2 of 2)
+2026-09-18 11:37:07 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:37:07 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:37:07 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:41:15 [arsi.pipelines.dream] INFO:  Dream #6: η 0.178 → 0.089, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 11:41:15 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:46:15 [arsi.daemon] INFO: ── Tick 3 ──
+2026-09-18 11:46:15 [arsi.daemon] INFO:   Changes: hermes
+2026-09-18 11:46:15 [arsi.adapters.mimo_extractor] INFO: Extracted 13 traces from session ses_0773d97f1ffeDXeGW7MdFvUt6c
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 515990faaaf6491393a5e469f2f6e5f0 → 699efd050358492988834e93cc1f141e
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled df6c69b2368e4e8e8b05391ddc8cc4cf → 404162789f0c42f996f0d5bef4ab7c27
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 3c848352f3bb43dfb22f5624e25032d6 → 7d703c12f6b148a68600209fe35f6370
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 41576f4cfdbf4594b6fbc4ec4d7b0de1 → 80e665bfe91440f1aa61ebc2a7072223
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled f22f0b50c1234aba80d369f737f630a5 → b0aa97dae82347fea26b7cfd875405a4
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled d65e92ad0db542879de29232441f24cf → 413abe96fe6d4f7ab29d44579e78603e
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 54c53328d437415097e8c2e73dab6f6b → 460ca725e70a4c23a1f3d570ae90a46d
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 17fb4fb6214e42c79093e6f15b04f01d → a8b7eeca82524ad5b22bf22cf54a3caf
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 53e1733bad5e4e52910e003c3cdeae5e → 41c2ed3c95fd431ab192e851c28e74f0
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 274e0d4b37914553a2da83dde510b8d8 → 9a020d06c9434d3e8122c9e5389459b8
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 77ac7935fc954263adf3540af0b4696a → 13bb5ca001d74c48ac48d1728ccdaba8
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 0e1170be2fc14a77a3ea62dd1cdd2fd6 → 45cf9052fee44e02b2d2914ee9f8cba6
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 74df3fd6acd64643a2b7e6a3620a2544 → c7638213db684eb8a73349d47a67bf22
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 0c7b953574f24d4c9b9c29e55a9fb1d8 → aea8f19c95d24f11859600725919c558
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 843ece3f8d834f5e9a49f13a4213794e → 795cb84d45f2421481c9e9929192ae3d
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 3f64389cee9a4122a1b03e60ed225ea5 → 587c73c736954883b4256382eea39d72
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled fe7f274e069f424cbe2e1d15cbc34435 → 20d076077048416abd5469a109ab7088
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled e48697e936d14dfc8ed02adae4caec52 → 4e521d12671f46958306504a7175c691
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 026e6ef16145454da06d58eb4e1753af → a0c0e9097e2c4f2cb7eab33deeccf401
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 3b72617280a74f51a890049d60013abc → d857fca7c2e14cb8ab9b9065b5c0756e
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled f691d18042e5402a8aaae92e9ba5f78b → 22054b1ba35140a388d6a06837f6bceb
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled fe9c071c78564438ab9c753621aa4a21 → 016307c79940401383f47afc2708d6f5
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 205c17b06cac4519ba91d84a524fa1a5 → df9d168110bb4b86a24337af25db3143
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled c15624d03e8f4d108b70360e3b0944bb → 901f54ad9cf8410cb48a4bf5fb1a6325
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 0a0035c7b5e64688b5a4e45e30d0e66d → 79ac230af9a147df809522f5db9df99a
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled c7c39e57ad334de189309172bf36ecb6 → cb614009c2b14611981ff0f8d27461f5
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 74c3e0d4ee354f66962677f5b684269e → 7e5f006ed856410c80b5368b1b652584
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 7e80bacf83744df889f67a2a24a9ee1e → 9f97dd41aa284bd88b3284ba2cb4ce38
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 0bcbdc200c2d404890b30afc60157eca → ddc3a83457fe48c4b6f9637bc9c7d423
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled b1f19813fa5c42b8b0090dad8312fe44 → c11c8e86d84e414cb34bd4241b9204b1
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled c59910803e1845ea8cc61e22fadba091 → 2c66fc35e9784ccb86254be80ad1dded
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled da01666994aa4af6897e1915aed49e20 → fe04447df4764f9ba58d6c6d943a28bf
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 7852b6bbf3b4419db0745a68e263728f → 6ef7f8af8ab441fb954b1bcacffdea35
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 0d0171c695f14e87829c1f60dccec957 → 9b569042fbe7456aa68e015449d89ddc
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 5ce6598125414952bb89aaedb64a0e77 → 3548a74a88e84d5eb95ad44f4eb7aa95
+2026-09-18 11:46:15 [arsi.mnemosyne.core] INFO: Distilled 580cc5d1ae5e47c989ee30328e6f9952 → 3766bbb695f349a391dbf65320545ccc
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled e2709c3559ad40a19d29a8f2399eda0c → fa850f37663d4607875dafbad8819c59
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 27d138c10d2246dbb6504ade5f06dacc → a6b0a489754f488a84a2ed127e37ce32
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 6c8032020d694a8f90c9a2943e9215b3 → d2fe311c0c9647ddb12e7e1cc3631a8e
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 3c64ade648924d22a987ba55b535a24a → a8701c3c91ab4907933b87b58c1b0f03
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 9c520256936a46bf94a5da33614f9efc → b48bc78f7d464343a7bb5f674fc045c3
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 38d92422d79a420b98c113984b053f41 → af0bb884ebe54354bfb54ae1cee0f2d7
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled b61b320b498247e3b6a691f3f1b85edf → 425879f69092471b85dded6743245d00
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 9a8f29dfe90542aabca09b5ed2ad23d7 → a94c061f42b24e79804b29de7ba6770c
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 2661bace77884271a1401f16af1657cd → 46a577a7531e42078504d7450ac682e4
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled d4a3b27f78ae4a23976e9df97fcc00ee → e474627198464b13a2bd0a84316959e8
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled d1a4450eebbb43cabb4e889f9272dfc2 → a5f88598e64a4c6f95073d78fbf1e646
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 97f024cbf4714dd6b4bd6d69771709a8 → 134b207cdf0440348db097663adc8fc8
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 1d6513fd5cd741e4b71a74041de26043 → 1f2d2570d2bf444fb137217f2827554d
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 1efecccfe7b445b6a237b3e94796f314 → bfc80afa876a4437be11886613efb9f9
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 6b5aa5161510470f9d53cd03cedb5cef → dcbdb95a0fb04097a734e9d1c88e1495
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled b78098789b994091bd636cb35b894a27 → 2426f833b3e44dc681fcc12a6b74f277
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled d8e384550d144cc09a358781cb1646a0 → aa44ac8969614ad58213343282ef476c
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 85165ba742714db48ddf0d4073c80c15 → 70d12424f822460da2ac429edfc294d7
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled b7755690c54a4dcd808c12ef0d86b03b → b0d756815f444492a4061b6ce984bd5d
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 7f9f7b05ef134b7c8978756eead0e27a → 25bb4bfd5d1f45e181627d7b9249c821
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 48b6276818624a5496ac297db0a68bda → 144acb93d68a49b2ae938674c1fb821f
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 3774c929d671478bb9b0a0cfb0364c07 → 5458cb6d20ac41e99ca03e77004bc3b0
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled e7e560257274467bab769a1f37a56142 → 4576fa1fb5d5446695e54d6ff617cd47
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 39a8e10f196c4297ad4515a87cf406fd → 8554d26d31394ef0b93bf9be61e3d82d
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 1fde4ab4608d4ba4b6474e4d427686e6 → 49b902a19f094a55952f3ac4f79f66ae
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 2a0d898199054b80baadedf6a2406fb5 → 5c1d4660e19c48c9a00d38b763a89583
+2026-09-18 11:46:18 [arsi.mnemosyne.core] INFO: Distilled 8bd1e654590f4eb89916d28b19304e14 → 0497fdbf23af4522bd4fa31264b69570
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 88276d7f3c11497bb1c48f29792e4979 → da9d549f51874b808c08069282b7ad69
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled f36e62ef0970450eb4b3eb4d3d2dd0da → b1bf5e34068d49b69afbc187bbcf17e1
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 3a536cfc53aa4d5ab0929da2b74172bd → 6c59a2c6a312400d8013d13a047d89b7
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 267ff0c012754502bc822b825d6ab379 → 8a104edeb07644ecb78ea8921a23c51e
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 759b930a33d34a05be77b82cd2ebcb8a → 1327663a5a9b48f6a01a68fb84a1e5c9
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 5ab78008c2854cfb8538b41477d0cd3d → f8ec400a0b964f8a9a151533934cecd3
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled c59b5692a8174a9b89523fb2f80b3ca9 → b33399f2818d42c3b3bd2bb9ebb712ae
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 146230ed5d0f46ffae5e1caf66172e7e → fc2f7965d30841d19479b6d56ea7a8ec
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled be70c67ef43640849955304e93dea3b1 → 402a48bebc9640f4ab8ccf0fe1071294
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled d396619646324a34ac3be5be5a28245f → a5743f81c6164abe95258ac6fd165a47
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 7037d12fe90042fe9d4b3a04db7c3157 → abb40e9811f84e14bcad799fc99f7917
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 554b64c2a5dc4985ad3c94d761217098 → 2084e2ad2bce437281e70df0360bf668
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled 3f06b6b40cd5432b9a7a939c1d0fd8cb → 9f812331f1e64663a10ea454de054a00
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled b7be4fbac51a49a7abdd8bc4f3b8340c → d17c30207a914a0093af5335fed89337
+2026-09-18 11:46:19 [arsi.mnemosyne.core] INFO: Distilled d4f8ac5ffcc048e2a189de633cc8cb9b → 14138e92c58a4acf95d9be3f258bab10
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 1a6257f7e7374734b3208e337151f650 → 5825f2241899475095e52f3dbdde7392
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 480ddf8aebf34b349c4763159865b673 → f3351d5a66514f899906c7a95e4a3b5b
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 9805691e295f40a1919378a50cb3bffa → 16522077dbf94665a9539b576c57d59e
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled ecaf90ca52e84da6a9d62219c6bf5444 → d8441830a31d4ba6a8f0b622c9eeb26e
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 80597901f2834f47a8c6d08e3da0cd6a → 9f55b96fcbd04ac0a0740dd26241ac5f
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 9a3b18ab4eb4406ba52fd5b56a40c690 → 2a82581c200a40f2897948673fa19665
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 265e4315fd86406f8e296655275924fd → 1fea87e67f5c4736bc223ef7035df1c3
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 47e7d5f842994133850683d0da102aa8 → 02acd42ed3794e02ae02b7e5885384cb
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 47ad620f52434e98a5d88ca0d6df288c → bdb6aa89b3a24ddabfa259fb0669c3ee
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 9a9025f36d1e4b03808c193ef6d7c1c7 → 408a187aa6aa481fadc40b313ed0e8c0
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 3d42b033368f46c1896d67d2bdc9682c → 84ca4f8d3b6743c1bdc86abce3213711
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled c527c7ae975947889a7efe9b1203033e → 5444a41d427e495fbba6ded44dcc6273
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled a3b4199e711a4e22a543ba8d2e01ae27 → 856a212cbe0845b891f44c1fb106de5a
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 4be9593fbd454428bc61ae3035999c1c → 4da10b0fdd1a4fec9e2f8638ac90cd28
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled a41f814c85534aa384acf63c54cfdc2f → 09a05c76909a4e3b9cdc8dc9cce56603
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 9b12f8b1b2dc4b699ed13c81ccd355aa → 70ecb684583145e5ab1d7897f0c84e4f
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled c7d2960e718d4f46925813edea0190ec → 60896ffaa181436da38b9ea827b33de5
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 3b1e0c8b645442bf8b56a9f7460d7347 → ee949fc8d4f745ad8eeb1fc696f93b40
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled e9ce9c3d808641efb2d2bd84bbca588c → 06d9cc49473a40b7be5c8e773df917b3
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 86214537e6444ad4b5b4b7fec8ad5c39 → 147da767ae4448529e887c484ac2d4a2
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled d63de4c4e2d649288ab7a25e661168b6 → a91e7f3bdf4945079887fcef01cde926
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled af5e465724884357b79757dfd738ff09 → 7e6acb5e423f49879957376972f30aa5
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 56f547d05410480782eedc4d4d52284e → 74cdd7c63b7e4d95a2a8ae131e76873e
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled b79048aaa647400ebead61eeb2c0ecc6 → d81ccc2e66cb4f15bf3ae270e7f20cb2
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 377917e45a414afabfb63b3cb00e33c9 → df40b47436cf47308ad04e0b232e30b4
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 747bd27ee50a4881aeb73f7ed4e39df1 → 99f404b547724aa6b4a8aa4850dae1ac
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 27fad6721e7945248155e9650796440a → 7c729a9a4b2f483dbc3c57ea0e566079
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled a1a6e683c0014b838c1c731f980bc273 → 9d5c2f5e109443a58a2f5acdc6a95c06
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 86a12f9004824d8bbb4d977fc3ace48d → 4db608d33e3b4120917f325268980c7c
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled ff2b48b047624b8f812bf02e0b3b3076 → 52260da77f274189a42ddf16213cee94
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 3c2902e1939f452a8c76b54f12059e8a → 9bc85fec12d04c04a2232eda52d2e6ea
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled a0352b88b1bd4d97b8925c653e789628 → 7d3db2ef652f4befbf599b1f7257b294
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 872818123f0844df80c5915689d95871 → 3fd8c9cee23544dab2ac6c2ebc5ebb36
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled c40a836ba4fc4c4c90ddf8ac654de83a → 18adc72e0ec34182a67f3f22c40307e4
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled e1cb7fee93bb42d7954ce5115d2a27e6 → b5d34c69a5784038aaeea6791ff99183
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 8f8d57741f6e4548bbfa9b1e537aa5b5 → fb2b58f99ee94f64a67a23d075feefc9
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled ed372a4ae14b4a9c936524df3c37c589 → 4d0189abee5e4a5d8ac7db70d1beb54b
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 00c6fcea766545b8955c75b29cdeb1e3 → 4560c65bbd6246e7a3525d5413e0b774
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 01e5da5b973c458bba218aa051df61b4 → 65ba04eaa0b1460784f4994fe74a6957
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled bce59380ec05444baa9d9380b73b4988 → f45d1eb5a46945cfa48526fc6a82d0e4
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled b714a5e187324ed6ade396a41b3cbc28 → 3878d1c6759c4f689319bdc8f4df8f83
+2026-09-18 11:46:20 [arsi.mnemosyne.core] INFO: Distilled 4e97d15da0074d32bf3b73f9355907ab → b025849e020442c79e746aca2d237e42
+2026-09-18 11:46:21 [arsi.mnemosyne.core] INFO: Distilled a685b963234249d29d874ac8c5360152 → 4369f872214f48ba9a91d96fa1557e82
+2026-09-18 11:46:21 [arsi.daemon] INFO:   Ingested: 376 new traces
+2026-09-18 11:46:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:22 [openai._base_client] INFO: Retrying request in 0.399958 seconds (retry 1 of 2)
+2026-09-18 11:46:23 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:23 [openai._base_client] INFO: Retrying request in 0.817242 seconds (retry 2 of 2)
+2026-09-18 11:46:24 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:24 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:24 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:24 [openai._base_client] INFO: Retrying request in 0.375882 seconds (retry 1 of 2)
+2026-09-18 11:46:25 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:25 [openai._base_client] INFO: Retrying request in 0.980729 seconds (retry 2 of 2)
+2026-09-18 11:46:26 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:26 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:27 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:27 [openai._base_client] INFO: Retrying request in 0.461939 seconds (retry 1 of 2)
+2026-09-18 11:46:27 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:27 [openai._base_client] INFO: Retrying request in 0.905425 seconds (retry 2 of 2)
+2026-09-18 11:46:29 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:29 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:29 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:29 [openai._base_client] INFO: Retrying request in 0.397594 seconds (retry 1 of 2)
+2026-09-18 11:46:30 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:30 [openai._base_client] INFO: Retrying request in 0.781156 seconds (retry 2 of 2)
+2026-09-18 11:46:31 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:31 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:31 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:31 [openai._base_client] INFO: Retrying request in 0.473834 seconds (retry 1 of 2)
+2026-09-18 11:46:32 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:32 [openai._base_client] INFO: Retrying request in 0.818889 seconds (retry 2 of 2)
+2026-09-18 11:46:33 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:33 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:34 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:34 [openai._base_client] INFO: Retrying request in 0.477279 seconds (retry 1 of 2)
+2026-09-18 11:46:34 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:34 [openai._base_client] INFO: Retrying request in 0.823115 seconds (retry 2 of 2)
+2026-09-18 11:46:36 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:36 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:36 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:36 [openai._base_client] INFO: Retrying request in 0.405100 seconds (retry 1 of 2)
+2026-09-18 11:46:37 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:37 [openai._base_client] INFO: Retrying request in 0.912622 seconds (retry 2 of 2)
+2026-09-18 11:46:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:46:38 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:46:39 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:50:49 [arsi.pipelines.dream] INFO:  Dream #7: η 0.180 → 0.090, consolidated {'archived': 376, 'associations_found': 20}
+2026-09-18 11:50:49 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:50:51 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:51 [openai._base_client] INFO: Retrying request in 0.489611 seconds (retry 1 of 2)
+2026-09-18 11:50:51 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:51 [openai._base_client] INFO: Retrying request in 0.903226 seconds (retry 2 of 2)
+2026-09-18 11:50:53 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:53 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:50:53 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:53 [openai._base_client] INFO: Retrying request in 0.414302 seconds (retry 1 of 2)
+2026-09-18 11:50:54 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:54 [openai._base_client] INFO: Retrying request in 0.938818 seconds (retry 2 of 2)
+2026-09-18 11:50:55 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:55 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:50:55 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:55 [openai._base_client] INFO: Retrying request in 0.431312 seconds (retry 1 of 2)
+2026-09-18 11:50:56 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:56 [openai._base_client] INFO: Retrying request in 0.982272 seconds (retry 2 of 2)
+2026-09-18 11:50:57 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:57 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:50:58 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:58 [openai._base_client] INFO: Retrying request in 0.430655 seconds (retry 1 of 2)
+2026-09-18 11:50:58 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:50:58 [openai._base_client] INFO: Retrying request in 0.837521 seconds (retry 2 of 2)
+2026-09-18 11:51:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:00 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:51:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:00 [openai._base_client] INFO: Retrying request in 0.486960 seconds (retry 1 of 2)
+2026-09-18 11:51:01 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:01 [openai._base_client] INFO: Retrying request in 0.991404 seconds (retry 2 of 2)
+2026-09-18 11:51:02 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:02 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:51:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:03 [openai._base_client] INFO: Retrying request in 0.384279 seconds (retry 1 of 2)
+2026-09-18 11:51:04 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:04 [openai._base_client] INFO: Retrying request in 0.815938 seconds (retry 2 of 2)
+2026-09-18 11:51:05 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:05 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:51:06 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:06 [openai._base_client] INFO: Retrying request in 0.386545 seconds (retry 1 of 2)
+2026-09-18 11:51:06 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:06 [openai._base_client] INFO: Retrying request in 0.979193 seconds (retry 2 of 2)
+2026-09-18 11:51:08 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:51:08 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:51:08 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:55:10 [arsi.pipelines.dream] INFO:  Dream #8: η 0.181 → 0.091, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 11:55:10 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 11:55:11 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:11 [openai._base_client] INFO: Retrying request in 0.381743 seconds (retry 1 of 2)
+2026-09-18 11:55:11 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:11 [openai._base_client] INFO: Retrying request in 0.978079 seconds (retry 2 of 2)
+2026-09-18 11:55:13 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:13 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:13 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:13 [openai._base_client] INFO: Retrying request in 0.466318 seconds (retry 1 of 2)
+2026-09-18 11:55:14 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:14 [openai._base_client] INFO: Retrying request in 0.884575 seconds (retry 2 of 2)
+2026-09-18 11:55:15 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:15 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:15 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:15 [openai._base_client] INFO: Retrying request in 0.389714 seconds (retry 1 of 2)
+2026-09-18 11:55:16 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:16 [openai._base_client] INFO: Retrying request in 0.827519 seconds (retry 2 of 2)
+2026-09-18 11:55:17 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:17 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:18 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:18 [openai._base_client] INFO: Retrying request in 0.408722 seconds (retry 1 of 2)
+2026-09-18 11:55:19 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:19 [openai._base_client] INFO: Retrying request in 0.792169 seconds (retry 2 of 2)
+2026-09-18 11:55:20 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:20 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:20 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:20 [openai._base_client] INFO: Retrying request in 0.395989 seconds (retry 1 of 2)
+2026-09-18 11:55:21 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:21 [openai._base_client] INFO: Retrying request in 0.961677 seconds (retry 2 of 2)
+2026-09-18 11:55:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:22 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:22 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:22 [openai._base_client] INFO: Retrying request in 0.384220 seconds (retry 1 of 2)
+2026-09-18 11:55:23 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:23 [openai._base_client] INFO: Retrying request in 0.975184 seconds (retry 2 of 2)
+2026-09-18 11:55:24 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:24 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:25 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:25 [openai._base_client] INFO: Retrying request in 0.455191 seconds (retry 1 of 2)
+2026-09-18 11:55:26 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:26 [openai._base_client] INFO: Retrying request in 0.915815 seconds (retry 2 of 2)
+2026-09-18 11:55:27 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 11:55:27 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 11:55:27 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 11:59:26 [arsi.pipelines.dream] INFO:  Dream #9: η 0.182 → 0.091, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 11:59:26 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 12:04:26 [arsi.daemon] INFO: ── Tick 4 ──
+2026-09-18 12:04:26 [arsi.daemon] INFO:   No changes detected, skipping
+2026-09-18 12:09:26 [arsi.daemon] INFO: ── Tick 5 ──
+2026-09-18 12:09:26 [arsi.daemon] INFO:   Changes: hermes
+2026-09-18 12:09:26 [arsi.adapters.mimo_extractor] INFO: Extracted 13 traces from session ses_0773d97f1ffeDXeGW7MdFvUt6c
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled b5b37f4e147c4c8db1774f8d03e94e77 → 8d820e4229704bf0a3501b930b1e0f72
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 22761391bd7348a6bc1ad94328c6f0ed → d0336655252043a79536937ae6f28cde
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 899164665d2948d6b8ab8ff573184e70 → 4b8a65b57aac454bac09c8f66d44d2c3
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 5bd45d5c139b4206ab092664ddb3cee4 → d5ac841d540a4d338600d27611c7b3af
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled aec05f5dd0cd40a584a363b714090ed9 → 2dd46f5bcfc0408698a3477de8e0dbe4
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled cb8dc36e3c7544a488e6845cecc3ab2f → 091302cb8e8541a38d7d4e1fbf94c7d0
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 85131b43b9f54b3dab01e95bc9c291b5 → 4b57b43fd8ac42b493024c4b8695d6bf
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 7f6b4a33845f4a68923fa1ae6c8736cd → cd28657496744c3ba7053af61eefcd0d
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 85fd0223c8814f62b62403446a3f3f7e → 28d529d8934742f38f04f7a58f47f3c9
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 441fb791b0884a7abff2df3813338d3b → 238e6f2ec7e24f6398b463f032e4cc56
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled c475ee4006bd4160ac682f67dcab1818 → b44498c44d60401784ff5179fc453983
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 8cc6320d6cb74785a563c152230108ea → 64095e3b5ed142d4b62779787dbc8a9e
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 284b31418374490689a377f4ae3cb159 → 5f7cc04e2d0743fd9bdc7307a0b73188
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 670f906917c242b88448f97756da401a → 0be2c09e8a374a439b8b7f2122a96b49
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 87eff0a47bbf4190bbffe3c78f7d6971 → 01d43c17b37c4f23ae60fd3597753b21
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 881baa3253964156b7fe451d4aec99d8 → 65372cf2083441a4a6bf9328ad35b04f
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled cf6ba972293a4cbd984438ae6547d1aa → 4fbdb7f27867478eb709e2a426b39367
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 0f921334cdfd4d57910f38b0ba746103 → 140873d0bc9a4ef3b9cae970dfc9129e
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 97d5e793dc6a40088c48192205e93700 → a87418b7786142fda165180227d15c61
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 4281a65341c8474c9d303285338a1c8e → 07e68bb55bde4fbdb078bc6225ee0653
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 788cfa80eb504fc7a57c3d7940a0b582 → f15f54a0717349b59cd2856c31ed6d19
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled f14bbb7f511e4381b7edd3a330eef6f0 → 441c34fe2484488096173e8b4fdad22a
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 80709c9e7a8a41178e21e79468e60017 → 082fcacef8df49cc97518d4c648a3c44
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 9bb54b9a8732471d907ead565b993321 → 6087b490b1b34154802f6e8fd850b19f
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 45bc923f8c81443795cd1bb144d20e5b → 2df68a49c85146e7b6655713129299b6
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled d4177c45603b4fa9bd284339ae6ea6bc → bc1fddba00c349bca0e37f834686d4c1
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 054ff57168cf4368936adb56dd5345b8 → 86aff80d7e8c47bb9828d2bd29f35889
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled a6d8f58a3ef74970ae991bd45844d0bf → 370060e8eb4642e4a7a06a131fb88b23
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 6b5b245e5b01491e8e9741c68a999613 → 5601c4086aeb498abd94976c360380d6
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 097536a059064bcabb177141db772a1a → b8b5536890bb40b7a64153eb31762ec3
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 0188eba14dfc42ebbf5a81188efbd455 → 30645df7c2e444d1bec266219f5e3a5b
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 34ae7e83e21e45cba5bd2c121099e4bd → cae2f2704700406a8261b407ebe1520e
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 5598186f1ab248a48d2aeae2de7ba8e9 → 4c5b79cd0ac849489ba3de25ddae55dd
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 1fc6e9f6ad5b492b84099623d91d27c0 → 8ca8a7ac55a34ed086d6a277df37f425
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 0a4ee0692f2a4a50be66001fa925ef52 → 6ad022212acc400c9f34e7bbe8a4be10
+2026-09-18 12:09:26 [arsi.mnemosyne.core] INFO: Distilled 55e630eac85e4594ac66641a9a393bd2 → 53dd577655a845c0a620a59931ca97f4
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled ea6cb260f48e428194537d4f7c410a6c → 33560128a6b3419987223a89b2d4fe41
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled b93f2d3455a14510ad1c34b0e9e7356c → c3d1a495986f44e3baab303c71429837
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 3a9608b4897d49149fdc29a77b05bad4 → 6a4d094bd34f4ae5b5e3787fc8e5abba
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 61859fcf50ea4720bfeaf48e652a47ad → a26c66ce8a534f219bb25ae7c96332d1
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 331f01b614584519ba96bb8227a9af24 → 82dc7c5b967048358c716219fd9b311f
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 5bf1de7bafd8445684e40487c765e340 → 8016c44f00254f9592a6bd6ee2c24bb6
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled ec1e5deb9b0a43b69938a8bd9532d010 → 805d5d9b0d91456dad80537d571fa60e
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled b2eeba6488ec4cf7b8121ba3b183359f → 86c3d99f0d2c4bd7ae5d368875fc69f7
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 7c32f158ef6246dbbcb0e7afd1a01676 → e8be3ee87ea74d938d9c0b265262865e
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 8a6be1e0e64343669fef156ad87cc13d → f22ef0b912d2435b930ded99d04efda0
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 5ddc3f2feae0439793ed8aa508e81992 → 1a7149a6c00b4d3ea04ae0db1475ae1f
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 96ea20ca93a94e7b89cbf32cc0a13ec9 → 3f773838a06941b88d03e3445fbec4fd
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 40b9450f512b430384bc576c72abbb3e → 28d53134e28b48bca20f16662ae43604
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 03a38a35f69144a297072dc05c663bbb → 24f1801302ba4638aa3347ae62300558
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled c56f82532afc43cbbf8c2fa8f27399b5 → b9c89a19687a4922be154bc55804370f
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 01936821dc4f4203943aaf5ffdeb159b → 57a97a01cf744178a460a27542a819cd
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 46785fef054e443fbf269ccfd44bbeb0 → 20c363319e5c43eb97d0e8ed7fa7601d
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 804c3c33bbea4a9bb27acaa8bb08fb0f → d8216f0379354db29092c3aa00abe253
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled dec9d767cf6f4a02b4673a88cb407ac3 → 28d25eeb916642008755865661613cc8
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 0961b792de204c0dbb9f951f82df873e → db2fc4f486804b9bb46586e2b8d97718
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled a342d25b8cb54c99a3b8d227ccb7904b → b8b3488d6f7a4f2598f9f9485c8e0e6d
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 3e11d1689f434034bbdc5c777fa210d6 → 00d79b5808b94d90bc3f1fc73a318a74
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 26f5999ce265455b88daf03448e29e02 → 8d709363e5524bd58a029ad172bea5b6
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 0206cc31571a4cb786b2298113e0d0c5 → efb7bda6a97049a688cbcaa530e32f79
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 97e7d5fdba3542dca5aa8404f827ff98 → e85ec00204d74c0e80c1767f28584280
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled db128ebf6416412c9b74deb9ba279104 → 708e753bb4ff457fb413cb58912f210e
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled d2b57a6d75ec4b539929a393635a7a78 → 6d442c155a6c4c47abe647efacea7863
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 886818ebd4504cf48a0d5dd517186981 → b435a96e0a464b35aaab0144dcf2868d
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled c741f1c69a0148d087a84ef8118ea002 → ba9709261bd94601bf1a8c71ad1b0dcd
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled cf42174ca88143b38835713fb7559938 → aad8b66d473248618cc2e7cb474a02a2
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 8f85d0f7ed694fa6ae79958779612a8c → ad421f7c32144ed5ac76298d469b4911
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled c94a932d3ac5466b828acf15870a0e27 → 7319fee290a54a63b15480419ab99b93
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 9a25bbe3684346cab9f3f9d504db00e8 → fc9889cf4dbc4b8ea9f9d2c1e26d939f
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 4161ae1e5db3447db8fa8a680d213404 → a7dbf396d9c04ff3a85a28bed512036b
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 3e88272af5d54bc299a29152a028d0f5 → e574a0c3701449e9abec1d52d4bcf6fd
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 1d73cd55aca34c65a363c55a18d8171c → 9aa9f00dd95b436b9203a2f9f72116db
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 256fd4054eb24e2a9fef1d4d6c952aaf → dddc815311514b7ca5b324be2d1b23cb
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 5bfb14e2e76b4d03b473d0b4e0f9f405 → d88d203b0452482e8c9092806781542d
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled f3ef7883da614b7286495cba9dd9cfc0 → 431d0967e35840ffbd095d65685005b8
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled 861695050b2f45d98990710ea20fc7f5 → aac47c52492446af9085ee6a90b5cabb
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled afbd9129767b4984bb7345d7db7515f0 → 9c5bb73437854aaebc03f7b3e071bea7
+2026-09-18 12:09:29 [arsi.mnemosyne.core] INFO: Distilled d3b99010c9fb470ab05984e0643bd095 → d2561303565d4699bfb68b5a6e30ca67
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 57f675d7edf74cdea7b866d84d091a91 → 16fb0c14a1ca44f8a41ec56ec6ecdeb0
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled f0357f39bccc4dbca5229e076324e798 → f18d824be54e4a568c2678589b86e196
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 483b27683f5349f985b6aa2cb820a720 → 6dfdbe9af8614fb0b9f68cf663d8d73b
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 45b66cc68e314a2c981be739c425fd8b → e5a237d9343546de824c6c5abf7b5f30
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 578f07b66da146b387de41ae9db0f105 → 7f4b7d5ab2c14dbabbc5f42109eb16ca
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled abcec4d47cde4bf2a1fe7075640da175 → 3b531b86eb994a78b4b8b53c382a73ed
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 48b264927fe147798ce3e11db06ce78b → 00386b242d7d4360bdad6e57d591c53b
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled d49b7b78db194b178cd1032ebbc9ec61 → 2bf171d6c1864a81b3fb42389770bf0b
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 1ef6661d81f244098e13577d401fcd34 → 89c9cfcdf315456da5fcec614e7abf7f
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled ba3ffc34b7d44bd193badbf378d4ae25 → a5b09c3fcb3e4ba7a87df369a26e2243
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 9db1e16cad8a44b190b29ce5ed01d6a0 → 8ec2b4b3af8b48b3b46f9deb31cfe3ed
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 61ade3c374564db0ac3dfc430ead1bc0 → 2531d05c68c14917b2196acf0a49907a
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 6e2ba955d3ed4ea8ad8b2604c23501b3 → 778ae73c6a104be1aa145fc4ce92a502
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled a304ca0523864648b6ba6f80c5f4df08 → 727e56035b284cbd94cfdef4822a47e9
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled dfad0cb544054f67a615cfb4afab66d1 → 55d925f49236492b907a4eec79f09941
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 286b7247722b4897b742dffa901d93f4 → 0b88fa3e584f4de69692e07f9da24e23
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 858402fe04df452fa73f65885d65f4b9 → cc27861fbb464ad9884928277ddffecc
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled fcfd624ce68d431a88cb0077ea9135fd → f071687fdf41401ea3a2f44fd793c67a
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 8966b0624b1448759424809fcd0cdb4d → 73241458f17a469995f9aeea4f4c7aac
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled dc8ce530f8054bd3b744212f3c4e9c32 → 6afb509e787c446094958b8f429c30c9
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 6c98420085c9439680336214cb23b30d → 532739615bcc4e9aa3d8ba7e3a76a33e
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 3903323d38b34cad80e3085c12420bce → ef39e31e04be46acbb159b60921538b1
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 18aac3118fce48cba8d19d73c42c978f → 9ca4e8aacf004a1e89892f011ea81823
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled cad79748e8274ff8988588f944fcdcc3 → 0d2a176cb6fb4c2fa978049b0ff38f22
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 0df826eed93945daabf1c52b3671238f → 549048da567740b3897b4c4e0e45f8ed
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 28e14243eb3448a2a4555ac403ccdcb7 → 7dc849aea7434ee19e803a2c9887b699
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled c07e62fef108423d8992a255305e8f1f → 72cb0ef93a764b418fb2c8fa9551b107
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 73365c1baaa14e0bbe36ce78340a646e → 4e56463a78d44d548847416910053ea2
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 4799e7a22a8547c98a7f47e17ca550c4 → d7d111b39503479fbd5cb02fc90e9bd8
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled e49e2652691b40aa9012dde1b07b9c7c → fec37430cae249c290de961603973cef
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 228335dcaff843fd8d67d18a0a86db5c → afd6c6bc73f34eb09c0e87db7e07470c
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 729ef353d456423484022714c1ed78f6 → 0518ab60dac5411988b3b532749dbe8d
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 77b7e1d8ed1c4be8acb44332e79fffde → 76cbd1588a2749a2a9e98595b45eea70
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled e65ed1628c65408cb08990af3099b03b → b2d477e17d194347a7d950717dc7190f
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled af3827cc9bbd4f08adf30670e8b46cb8 → 6fa501e8c5e74cf0865a3f781b59c8a9
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 8f9e9b5ef7c248e1a460c40bc0e30e18 → 6edf4374afd74124a654fdc1155bdb56
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 483827b4da5a4811af6378fea263df60 → 33b1354b10254700bd211c6841d35024
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 66bfe33e2c4f482d886e49109d4534b6 → a468a91d3c624d63b46b6f96c5ee7b42
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled bf648066de0a478bba9d4ca5cc604deb → a666fff1bef6432a98158a310db19628
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 11c0328d601342e09bf6c39422a92578 → b7cf0ba2ccac4f80b83fb387d8bc32ee
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 8083c2bafb6a4cacb84c2848b65a8cdc → 097380e9566943f3ba9e6cd67d965f22
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled 779dbde270ec451fb0d3bc7250b25881 → 5b3a316a77474d40bdf09cee9a90ed53
+2026-09-18 12:09:30 [arsi.mnemosyne.core] INFO: Distilled c6845dba2cf749c890de6ca067a7b0d7 → d6447526d9b44203b1392f2b7b1bd548
+2026-09-18 12:09:30 [arsi.daemon] INFO:   Ingested: 376 new traces
+2026-09-18 12:09:35 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:09:38 [openai._base_client] INFO: Retrying request in 0.422931 seconds (retry 1 of 2)
+2026-09-18 12:09:39 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:09:39 [openai._base_client] INFO: Retrying request in 0.960508 seconds (retry 2 of 2)
+2026-09-18 12:09:43 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:46 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:49 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:52 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:55 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:09:56 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 12:13:57 [arsi.pipelines.dream] INFO:  Dream #10: η 0.182 → 0.091, consolidated {'archived': 376, 'associations_found': 20}
+2026-09-18 12:13:57 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 12:13:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:13:59 [openai._base_client] INFO: Retrying request in 0.402316 seconds (retry 1 of 2)
+2026-09-18 12:13:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:13:59 [openai._base_client] INFO: Retrying request in 0.896225 seconds (retry 2 of 2)
+2026-09-18 12:14:01 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:14:01 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 12:14:04 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:07 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:11 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:11 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:14:11 [openai._base_client] INFO: Retrying request in 0.390919 seconds (retry 1 of 2)
+2026-09-18 12:14:14 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:17 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:18 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:14:18 [openai._base_client] INFO: Retrying request in 0.430298 seconds (retry 1 of 2)
+2026-09-18 12:14:19 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:14:19 [openai._base_client] INFO: Retrying request in 0.844589 seconds (retry 2 of 2)
+2026-09-18 12:14:23 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:26 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:14:26 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 12:18:24 [arsi.pipelines.dream] INFO:  Dream #11: η 0.182 → 0.091, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 12:18:24 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 12:18:28 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:31 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:35 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:38 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:18:39 [openai._base_client] INFO: Retrying request in 0.438930 seconds (retry 1 of 2)
+2026-09-18 12:18:39 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:18:39 [openai._base_client] INFO: Retrying request in 0.898143 seconds (retry 2 of 2)
+2026-09-18 12:18:44 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:48 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:48 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:18:48 [openai._base_client] INFO: Retrying request in 0.471610 seconds (retry 1 of 2)
+2026-09-18 12:18:49 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:18:49 [openai._base_client] INFO: Retrying request in 0.918534 seconds (retry 2 of 2)
+2026-09-18 12:18:54 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:18:54 [arsi.mnemosyne.semantic_retrieval] INFO: Indexed 500 memories, 389 unique tokens
+2026-09-18 12:22:51 [arsi.pipelines.dream] INFO:  Dream #12: η 0.182 → 0.091, consolidated {'archived': 0, 'associations_found': 20}
+2026-09-18 12:22:51 [arsi.daemon] INFO:   Step: dream [heuristic]
+2026-09-18 12:22:51 [arsi.daemon] INFO:   Running dimension analysis...
+2026-09-18 12:22:56 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 200 OK"
+2026-09-18 12:22:56 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:22:56 [openai._base_client] INFO: Retrying request in 0.378628 seconds (retry 1 of 2)
+2026-09-18 12:22:57 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:22:57 [openai._base_client] INFO: Retrying request in 0.966995 seconds (retry 2 of 2)
+2026-09-18 12:22:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:22:59 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 12:22:59 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:22:59 [openai._base_client] INFO: Retrying request in 0.446647 seconds (retry 1 of 2)
+2026-09-18 12:23:00 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:00 [openai._base_client] INFO: Retrying request in 0.829660 seconds (retry 2 of 2)
+2026-09-18 12:23:01 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:01 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 12:23:01 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:01 [openai._base_client] INFO: Retrying request in 0.446479 seconds (retry 1 of 2)
+2026-09-18 12:23:02 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:02 [openai._base_client] INFO: Retrying request in 0.859176 seconds (retry 2 of 2)
+2026-09-18 12:23:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:03 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 12:23:03 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:03 [openai._base_client] INFO: Retrying request in 0.402786 seconds (retry 1 of 2)
+2026-09-18 12:23:04 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:04 [openai._base_client] INFO: Retrying request in 0.877495 seconds (retry 2 of 2)
+2026-09-18 12:23:05 [httpx] INFO: HTTP Request: POST https://mcgrox.top/v1/chat/completions "HTTP/1.1 502 Bad Gateway"
+2026-09-18 12:23:05 [arsi.foundation.llm] ERROR: LLM call failed: Error code: 502 - {'error': {'message': 'Upstream service temporarily unavailable', 'type': 'upstream_error'}}
+2026-09-18 12:23:05 [arsi.empowerment.dimensions] ERROR: Dimension environment failed: 'str' object has no attribute 'keys'
+2026-09-18 12:23:05 [arsi.daemon] INFO:     Gaps detected: 4/6
+2026-09-18 12:23:05 [arsi.daemon] INFO:     Applied: 2 recommendations
+2026-09-18 12:28:05 [arsi.daemon] INFO: ── Tick 6 ──
+2026-09-18 12:28:05 [arsi.daemon] INFO:   No changes detected, skipping
+2026-09-18 12:33:05 [arsi.daemon] INFO: ── Tick 7 ──
+2026-09-18 12:33:05 [arsi.daemon] INFO:   No changes detected, skipping
+2026-09-18 12:38:05 [arsi.daemon] INFO: ── Tick 8 ──
+2026-09-18 12:38:05 [arsi.daemon] INFO:   No changes detected, skipping
+2026-09-18 12:43:05 [arsi.daemon] INFO: ── Tick 9 ──
+2026-09-18 12:43:05 [arsi.daemon] INFO:   No changes detected, skipping
+2026-09-18 12:48:05 [arsi.daemon] INFO: ── Tick 10 ──
+2026-09-18 12:48:05 [arsi.daemon] INFO:   No changes detected, skipping
