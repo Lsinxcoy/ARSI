@@ -1,0 +1,54 @@
+# Dream-RSI / Phase D hyperparameters
+# Official paper (arXiv:2609.14858) does NOT publish β1/β2/M/K2/λ/β-grid.
+# Values below are ARSI-calibrated defaults. When GitHub full codebase is
+# released, overwrite numbers here only — do not silently edit Python constants.
+
+paper:
+  arxiv: "2609.14858"
+  official_code_status: "not_released"   # update to released + version when available
+  last_checked: "2026-09-18"
+
+replay_objective:
+  beta1_cost_penalty: 0.1
+  beta2_parallel_bonus: 0.05
+  # V = max(s) - beta1*N + beta2*(N/k)
+
+pareto:
+  parallel_lambda: 0.05
+  # pareto.reward = auc_proxy - lambda * parallel_penalty
+
+loop:
+  M_revisions_per_cycle: 2
+  K2_replay_max_rounds: 20
+  dream_every_n_steps: 8
+  dream_every_n_ticks: 8
+
+beta:
+  default_uncertain: 0.6          # paper B.2 bootstrap
+  sweep_grid: [0.2, 0.4, 0.6, 0.8, 1.0]
+  plateau_raise_step: 0.15
+  wasteful_lower_step: 0.15
+  clamp: [0.0, 1.0]
+
+grid_plan:
+  bootstrap_branch_count: 2
+  bootstrap_refine_count: 3
+  hard_max_branch_count: 4
+  hard_max_refine_count: 8
+  # W = parallel focus count (dimensions/operators), NOT OS threads
+  cost_unit_per_focus_step: 1.0
+  default_cost_budget: 8.0
+
+quality_gate:
+  world_min_verdict: WARN         # PASS | WARN
+  semantic: auto                  # auto | off
+
+eval_loop:
+  # D7: pool-monotone ≠ live-monotone
+  rollback_window: 3
+  rollback_delta_eps: 0.02        # live best drop threshold
+  compare_modes: ["fixed", "dream_rsi"]
+  report_dir: "archive/eval"
+
+brief:
+  policy: structured              # structured | full

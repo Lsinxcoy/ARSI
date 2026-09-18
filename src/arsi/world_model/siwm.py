@@ -291,7 +291,11 @@ class BehaviorPredictor:
 
 
 class SIWM:
-    """System Introspective World Model — the complete three-layer system."""
+    """System Introspective World Model — the complete three-layer system.
+
+    Note: full introspective acceptance lives in arsi.iwm.IWM (Q1–Q6).
+    SIWM provides η / MindZero / Layer1 predictors that IWM observes.
+    """
 
     def __init__(self, store, config=None):
         self.store = store
@@ -303,6 +307,7 @@ class SIWM:
         self.mindzero = MindZero()
         self.layer1 = BehaviorPredictor(version="v1")
         self._current_state: Optional[WorldState] = None
+        self.iwm = None  # attached by ARSI core when available
 
     def get_state(self) -> WorldState:
         """Get current world state."""

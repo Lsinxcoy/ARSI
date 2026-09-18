@@ -279,12 +279,22 @@ class TestEmpowerment:
 # ── Dream Pipeline Tests ───────────────────────────────────────────
 
 class TestDreamPipeline:
-    def test_dream_reduces_eta(self, siwm, mnemosyne):
+    def test_dream_eta_evidence_based_not_auto_halve(self, siwm, mnemosyne):
+        """IWM Q3: η must not drop without measured LoopTrial help."""
         dream = DreamPipeline(siwm, mnemosyne)
         siwm.eta.eta_smooth = 0.50
         state = siwm.refresh_state()
         new_state = dream.execute(state)
-        assert new_state.eta < 0.50  # η should decrease
+        trial = getattr(dream, "_last_loop_trial", {}) or {}
+        policy = getattr(dream, "_last_eta_policy", "")
+        if trial.get("verdict") in ("neutral", "hurt", "unknown", None):
+            assert new_state.eta == pytest.approx(0.50)
+        else:
+            # helped → may move toward measured error, never free lunch to half
+            assert new_state.eta <= 0.50
+            assert new_state.eta >= 0.0
+        assert policy != ""
+        assert "halve" not in policy.lower()
 
     def test_dream_records_session(self, siwm, mnemosyne, store):
         dream = DreamPipeline(siwm, mnemosyne)

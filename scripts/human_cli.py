@@ -21,6 +21,17 @@ Commands:
     laws            — show iron laws
     eval            — run evaluation
     log [N]         — show recent dream sessions and term reports (default 5)
+    manifests [N]   — list live cycle manifests (default 5)
+    grid            — show current / planned GridPlan + next plan preview
+    beta            — show beta, sweep history, params
+    pool            — world pool stats
+    dreamrsi        — run Dream-RSI meta cycle + eval loop
+    compare         — run fixed vs dream_rsi evaluation compare
+    params          — show dream_rsi hyperparams + official status
+    iwm             — IWM health + Q-gate
+    organs          — organ reliability snapshot
+    qgate           — Q1–Q6 scores and claim
+    frontier        — knowledge frontier + explore bias
     help            — show this help
     quit            — exit
 """
@@ -293,6 +304,112 @@ def cmd_log(arsi: ARSI, n: int = 5) -> None:
               f"η={data.get('final_stats', {}).get('eta', '?')}")
 
 
+def cmd_manifests(arsi: ARSI, n: int = 5) -> None:
+    print("\n── Live Cycle Manifests ──")
+    rows = arsi.manifest_store.recent(n)
+    if not rows:
+        print("  (empty — run dreamrsi/term to produce manifests)")
+        return
+    for m in rows:
+        print(
+            f"  #{m.cycle_id} {m.kind}: best={m.best_score:.4f} β={m.beta:.2f} "
+            f"W/R plan={m.planned_grid.branch_count}/{m.planned_grid.refine_count} "
+            f"eff={m.effective_grid.branch_count}/{m.effective_grid.refine_count} "
+            f"probes={m.probe_work} pool={m.pool_size_after}"
+        )
+        print(f"      reason={m.planned_grid.reason} gate={m.quality_gate.to_dict()}")
+    print(f"  store_root: {arsi.manifest_store.root}")
+
+
+def cmd_grid(arsi: ARSI) -> None:
+    print("\n── GridPlan ──")
+    print(f"  current: {format_dict(arsi.current_grid_plan.to_dict())}")
+    nxt = arsi.plan_next_grid()
+    print(f"  next:    {format_dict(nxt.to_dict())}")
+    print(f"  note: W = parallel focus count (dimensions), not OS threads")
+
+
+def cmd_beta(arsi: ARSI) -> None:
+    print("\n── Beta / Sweep ──")
+    print(f"  portfolio.beta = {arsi.portfolio_policy.beta:.3f}  workers={arsi.portfolio_policy.max_workers}")
+    print(f"  default_uncertain = {arsi.dream_rsi_params.beta_default_uncertain}")
+    print(f"  sweep_grid = {arsi.dream_rsi_params.beta_sweep_grid}")
+    sweeps = arsi.manifest_store.recent_beta_sweeps(3)
+    if not sweeps:
+        print("  (no beta_sweep.json yet)")
+    for s in sweeps:
+        print(f"  cycle={s.get('cycle_id')}: selected={s.get('selected_default_beta')} reason={s.get('reason')}")
+        print(f"    non_degenerate={s.get('non_degenerate')} points={len(s.get('points') or [])}")
+
+
+def cmd_pool(arsi: ARSI) -> None:
+    print("\n── World Pool ──")
+    print(f"  size={arsi.world_pool.size}")
+    print(f"  stats={format_dict(arsi.world_pool.stats())}")
+
+
+def cmd_dreamrsi(arsi: ARSI) -> None:
+    print("\n── Dream-RSI meta cycle ──")
+    result = arsi.dream_rsi_cycle()
+    print(format_dict({k: v for k, v in result.items() if k != "feedback_excerpt"}))
+    if result.get("eval_loop"):
+        print("\n── Eval Loop ──")
+        print(format_dict(result["eval_loop"]))
+
+
+def cmd_compare(arsi: ARSI) -> None:
+    from arsi.meta.eval_loop import run_eval_loop
+    print("\n── Fixed vs Dream-RSI compare ──")
+    result = run_eval_loop(arsi, params=arsi.dream_rsi_params)
+    print(format_dict(result.to_dict()))
+
+
+def cmd_params(arsi: ARSI) -> None:
+    print("\n── Dream-RSI Hyperparams ──")
+    print(format_dict(arsi.dream_rsi_params.to_dict()))
+    print("  source: config/dream_rsi_params.yaml (official code not released → ARSI defaults)")
+
+
+def cmd_iwm(arsi: ARSI) -> None:
+    print("\n── IWM Health ──")
+    if getattr(arsi, "iwm", None) is None:
+        print("  IWM not attached")
+        return
+    print(format_dict(arsi.iwm.health()))
+    ok, gate = arsi.iwm.q_gate()
+    print(f"\n  q_gate_ok={ok} claim={gate.get('claim')} failed={gate.get('failed')}")
+
+
+def cmd_organs(arsi: ARSI) -> None:
+    print("\n── Organ Reliability ──")
+    if getattr(arsi, "iwm", None) is None:
+        print("  IWM not attached")
+        return
+    snap = arsi.iwm.organ.snapshot()
+    for name, rec in snap.items():
+        print(f"  {name:20s} status={rec['status']:12s} rel={rec['reliability']:.3f} "
+              f"n={rec['samples']} hint={rec.get('control_hint','')}")
+    print(f"\n  hooks: {format_dict(arsi.iwm.organ.control_hooks())}")
+
+
+def cmd_qgate(arsi: ARSI) -> None:
+    print("\n── IWM Q Gate ──")
+    if getattr(arsi, "iwm", None) is None:
+        print("  IWM not attached")
+        return
+    ok, gate = arsi.iwm.q_gate()
+    print(format_dict(gate))
+    print(f"\n  claim={gate.get('claim')}  v1_ok={ok}  failed={gate.get('failed')}")
+
+
+def cmd_frontier(arsi: ARSI) -> None:
+    print("\n── Knowledge Frontier ──")
+    if getattr(arsi, "iwm", None) is None:
+        print("  IWM not attached")
+        return
+    print(format_dict(arsi.iwm.frontier.report()))
+
+
 def main():
     print("=" * 60)
     print("ARSI 人类监督界面 v2")
@@ -357,6 +474,29 @@ def main():
             elif cmd == "log":
                 n = int(args[0]) if args else 5
                 cmd_log(arsi, n)
+            elif cmd == "manifests":
+                n = int(args[0]) if args else 5
+                cmd_manifests(arsi, n)
+            elif cmd == "grid":
+                cmd_grid(arsi)
+            elif cmd == "beta":
+                cmd_beta(arsi)
+            elif cmd == "pool":
+                cmd_pool(arsi)
+            elif cmd == "dreamrsi":
+                cmd_dreamrsi(arsi)
+            elif cmd == "compare":
+                cmd_compare(arsi)
+            elif cmd == "params":
+                cmd_params(arsi)
+            elif cmd == "iwm":
+                cmd_iwm(arsi)
+            elif cmd == "organs":
+                cmd_organs(arsi)
+            elif cmd == "qgate":
+                cmd_qgate(arsi)
+            elif cmd == "frontier":
+                cmd_frontier(arsi)
             else:
                 print(f"未知命令: {cmd}。输入 help 查看帮助。")
         except Exception as e:

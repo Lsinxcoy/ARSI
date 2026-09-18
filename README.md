@@ -1,10 +1,21 @@
 # ARSI — Autopoietic Recursive Self-Improvement
 
-自创生递归自我改进系统。融合 Autopoiesis、MetaRSI 与 Mental World Modeling 的统一架构。
+自创生递归自我改进系统。四大支柱统一架构：**Autopoiesis · MetaRSI · Mental World Modeling · Dream-RSI**。
 
 ## 核心理念
 
 > 一个自创生系统，它的改进回路本身必须是自创生生产的；而它对自身联合世界状态（物理+心智）的建模质量，决定了这个自我生产过程的质量。
+>
+> Dream-RSI 补上元层代谢：**历史即世界，梦即评估，只把赢家带回现实**——策略层的递归，不靠重跑昂贵 live。
+
+## 四大支柱
+
+| 支柱 | 回答的问题 | ARSI 落点 |
+|------|------------|-----------|
+| Autopoiesis | 系统为何是活的 | 边界、自生产、Governor |
+| MetaRSI | 改进算子如何组合 | 调度、铁律、增益归因 |
+| MWM / SIWM | 世界与自我如何被建模 | η、预测、pre-enactment |
+| **Dream-RSI** | **策略如何被递归改进** | **世界池、回放、GridPlan/β、manifest、eval 回退** |
 
 ## 架构
 
@@ -20,12 +31,21 @@
 │ 6/9维度   │ 世界模型  │ LLM belief 调和        │
 │ 完整闭环  │ L1+L2+L3 │ 自我模型刷新           │
 ├──────────┴──────────┴───────────────────────┤
+│  ★ Dream-RSI 元层（架构支柱之一）              │
+│  WorldPool H_t · ReplayWorld · Portfolio β   │
+│  GridPlan 宽深 · live manifest · β sweep     │
+│  eval_loop：fixed vs dream + live 回退        │
+├─────────────────────────────────────────────┤
 │  Mnemosyne 统一记忆底座                       │
 │  SELF / EXPERIENCE / PROXY 三区隔离           │
 │  语义检索 · 跨agent共享 · 多巴胺门控           │
 ├─────────────────────────────────────────────┤
 │  密封评估器（15任务，真实代码执行）             │
 │  增益三分解 · 成本四账本                       │
+├─────────────────────────────────────────────┤
+│  多宿主数据面（已接入）                         │
+│  MiMo · Hermes · SYNTHEX 轨迹 → 质量门 → 池  │
+│  （主动 brief/report 协议闭环 — 规划中）       │
 └─────────────────────────────────────────────┘
 ```
 

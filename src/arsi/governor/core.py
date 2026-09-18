@@ -132,31 +132,64 @@ class AutopoieticGovernor:
         store,
         iron_laws: IronLaws,
         dim_manager: Optional[DimensionManager] = None,
+        iwm=None,
     ):
         self.siwm = siwm
         self.store = store
         self.laws = iron_laws
         self.dims = dim_manager or DimensionManager()
+        self.iwm = iwm
         self.policy: dict = {}
         self._decision_count = 0
+        self._last_provenance_id = ""
+        self._last_iwm_advice: dict = {}
 
     def decide(self, state: WorldState) -> CoupledAction:
-        """Core decision loop."""
+        """Core decision loop — consumes IWM organ trust when available."""
         self._decision_count += 1
+        hooks_applied: list[str] = []
+        advice = {}
+        if self.iwm is not None:
+            advice = self.iwm.governor_advice(state)
+            self._last_iwm_advice = advice
+            if advice.get("degrade_to_baseline"):
+                hooks_applied.append("degrade_to_baseline")
+            if advice.get("downweight_pre_enactment"):
+                hooks_applied.append("downweight_pre_enactment")
+            if advice.get("forbid_default_dream"):
+                hooks_applied.append("forbid_default_dream")
+            if advice.get("prefer_learn"):
+                hooks_applied.append("prefer_learn")
 
-        # Step 1: Check iron laws
+        # Step 1: Check iron laws — IWM cannot rewrite iron laws
         if self.laws.violated(state):
             return CoupledAction.freeze("铁律触发，系统冻结")
 
-        # Step 2: Check η (self-model freshness)
+        # Step 2: η high → dream, unless dream organ is untrusted
+        forbid_dream = bool(advice.get("forbid_default_dream"))
         if state.eta >= 0.40:
+            if forbid_dream:
+                # Q1 hook: untrusted dream → prefer learn/reflect path, keep η
+                return CoupledAction(
+                    a_phy="learn",
+                    a_ment=IntentRecord(
+                        reason=(
+                            f"η={state.eta:.2f} 但 dream 器官不可靠"
+                            f"（{advice.get('forbid_dream_reason') or 'loop_trial'}），改走 learn"
+                        ),
+                        expected_effect="经验蒸馏，不做无证据 dream",
+                        risk_assessment="low",
+                    ),
+                    params={"iwm_hooks": hooks_applied},
+                )
             return CoupledAction(
                 a_phy="dream",
                 a_ment=IntentRecord(
                     reason=f"η={state.eta:.2f} 超阈值，需刷新自我模型",
-                    expected_effect="η 下降",
+                    expected_effect="η 经 LoopTrial 证据更新",
                     risk_assessment="low",
                 ),
+                params={"iwm_hooks": hooks_applied},
             )
 
         # Step 3: Dimension lifecycle scan
@@ -164,14 +197,40 @@ class AutopoieticGovernor:
         target_dims = self.dims.select_priority(dim_status)
 
         # Step 4: Generate candidates and select
-        candidates = self._generate_candidates(state, target_dims)
+        candidates = self._generate_candidates(state, target_dims, advice=advice)
+        if advice.get("prefer_learn"):
+            for c in candidates:
+                if c["action"] == "learn":
+                    c["reason"] = c.get("reason", "") + " [IWM: behavior_predictor 不可靠，优先 learn]"
 
-        # Step 5: Select best (with or without pre-enactment)
+        # Step 5: Select best — pre-enactment downweighted when dynamics untrusted
         depth = self.siwm.eta.adaptive_depth()
+        if advice.get("degrade_to_baseline") or advice.get("downweight_pre_enactment"):
+            depth = 0
         if depth > 0 and len(candidates) > 1:
             best = self._pre_enact_select(candidates, state, depth)
         else:
-            best = self._heuristic_select(candidates)
+            best = self._heuristic_select(candidates, advice=advice)
+
+        # Provenance (Q5)
+        if self.iwm is not None:
+            try:
+                rec = self.iwm.record_decision(
+                    action=best["action"],
+                    reason=best.get("reason", ""),
+                    decision_source="governor",
+                    candidates=[c["action"] for c in candidates],
+                    state_digest={
+                        "eta": state.eta,
+                        "generation": state.phi.generation,
+                        "trace_count": state.phi.storage_stats.get("trace_count", 0),
+                    },
+                    iwm_snapshot=advice,
+                    hooks_applied=hooks_applied,
+                )
+                self._last_provenance_id = rec.decision_id
+            except Exception:
+                self._last_provenance_id = ""
 
         # Step 6: Output coupled action with introspection
         return CoupledAction(
@@ -184,21 +243,33 @@ class AutopoieticGovernor:
                 timestamp=datetime.now(),
             ),
             target_agent=best.get("target_agent"),
-            params=best.get("params", {}),
+            params={**(best.get("params") or {}), "iwm_hooks": hooks_applied},
         )
 
     def _generate_candidates(
-        self, state: WorldState, target_dims: list[EmpowermentDimension]
+        self,
+        state: WorldState,
+        target_dims: list[EmpowermentDimension],
+        advice: Optional[dict] = None,
     ) -> list[dict]:
         """Generate candidate actions based on state and target dimensions."""
         candidates = []
+        advice = advice or {}
+        forbid_dream = bool(advice.get("forbid_default_dream"))
 
-        # Always consider dream if η is rising
-        if state.eta >= 0.20:
+        # Dream candidate only when η rising AND dream organ allowed
+        if state.eta >= 0.20 and not forbid_dream:
             candidates.append({
                 "action": "dream",
                 "reason": f"η={state.eta:.2f}，预防性梦境刷新",
-                "expected": "η 稳定或下降",
+                "expected": "η 证据更新",
+                "risk": "low",
+            })
+        elif state.eta >= 0.20 and forbid_dream:
+            candidates.append({
+                "action": "learn",
+                "reason": f"η={state.eta:.2f} 但 IWM 禁止默认 dream，改 learn",
+                "expected": "蒸馏经验替代无证据 dream",
                 "risk": "low",
             })
 
@@ -213,8 +284,8 @@ class AutopoieticGovernor:
                 "risk": "low",
             })
 
-        # Consider evolve if we have enough experience
-        if exp_count > 10:
+        # Evolve: only when behavior_predictor trusted (no prefer_learn)
+        if exp_count > 10 and not advice.get("prefer_learn"):
             candidates.append({
                 "action": "evolve",
                 "reason": f"经验记忆 {exp_count} 条，可尝试机制突变",
@@ -231,6 +302,17 @@ class AutopoieticGovernor:
                 "risk": "low",
             })
 
+        # Frontier explore bias: add underexplored categories as learn/explore nudge
+        explore_bias = advice.get("explore_bias") or []
+        if explore_bias and not forbid_dream:
+            candidates.append({
+                "action": "learn",
+                "reason": f"IWM frontier 探索偏向: {explore_bias[:3]}",
+                "expected": "补齐知识边界",
+                "risk": "low",
+                "params": {"frontier_explore": explore_bias[:3]},
+            })
+
         # Default: remember (ingest new data)
         if not candidates:
             candidates.append({
@@ -245,11 +327,7 @@ class AutopoieticGovernor:
     def _pre_enact_select(
         self, candidates: list[dict], state: WorldState, depth: int
     ) -> dict:
-        """Select best candidate via simplified pre-enactment.
-
-        Full implementation would use SIWM Layer 2/3.
-        For now, uses heuristic scoring.
-        """
+        """Select best candidate via simplified pre-enactment."""
         best = candidates[0]
         best_score = -1.0
 
@@ -261,9 +339,16 @@ class AutopoieticGovernor:
 
         return best
 
-    def _heuristic_select(self, candidates: list[dict]) -> dict:
-        """Heuristic selection when pre-enactment is unavailable."""
+    def _heuristic_select(self, candidates: list[dict], advice: Optional[dict] = None) -> dict:
+        """Heuristic selection when pre-enactment is unavailable/untrusted."""
+        advice = advice or {}
         priority = {"dream": 3, "maintain": 2, "learn": 2, "evolve": 1, "remember": 1}
+        if advice.get("forbid_default_dream"):
+            priority["dream"] = 0
+            priority["learn"] = 4
+        if advice.get("prefer_learn"):
+            priority["learn"] = max(priority.get("learn", 2), 3)
+            priority["evolve"] = 0
         return max(candidates, key=lambda c: priority.get(c["action"], 0))
 
     def _score_candidate(self, candidate: dict, state: WorldState) -> float:
@@ -312,8 +397,13 @@ class AutopoieticGovernor:
 
     @property
     def stats(self) -> dict:
-        return {
+        out = {
             "decision_count": self._decision_count,
             "policy_keys": list(self.policy.keys()),
             "eta": self.siwm.eta.value,
+            "last_provenance_id": self._last_provenance_id,
         }
+        if self.iwm is not None:
+            out["iwm_hooks"] = self._last_iwm_advice.get("degrade_to_baseline")
+            out["forbid_default_dream"] = self._last_iwm_advice.get("forbid_default_dream")
+        return out

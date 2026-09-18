@@ -23,6 +23,21 @@ dimensions:
   max_per_term: 2
   min_data_sufficiency: 0.3
 
+# Phase D: Dream-RSI meta-layer
+quality_gate:
+  world_min_verdict: WARN   # PASS | WARN — traces below this stay out of WorldPool
+  semantic: auto            # auto | off
+grid_plan:
+  hard_max_branch_count: 4
+  hard_max_refine_count: 8
+  bootstrap_branch_count: 2
+  bootstrap_refine_count: 3
+beta_sweep:
+  grid: [0.2, 0.4, 0.6, 0.8, 1.0]
+  parallel_lambda: 0.05
+brief:
+  policy: structured        # structured | full
+
 db_path: arsi.db
 iron_laws_path: config/iron_laws.yaml
 sealed_tasks_path: config/sealed_tasks.yaml

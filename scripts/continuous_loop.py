@@ -103,12 +103,34 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     stats = arsi.get_stats()
     print(f"  总轨迹: {stats['trace_count']}  经验: {stats['experience_count']}")
 
+    # Step 2b: Phase D — quality gate harvest into world pool
+    print("\n[2b/6] QualityGate 收割世界池...")
+    harvest = arsi.harvest_term_tree()
+    if harvest.get("harvested"):
+        print(f"  world={harvest.get('world_id')} nodes={harvest.get('node_count')} "
+              f"kept={harvest.get('traces_kept')}/{harvest.get('traces_in')} "
+              f"gate={harvest.get('quality_gate')}")
+    else:
+        print(f"  skipped: {harvest.get('reason')}")
+
     # Step 3: Run a few ARSI steps
     print("\n[3/6] 运行 ARSI 分析循环...")
     for i in range(3):
         result = arsi.step()
         d = result["decision"]
         print(f"  Step {result['step']}: {d['action']} [{d['source']}]")
+        if result.get("iwm_advice"):
+            print(f"    IWM: {result['iwm_advice']}")
+
+    if getattr(arsi, "iwm", None) is not None:
+        health = arsi.iwm.health().get("iwm", {})
+        ok, gate = arsi.iwm.q_gate()
+        print("\n  [IWM] organ_trust=", health.get("organ_trust"))
+        print("  [IWM] dream_loop=", health.get("dream_loop"))
+        print("  [IWM] q_gate=", gate.get("claim"), "failed=", gate.get("failed"))
+        result_iwm = {"health": health, "q_gate": gate}
+    else:
+        result_iwm = {}
 
     # Step 4: Dimension analysis
     print("\n[4/6] 维度分析...")
@@ -152,20 +174,48 @@ def run_loop(arsi: ARSI, extractor: MiMoSessionExtractor, session_id: str = None
     print("\n[6/6] 写入反馈文件...")
     write_feedback(feedback)
 
+    # Step 7: Phase D — Dream-RSI meta cycle + eval compare
+    print("\n[7/7] Phase D 元闭环...")
+    dream_meta = {}
+    try:
+        dream_meta = arsi.dream_rsi_cycle()
+        if dream_meta.get("ran"):
+            print(f"  dreamrsi: deployed={dream_meta.get('deployed')} "
+                  f"score={dream_meta.get('deployed_score')} β={dream_meta.get('beta')} "
+                  f"manifest=#{dream_meta.get('manifest_cycle')}")
+            gp = dream_meta.get("grid_plan") or {}
+            print(f"  grid: W={gp.get('branch_count')} R={gp.get('refine_count')} ({gp.get('reason')})")
+            el = dream_meta.get("eval_loop") or {}
+            if el:
+                print(f"  eval: {el.get('recommendation')} "
+                      f"fixed={el.get('fixed_avg_score')} dream={el.get('dream_avg_score')} "
+                      f"rollback={el.get('rollback_triggered')}")
+        else:
+            print(f"  dreamrsi skipped: {dream_meta.get('reason')}")
+    except Exception as e:
+        print(f"  dreamrsi failed: {e}")
+
     # Summary
     final_stats = arsi.get_stats()
     print(f"\n{'─'*50}")
     print(f"  η: {final_stats['eta']:.4f}")
     print(f"  梦境: {final_stats['dreams']}  预演: {final_stats['pre_enactment_count']}")
-    print(f"  建议数: {len(suggestions)}")
-    print(f"  反馈文件: {FEEDBACK_FILE}")
-    print(f"{'─'*50}")
-
+    print(f"  世界池: {final_stats.get('world_pool_size', 0)}  "
+          f"manifest圈: {final_stats.get('manifest_cycles', 0)}  "
+          f"β: {final_stats.get('beta', '?')}")
+    grid = final_stats.get("grid_plan") or {}
+    print(f"  GridPlan: W={grid.get('branch_count')} R={grid.get('refine_count')} ({grid.get('reason')})")
     return {
         "status": "ok",
         "traces_ingested": len(traces),
+        "harvest": harvest,
+        "dream_rsi": dream_meta,
         "suggestions_count": len(suggestions),
         "eta": final_stats["eta"],
+        "world_pool_size": final_stats.get("world_pool_size", 0),
+        "manifest_cycles": final_stats.get("manifest_cycles", 0),
+        "beta": final_stats.get("beta"),
+        "grid_plan": grid,
         "feedback_file": str(FEEDBACK_FILE),
     }
 

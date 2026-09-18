@@ -26,7 +26,17 @@ FEEDBACK_DIR = Path.home() / ".local" / "share" / "mimocode" / "memory" / "arsi_
 
 
 class ARSIBrief:
-    """What ARSI tells an agent before a task."""
+    """What ARSI tells an agent before a task.
+
+    brief_policy (Dream-RSI §5.1):
+      - structured (default): skills + safety warnings + structured history
+        stats only. Recommendations / past lessons are meta_only and MUST NOT
+        appear in format_for_agent() — semantic guidance hurts exploration.
+      - full: legacy text brief for human CLI / debugging.
+    """
+
+    POLICY_STRUCTURED = "structured"
+    POLICY_FULL = "full"
 
     def __init__(
         self,
@@ -38,6 +48,7 @@ class ARSIBrief:
         past_lessons: list[str],
         confidence: float = 0.5,
         history_simulator: Optional[dict] = None,
+        policy: str = "structured",
     ):
         self.task_description = task_description
         self.agent_id = agent_id
@@ -47,13 +58,14 @@ class ARSIBrief:
         self.past_lessons = past_lessons
         self.confidence = confidence
         self.history_simulator = history_simulator  # Dream-RSI: queryable history
+        self.policy = policy or self.POLICY_STRUCTURED
         self.timestamp = datetime.now().isoformat()
         self.brief_id = f"brief_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
     def query_history(self, task_type: str) -> dict:
         """Dream-RSI: Agent can query historical performance.
 
-        Returns structured data, not advice text.
+        Returns structured data, not advice text. No directional fields.
         """
         if not self.history_simulator or not self.history_simulator.get("available"):
             return {"available": False, "reason": "no_history_data"}
@@ -65,7 +77,7 @@ class ARSIBrief:
             "historical_success_rate": hs.get("success_rate", 0),
             "sample_size": hs.get("sample_size", 0),
             "common_failure_patterns": hs.get("common_failure_patterns", []),
-            "best_practice": hs.get("best_practice", ""),
+            "score_stats": hs.get("score_stats", {}),
             "confidence": hs.get("confidence", 0),
         }
 
@@ -74,28 +86,34 @@ class ARSIBrief:
             "brief_id": self.brief_id,
             "agent_id": self.agent_id,
             "task": self.task_description,
+            "policy": self.policy,
             "recommendations": self.recommendations,
             "relevant_skills": self.relevant_skills,
             "warnings": self.warnings,
             "past_lessons": self.past_lessons,
             "confidence": self.confidence,
             "history_available": self.history_simulator is not None and self.history_simulator.get("available", False),
+            "history_simulator": self.history_simulator,
+            "meta_only": {
+                "recommendations": self.recommendations,
+                "past_lessons": self.past_lessons,
+            },
             "timestamp": self.timestamp,
         }
 
     def format_for_agent(self) -> str:
-        """Format brief as readable text for agent consumption."""
+        """Format brief for agent consumption.
+
+        structured policy: no Recommendations / Past Lessons sections (§5.1).
+        full policy: legacy complete brief.
+        """
         lines = [
             f"# ARSI Brief [{self.brief_id}]",
             f"Agent: {self.agent_id}  Task: {self.task_description}",
             f"Confidence: {self.confidence:.2f}",
+            f"Policy: {self.policy}",
             "",
         ]
-        if self.recommendations:
-            lines.append("## Recommendations")
-            for r in self.recommendations:
-                lines.append(f"  - {r}")
-            lines.append("")
         if self.relevant_skills:
             lines.append("## Relevant Skills")
             for s in self.relevant_skills:
@@ -106,10 +124,33 @@ class ARSIBrief:
             for w in self.warnings:
                 lines.append(f"  ⚠ {w}")
             lines.append("")
-        if self.past_lessons:
-            lines.append("## Past Lessons")
-            for l in self.past_lessons:
-                lines.append(f"  - {l}")
+
+        hs = self.history_simulator or {}
+        if hs.get("available"):
+            lines.append("## History Stats (structured, not guidance)")
+            lines.append(f"  - success_rate: {hs.get('success_rate', 0)}")
+            lines.append(f"  - sample_size: {hs.get('sample_size', 0)}")
+            stats = hs.get("score_stats") or {}
+            if stats:
+                lines.append(f"  - score: {stats}")
+            patterns = hs.get("common_failure_patterns") or []
+            if patterns:
+                lines.append(f"  - failure_pattern_count: {len(patterns)}")
+            lines.append("")
+
+        if self.policy == self.POLICY_FULL:
+            if self.recommendations:
+                lines.append("## Recommendations")
+                for r in self.recommendations:
+                    lines.append(f"  - {r}")
+                lines.append("")
+            if self.past_lessons:
+                lines.append("## Past Lessons")
+                for l in self.past_lessons:
+                    lines.append(f"  - {l}")
+        else:
+            lines.append("## Note")
+            lines.append("  History is provided as structured stats only (no direction advice).")
         return "\n".join(lines)
 
 
@@ -163,8 +204,9 @@ class ARSIInterface:
         ))
     """
 
-    def __init__(self, arsi: ARSI):
+    def __init__(self, arsi: ARSI, brief_policy: str = ARSIBrief.POLICY_STRUCTURED):
         self.arsi = arsi
+        self.brief_policy = brief_policy
         self._brief_count = 0
         self._report_count = 0
         self._active_briefs: dict[str, ARSIBrief] = {}
@@ -219,6 +261,7 @@ class ARSIInterface:
             past_lessons=lessons,
             confidence=confidence,
             history_simulator=history_simulator,
+            policy=self.brief_policy,
         )
 
         self._active_briefs[brief.brief_id] = brief
@@ -394,19 +437,20 @@ class ARSIInterface:
         successes = [n for n in relevant if n.outcome == "success"]
         failures = [n for n in relevant if n.outcome == "failure"]
 
-        # Extract common failure patterns
+        # Extract common failure patterns (structured, not advice)
         fail_patterns = []
         for f in failures[:5]:
             fail_patterns.append(f.action[:40])
 
-        # Extract best practice from highest-scoring success
-        best_practice = ""
-        if successes:
-            best = max(successes, key=lambda n: n.score)
-            best_practice = f"Best result: {best.action[:40]} (score={best.score:.2f})"
-
+        scores = [n.score for n in relevant]
+        score_stats = {
+            "avg": round(sum(scores) / len(scores), 4) if scores else 0.0,
+            "best": round(max(scores), 4) if scores else 0.0,
+            "worst": round(min(scores), 4) if scores else 0.0,
+        }
         success_rate = len(successes) / len(relevant)
 
+        # §5.1: structured simulator data only — no best_practice / suggested direction
         return {
             "available": True,
             "success_rate": round(success_rate, 3),
@@ -414,7 +458,7 @@ class ARSIInterface:
             "success_count": len(successes),
             "failure_count": len(failures),
             "common_failure_patterns": fail_patterns[:3],
-            "best_practice": best_practice,
+            "score_stats": score_stats,
             "confidence": min(1.0, len(relevant) / 20.0),
         }
 

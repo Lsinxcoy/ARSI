@@ -10,3 +10,10 @@ arsi.db
 *.db-shm
 .venv/
 venv/
+archive/arsi.lock
+archive/tmp/
+archive/*.log
+archive/daemon*.log
+*.env
+.env
+secrets.txt

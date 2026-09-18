@@ -1,24 +1,50 @@
 """Dream Pipeline — self-model refresh + memory consolidation.
 
 When η ≥ θ_high, dream pipeline:
-1. First-person observation (Ω_ε)
+1. First-person observation (Ω_ε via IWM when available)
 2. State re-parse (MindZero)
 3. Belief reconstruction
 4. Memory consolidation (decay + edge discovery)
-5. η recomputation
+5. Evidence-based η update (LoopTrial) — never hand-twist the meter
 
-Based on: ARSI Whitepaper v0.8 §7.3
+Based on: ARSI Whitepaper v0.8 §7.3 + IWM design Q3
 """
 from __future__ import annotations
 
 import logging
 from datetime import datetime
+from typing import Optional
 
 from arsi.foundation.schema import MentalState, WorldState
 from arsi.mnemosyne.core import Mnemosyne
 from arsi.world_model.siwm import SIWM
 
 logger = logging.getLogger(__name__)
+
+
+def measure_behavior_error(layer1, traces: list[dict], n: int = 30) -> float:
+    """Holdout sequential prediction error on recent traces (0=perfect)."""
+    traces = list(traces or [])[-n:]
+    if len(traces) < 2:
+        return 1.0
+    correct = 0
+    total = 0
+    for i in range(1, len(traces)):
+        prev = traces[i - 1]
+        curr = traces[i]
+        last_action = prev.get("action", "")
+        last_outcome = prev.get("outcome", "unknown")
+        predicted = layer1.predict(
+            WorldState(), last_action=last_action, last_outcome=last_outcome
+        )
+        pred_cat = layer1.categorize_action(predicted)
+        actual_cat = layer1.categorize_action(curr.get("action", ""))
+        total += 1
+        if pred_cat == actual_cat:
+            correct += 1
+    if total == 0:
+        return 1.0
+    return 1.0 - (correct / total)
 
 
 class DreamSession:
@@ -30,11 +56,15 @@ class DreamSession:
         after_psi: MentalState,
         eta_before: float,
         eta_after: float,
+        loop_trial: Optional[dict] = None,
+        eta_policy: str = "",
     ):
         self.before_psi = before_psi
         self.after_psi = after_psi
         self.eta_before = eta_before
         self.eta_after = eta_after
+        self.loop_trial = loop_trial or {}
+        self.eta_policy = eta_policy
         self.timestamp = datetime.now()
 
     def to_dict(self) -> dict:
@@ -44,6 +74,8 @@ class DreamSession:
             "eta_before": self.eta_before,
             "eta_after": self.eta_after,
             "eta_improved": self.eta_after < self.eta_before,
+            "eta_policy": self.eta_policy,
+            "loop_trial": self.loop_trial,
             "timestamp": self.timestamp.isoformat(),
         }
 
@@ -52,26 +84,44 @@ class DreamPipeline:
     """Dream pipeline — the system's sleep cycle.
 
     Not rest: deep processing of memory and self-model.
-    Enhanced with LLM-powered belief reconciliation when available.
+    η moves only on measured LoopTrial evidence (IWM Q3).
     """
 
-    def __init__(self, siwm: SIWM, mnemosyne: Mnemosyne, llm=None):
+    def __init__(self, siwm: SIWM, mnemosyne: Mnemosyne, llm=None, iwm=None):
         self.siwm = siwm
         self.mnemosyne = mnemosyne
         self.llm = llm
+        self.iwm = iwm
         self._dream_count = 0
         self._llm_reconcile_count = 0
+        self._last_loop_trial: dict = {}
+        self._last_eta_policy = ""
 
     def execute(self, state: WorldState) -> WorldState:
         """Execute a dream cycle."""
         self._dream_count += 1
         eta_before = state.eta
 
+        # 0. Measure baseline prediction error BEFORE dream work
+        traces = self.mnemosyne.store.get_recent_traces(n=50)
+        layer1 = self.siwm.layer1
+        err_before = measure_behavior_error(layer1, traces)
+
+        if self.iwm is not None:
+            trial = self.iwm.begin_loop_trial(
+                intervention="dream",
+                before_error=err_before,
+                eta_before=eta_before,
+                evidence_refs=["holdout_behavior_error"],
+            )
+            trial_id = trial.trial_id
+        else:
+            trial_id = None
+
         # 1. First-person observation: render current state
         observation = self._first_person_observe(state)
 
         # 2. Re-parse mental state from recent traces
-        traces = self.mnemosyne.store.get_recent_traces(n=50)
         fresh_psi = self.siwm.mindzero.infer_mental_state(traces)
 
         # 3. Reconcile beliefs (LLM-powered when available)
@@ -82,9 +132,49 @@ class DreamPipeline:
         # 4. Memory consolidation
         consolidation_result = self.mnemosyne.consolidate()
 
-        # 5. Recompute η (reset to lower value after dream)
-        # Dream reduces η because we've refreshed the self-model
-        new_eta = max(0.0, eta_before * 0.5)  # Halve η after dream
+        # 5. Evidence-based η — measure AFTER consolidation; no hardcoded halving
+        # Re-fit layer1 on post-consolidation experience when possible
+        try:
+            post_traces = self.mnemosyne.store.get_recent_traces(n=50)
+            if post_traces:
+                layer1.fit(post_traces)
+        except Exception as e:
+            logger.warning(f"post-dream layer1 fit failed: {e}")
+        err_after = measure_behavior_error(layer1, self.mnemosyne.store.get_recent_traces(n=50))
+
+        if self.iwm is not None:
+            trial = self.iwm.complete_loop_trial(
+                intervention="dream",
+                after_error=err_after,
+                eta_after=None,
+                evidence_refs=["holdout_behavior_error_post"],
+                observation_keys=list(observation.keys()) if isinstance(observation, dict) else [],
+            )
+            self._last_loop_trial = trial.to_dict()
+            new_eta, eta_policy = self.iwm.evidence_based_eta(
+                current_eta=eta_before,
+                measured_error=err_after,
+                intervention="dream",
+            )
+        else:
+            # Fallback without IWM: η stays measured-anchored, never free lunch
+            if err_after < eta_before - 0.02:
+                new_eta = err_after
+                eta_policy = f"measured_only_fallback_{eta_before:.3f}->{new_eta:.3f}"
+            else:
+                new_eta = eta_before
+                eta_policy = "no_iwm_hold_eta"
+            self._last_loop_trial = {
+                "intervention": "dream",
+                "before": err_before,
+                "after": err_after,
+                "verdict": "helped" if err_after < err_before - 0.02 else (
+                    "hurt" if err_after > err_before + 0.02 else "neutral"
+                ),
+                "iwm": False,
+            }
+
+        self._last_eta_policy = eta_policy
         self.siwm.eta.eta_smooth = new_eta
 
         # 6. Record dream session
@@ -93,28 +183,41 @@ class DreamPipeline:
             after_psi=fresh_psi,
             eta_before=eta_before,
             eta_after=new_eta,
+            loop_trial=self._last_loop_trial,
+            eta_policy=eta_policy,
         )
         self.mnemosyne.write_self_record("dream_session", session.to_dict())
 
         logger.info(
-            f" Dream #{self._dream_count}: η {eta_before:.3f} → {new_eta:.3f}, "
+            f" Dream #{self._dream_count}: η {eta_before:.3f} → {new_eta:.3f} "
+            f"(err {err_before:.3f}→{err_after:.3f}, {eta_policy}), "
             f"consolidated {consolidation_result}"
         )
 
-        # Return updated state
         return state.model_copy(update={
             "psi": fresh_psi.model_copy(update={"beliefs": corrected_beliefs}),
             "eta": new_eta,
         })
 
     def _first_person_observe(self, state: WorldState) -> dict:
-        """Ω_ε — render system's first-person partial observation."""
-        return {
+        """Ω_ε — first-person partial observation; IWM-rich when attached."""
+        base = {
             "generation": state.phi.generation,
             "belief_count": len(state.psi.beliefs),
             "eta": state.eta,
             "storage": state.phi.storage_stats,
         }
+        if self.iwm is not None:
+            report = self.iwm.first_person_report(state)
+            base.update({
+                "organs": report.get("organs", {}),
+                "frontier_keys": list(
+                    (report.get("frontier") or {}).get("explore_bias", [])
+                )[:8],
+                "loop_trials": report.get("loop_efficacy", {}).get("trial_count", 0),
+                "self_trust": (report.get("calibrator") or {}).get("self_trust"),
+            })
+        return base
 
     def _reconcile_beliefs(self, old: list, new: list) -> list:
         """Reconcile old and new beliefs.

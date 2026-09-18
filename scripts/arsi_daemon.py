@@ -136,12 +136,18 @@ class ARSIDaemon:
             if self._tick_count % 10 == 0 or self.arsi.siwm.eta.should_dream():
                 self._run_dream()
 
+            # 5b. Phase D: Dream-RSI meta cycle (every 8 ticks) — manifest + grid + β sweep
+            if self._tick_count % 8 == 0:
+                self._run_dream_rsi()
+
             # 6. Save checkpoint
             self._save_checkpoint()
 
             # 7. Write health snapshot
             elapsed = time.time() - tick_start
             stats = self.arsi.get_stats()
+            iwm_stats = stats.get("iwm") or {}
+            iwm_inner = iwm_stats.get("iwm") if isinstance(iwm_stats, dict) else {}
             self._write_snapshot({
                 "tick": self._tick_count,
                 "status": "ok",
@@ -151,6 +157,23 @@ class ARSIDaemon:
                 "eta": stats.get("eta", 0),
                 "trace_count": stats.get("trace_count", 0),
                 "experience_count": stats.get("experience_count", 0),
+                "world_pool_size": stats.get("world_pool_size", 0),
+                "manifest_cycles": stats.get("manifest_cycles", 0),
+                "beta": stats.get("beta", 0.6),
+                "grid_plan": stats.get("grid_plan", {}),
+                "iwm": {
+                    "self_trust": (iwm_inner or {}).get("self_trust"),
+                    "organ_trust": (iwm_inner or {}).get("organ_trust"),
+                    "dream_loop": (iwm_inner or {}).get("dream_loop"),
+                    "forbid_default_dream": (iwm_inner or {}).get("dream_loop", {}).get("allowed_default") is False
+                    if isinstance(iwm_inner.get("dream_loop"), dict) else None,
+                    "unreliable_organs": (iwm_inner or {}).get("unreliable_organs"),
+                    "q_gate": stats.get("iwm_q_gate", {}),
+                },
+                "verified": {
+                    "iwm_in_stats": bool(stats.get("iwm")),
+                    "timestamp": datetime.now().isoformat(),
+                },
             })
 
         except Exception as e:
@@ -256,6 +279,24 @@ class ARSIDaemon:
         eta_before = state.eta
         new_state = self.arsi.dream.execute(state)
         logger.info(f"    η: {eta_before:.4f} → {new_state.eta:.4f}")
+
+    def _run_dream_rsi(self) -> None:
+        """Phase D: Dream-RSI meta-exploration cycle (world pool + manifest + β sweep)."""
+        try:
+            logger.info("  Running Dream-RSI meta cycle...")
+            result = self.arsi.dream_rsi_cycle()
+            if not result.get("ran"):
+                logger.info(f"    skipped: {result.get('reason')}")
+                return
+            logger.info(
+                f"    deployed={result.get('deployed')} score={result.get('deployed_score')} "
+                f"beta={result.get('beta')} pool={result.get('pool_size')} "
+                f"manifest_cycle={result.get('manifest_cycle')}"
+            )
+            gp = result.get("grid_plan") or {}
+            logger.info(f"    grid: W={gp.get('branch_count')} R={gp.get('refine_count')} ({gp.get('reason')})")
+        except Exception as e:
+            logger.error(f"    Dream-RSI cycle failed: {e}")
 
     def _save_checkpoint(self) -> None:
         """Save checkpoint for crash recovery."""

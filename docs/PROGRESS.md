@@ -206,3 +206,404 @@ LLM 可用时用 LLM，限流时自动降级——设计行为正确。
 3. LLM 调用超时代理不可用 — 无 LLM 模式仍可运行
 4. **GitHub 密钥泄露检测**：start_loop.bat 硬编码 API key 被 GitHub 拒绝推送 — 移除硬编码，改为运行前设置环境变量
 - **15 个密封评估任务**
+
+---
+
+## Dream-RSI 深挖 + 机制落地
+
+### 2026-09-18 深度研究记录
+
+#### 研究结论（arXiv:2609.14858）
+上次只吸收了「发现树外壳」。本轮从论文全文 + dream-rsi.com + GitHub README + 附录 B 完整 prompt 挖出五大未吸收机制：
+
+| 机制 | 要点 |
+|------|------|
+| **世界池 H_t** | 每圈追加一棵发现树；策略在所有历史世界上平均评估 |
+| **Child() 语义** | 非根→唯一已记录子节点；根→最早未揭示子节点（开新分支） |
+| **Prefix-only API** | Observation 成功语义：error is None + fail_class=="ok"（valid=false 仍可成功） |
+| **失败四分类** | hard / repairable / weak-underexplored / repeatedly-unpromising；可修复失败保留资格 |
+| **动态 portfolio + β** | exploit+explore+≤1 recovery；β episode 内固定，跨周期按 live 规则调整 |
+| **§5.1 负结果** | 历史当语义指导注入 prompt **更差**；必须当结构化模拟器 |
+
+实验数字：Lasso vs SimpleTES **162×** fewer calls；math **>50×** budget saving；Kernel **2.09×** higher / **2.43×** fewer gens。
+
+#### 本轮交付
+| 文件 | 状态 | 说明 |
+|------|------|------|
+| `world_model/replay_world.py` | ✅ | 论文形式化回放世界（Child/Observation/prefix API） |
+| `world_model/world_pool.py` | ✅ | H_t 世界池 + 多世界评估 + 单调策略选择 |
+| `governor/portfolio_policy.py` | ✅ | 动态 portfolio 批次 + β schedule + 跨周期 default β |
+| `core.py` 接线 | ✅ | `harvest_term_tree` / `dream_rsi_cycle`；step 每 8 步触发 |
+| `tests/test_dream_rsi_deep.py` | ✅ | Child/池/单调/β/ARSI 接线测试 |
+| 深度研究报告 | ✅ | `E:\Mimo 生成\docs\2026-09-18\Dream-RSI-deep-research.{md,html}` |
+
+#### 测试结果
+```
+269 passed in 9.17s — 全部通过
+```
+（含新增 `tests/test_dream_rsi_deep.py` 14 项）
+
+#### 路径偏差（必须记录）
+| 产物 | 路径 | 原因 |
+|------|------|------|
+| 研究报告 md/html | `E:\Mimo 生成\docs\2026-09-18\` | 全局生成物规则：AI 生成文件写入 E:\Mimo 生成 |
+| 论文 PDF 缓存 | `E:\Mimo 生成\cache\2026-09-18\papers\` | 同上（cache 分类） |
+| ARSI 源码/测试 | `E:\ARSI\` | 用户项目仓库，非生成物，保持原位 |
+| 进度日志 | `E:\ARSI\docs\PROGRESS.md` | 项目内文档，按约定记录偏差 |
+
+#### 明确未做（诚实边界）
+- GridPlan `plan_grid`（宽度/深度规划）— 需要 live cycle manifest 体系
+- AdaptiveBehaviorController 未接入 Governor 主环
+- β grid sweep 评估器与 beta_sweep.json 落盘
+- bidirectional `brief()` 方向性建议字段的全面审计
+- 官方代码未发布：β₁/β₂、M、K₂、λ、β grid 具体数值未知
+- 多 agent 真连接 — **仍按约定留到最后**
+
+#### 官方资源状态
+- 论文 PDF / 官网 / 交互 demo：已放出
+- GitHub 仓库：Paper ✅ Project page ✅ arXiv 🔜 **Full codebase ⏳**
+- 源：https://github.com/zhengkid/Dream-RSI · https://dream-rsi.com/
+
+---
+
+## Phase D 落地方案（未完成工作）
+
+### 2026-09-18 方案记录
+
+深度盘点后的判断：未落地项不是散点 TODO，而是 **Dream-RSI 元探索闭环的下半截断了**，外加质量/调度层从未接入主环。
+
+| 断点 | 现状 |
+|------|------|
+| QualityGate / OperatorScheduler / AdaptiveController | 有代码，core/daemon **未调用** |
+| GridPlan / live manifest 落盘 / β sweep | **缺失** |
+| brief() | 仍输出 Recommendations/Past Lessons（§5.1 风险） |
+| scripts/daemon | **未使用** world_pool / portfolio / dream_rsi_cycle |
+
+**方案文档**（生成物，遵循全局规则写入 Mimo 生成）：
+- `E:\Mimo 生成\docs\2026-09-18\ARSI-phase-D-landing-plan.md`
+- `E:\Mimo 生成\docs\2026-09-18\ARSI-phase-D-landing-plan.html`
+
+**分期**：D1 Manifest → D2 GridPlan → D3 β sweep → D4 brief 合规 → D5 三件套接线 → D6 Daemon → D7 评估对照 → D8 延期（官方超参/多agent）。
+
+**域映射（已钉死）**：GridPlan.W = term 内并行焦点数（维度/算子），R = 每焦点精炼步数；W 当前不是真线程并行（偏差已声明）。
+
+**默认超参偏差**（官方未 Release）：β₁=0.1, β₂=0.05, λ=0.05, M=2, K₂=20, β grid [0.2,0.4,0.6,0.8,1.0], uncertain default β=0.6。
+
+**状态**：方案已交付，**代码尚未按 D1 开工**。测试基线 269 passed。
+
+**路径偏差**：方案文档在 `E:\Mimo 生成\docs\2026-09-18\`（生成物规则）；源码与本进度日志在 `E:\ARSI\`（项目仓库）。
+
+---
+
+## Phase D 开工落地
+
+### 2026-09-18 实现记录
+
+按方案 **D1→D7 最小闭环** 已写入代码并全量测试通过。
+
+#### 已交付
+
+| 阶段 | 文件 | 状态 |
+|------|------|------|
+| D1 Manifest | `src/arsi/meta/live_manifest.py` | ✅ schema + ManifestStore 落盘/容错/reload |
+| D2 GridPlan | `src/arsi/meta/grid_plan.py` | ✅ plan_grid 证据规则 R1–R4 + bootstrap + 预算钳制 |
+| D3 β sweep | `src/arsi/meta/beta_sweep.py` | ✅ 池上扫 β + pareto reward + default-β 规则 |
+| D4 brief §5.1 | `adapters/bidirectional_interface.py` | ✅ `structured` 默认；建议进 meta_only；历史仅结构化统计 |
+| D5a QualityGate | `core.py` `_filter_traces_for_world` | ✅ PASS/WARN 入池，FAIL 拒入；stats 进 manifest |
+| D5b Scheduler | `core.py` run_term/dream_rsi_cycle | ✅ schedule 进 term + Law2 mark_capability_change |
+| D5c Adaptive | `core.py` plan_next_grid | ✅ trend→force 调节 R |
+| D6 Daemon | `scripts/arsi_daemon.py` | ✅ 每 8 tick 跑 dream_rsi_cycle；health 含 pool/grid/β |
+| 配置 | `config/arsi.yaml` | ✅ quality_gate / grid_plan / beta_sweep / brief.policy |
+| 测试 | `tests/test_phase_d.py` | ✅ 18 项 |
+
+#### 接线摘要
+- `dream_rsi_cycle`: plan_grid → harvest(gate) → pool 评估 → LLM 修订 → β sweep → 单调选择 → **manifest + beta_sweep.json**
+- `run_term`: 计划网格 → OperatorScheduler 选维度 → 步数受 W×R 约束 → adaptive → **manifest**
+- `brief()` 默认 structured：无 Recommendations/Past Lessons；`full` 供人类 CLI
+- 运行数据：`E:\ARSI\archive\trace_pool\iter*\live_cycle_manifest.json` + `beta_sweep.json`
+
+#### 测试结果
+```
+287 passed in 11.37s — 全部通过
+```
+基线 269 → **287**（+18 Phase D）
+
+#### 默认超参偏差（官方代码未 Release）
+β₁=0.1, β₂=0.05, λ=0.05, M=2, K₂=20, β grid `[0.2,0.4,0.6,0.8,1.0]`, uncertain default β=0.6。W=并行**焦点数**（非 OS 线程）。
+
+#### 路径偏差
+| 产物 | 路径 |
+|------|------|
+| Phase D 方案 | `E:\Mimo 生成\docs\2026-09-18\ARSI-phase-D-landing-plan.{md,html}` |
+| 源码/测试/PROGRESS | `E:\ARSI\` |
+| manifest/sweep 运行数据 | `E:\ARSI\archive\trace_pool\`（项目 archive，非生成物文档目录） |
+
+#### 仍未做
+- D7 完整 fixed vs dream 对照报告 + live 变差自动回退（骨架字段 sealed_delta/gain 已进 manifest，对照脚本未写）
+- 官方超参回填（等 GitHub full code）
+- 多 agent 真连接（约定最后）
+- `continuous_loop.py` / `human_cli.py` 未加 manifests/grid 子命令（daemon 已接）
+
+---
+
+## Phase D 补齐（三项，不含多 agent）
+
+### 2026-09-18 实现记录
+
+#### 1) D7 评估闭环 + 自动回退
+| 文件 | 说明 |
+|------|------|
+| `src/arsi/meta/eval_loop.py` | fixed vs dream_rsi 池上对照；live 回归检测；自动回退 β |
+| `archive/eval/compare_*.json` + `compare_log.jsonl` | 对照报告落盘 |
+| `dream_rsi_cycle` | 每次元循环后自动 `run_eval_loop` |
+
+规则：
+- **池内单调 ≠ live 单调** — 回归窗口 `rollback_window=3`，阈值 `eps=0.02`
+- live 回退时部署 `rollback_beta_*`（β 下调或回到 uncertain default 0.6）
+- 对照基线 `fixed_exploration_fn` 同时作为 dream 选择候选之一
+
+#### 2) 超参配置层（官方未发布 → 可回填）
+| 文件 | 说明 |
+|------|------|
+| `config/dream_rsi_params.yaml` | β₁/β₂/λ/M/K₂/β grid/Grid 顶格/rollback 策略 |
+| `src/arsi/meta/dream_rsi_params.py` | `load_dream_rsi_params()` |
+| `core.py` | `arsi.dream_rsi_params` 注入 sweep/grid/step 周期 |
+
+`official_code_status: not_released` — 官方 GitHub full code 放出后**只改 YAML**，禁止静默改 Python 常量。
+
+#### 3) CLI / continuous_loop 接线
+| 文件 | 新命令/步骤 |
+|------|-------------|
+| `scripts/human_cli.py` | `manifests` `grid` `beta` `pool` `dreamrsi` `compare` `params` |
+| `scripts/continuous_loop.py` | 2b QualityGate 收割 + 7/7 dream_rsi + eval 输出 |
+| `scripts/arsi_daemon.py` | （上轮已接）每 tick 跑 meta cycle |
+
+#### 测试结果
+```
+296 passed in 11.33s — 全部通过
+```
+基线 287 → **296**（+ residual/eval/params 测试）
+
+#### 语义修正
+- `default_beta_from_live(None)` 读磁盘 manifest；传入 list（含空）只用该 list，不足 2 条 → bootstrap 0.6
+- 单元测试的 ARSI 实例强制 `manifest_store` 指向临时目录，避免污染 `archive/trace_pool`
+
+#### 路径
+| 产物 | 路径 |
+|------|------|
+| 超参 YAML | `E:\ARSI\config\dream_rsi_params.yaml` |
+| 对照报告 | `E:\ARSI\archive\eval\` |
+| 源码/测试 | `E:\ARSI\` |
+
+#### 仍未做（更新）
+- **多 agent 主动协议闭环 / 编排** — 用户约定最后
+- 官方超参数值回填 — 等 GitHub Release 后改 YAML
+- 连续 live 对照需 daemon 跑出足够 manifest 后才有统计力
+
+#### Dream-RSI 架构地位认定（2026-09-18）
+| 层级 | 是否基石 | 证据 |
+|------|----------|------|
+| 代码主环 | **是** | core.step/run_term/dream_rsi_cycle/daemon 均调用世界池+manifest+eval |
+| 项目章程 | **是（本轮 README 正名）** | 四大支柱：Autopoiesis / MetaRSI / MWM / **Dream-RSI** |
+| 运行承重 | **尚未** | archive/trace_pool 有 manifest，但近期多为 best_score=0 / pool=0 的薄数据；daemon 未持续跑出健康圈 |
+
+结论：**代码级已是架构支柱之一；运行级尚未成为承重墙**——差的是常驻 daemon + 真实三宿主轨迹把池喂厚。
+
+---
+
+## Daemon 拉起（2026-09-18 15:50）
+
+#### 环境问题
+| 问题 | 处置 |
+|------|------|
+| **C 盘剩余 0 GB** → SQLite「database or disk is full」 | 清理 `AppData\Local\Temp` 旧文件，释放约 **36 GB**，C: 现约 35.5 GB 空闲 |
+| Hermes `state.db` / MSTAR disk I/O | 同根因（C 盘满）；入库后应恢复 |
+| 旧 daemon PID 33292（10:50 起）仍在跑 **Phase D 之前** 的代码 | 已停止并清锁，避免内存中旧逻辑 |
+
+#### 当前进程
+| 进程 | PID | 说明 |
+|------|-----|------|
+| `arsi_daemon.py --tick-sleep 300` | **7640** | 2026-09-18 15:50:51 起，**加载 Phase D 新代码** |
+| `arsi_interface.py --port 9300` | 30228 | 双向协议 HTTP（旧进程，未重启） |
+
+启动方式：环境变量 `PYTHONPATH/ARSI_API_KEY/HTTP(S)_PROXY/TEMP→E:\ARSI\archive\tmp`，完整 python 路径，Hidden；日志 `archive/daemon.log` + `daemon_err.log`。
+
+#### 首 tick 证据
+- 已 ingest **377** 条新轨迹（hermes/synthex 等）
+- LLM `mcgrox.top` HTTP 200 正常
+- Mnemosyne 蒸馏与语义索引运行中
+- Dream-RSI meta cycle 按代码 **每 8 tick** 触发；manifest 非零 score 需等后续 tick + 质量门入池
+
+#### 路径偏差
+- daemon 临时目录：`E:\ARSI\archive\tmp`（避免 C 盘再满）
+- API key 仅进程环境变量注入，**未新写入仓库文件**（`start_daemon.bat` 内历史硬编码仍在，GitHub 推送前勿提交密钥）
+
+---
+
+## 母巢 SYNTHEX 深度分析（2026-09-18）
+
+### 结论
+母巢 `MotherWorldModel`（~2720 行）是**生产级可审计世界模型账本**：联合状态、TransitionRecord（预测/实际/误差/归因/pair_id）、时间窗 EffectPredictor、不确定度截断、诊断电池（含 **signal_collapse**）、JOIN 审计、SelectionGate 配对 A/B。**诚实修正**：wiring_plan 的多候选模拟选优**未接线**；MWM 自称不学动力学；合成 5D 含零信息维。
+
+### 对 ARSI 最锋利的生产教训
+- **verified 常量自证**（1889/1889）→ 已验证必须绑测试证据  
+- **身份与写方不同源** → A/B 选择压力断  
+- **桥建好≠通电** → 已建≠已接线≠已通电≠有数据流  
+- **方案 72 点仅 1 落地** → 文档≠实现  
+- **伪进化**：成本不收敛=退化  
+
+### 吸收优先级（摘要）
+| 级 | 项 |
+|----|-----|
+| P0 数据可信 | TransitionLedger · 时间窗基线 · signal_collapse · verified 绑证据 · 单一落盘源 · MentalDelta |
+| P1 选择/诚实 | 配对A/B+影子 · JOIN门 · 多候选选优 · T-convergence · 固定探针 · VacuumGate |
+| P2 | 防错规则 · 信用分配 · 技能代际 · 导管（多agent最后） |
+
+### 交付物
+- `E:\Mimo 生成\docs\2026-09-18\SYNTHEX-mothernest-deep-analysis.md`（含 explore 合并 §9）
+- `E:\Mimo 生成\docs\2026-09-18\SYNTHEX-mothernest-deep-analysis.html`
+
+### 路径偏差
+分析报告在 `E:\Mimo 生成\docs\2026-09-18\`；**未改母巢代码**；未按 P0 开工改 ARSI（待确认）。
+
+### 仍未做
+- 多 agent 主动协议 / 蜂巢导管 — 最后  
+- P0 SIWM 补强代码 — 本分析交付后待开工  
+- 官方 Dream-RSI 超参回填 — 等 Release  
+
+---
+
+## ARSI 内省世界模型落地研究（2026-09-18）
+
+### 诊断（代码事实）
+- SIWM 名称含 Introspective，实质：η（动作类预测误差）+ MindZero 推断 Ψ + Layer1 行为预测  
+- **`dream.py` 将 η 硬编码 `η*0.5`** — 无测量即宣称自我模型刷新（假内省）  
+- `first_person_observe` 仅 4 个数字；Governor **不消费**器官可信度  
+- Dream-RSI eval_loop/manifest 已有回路证据，未并入自我模型  
+
+### 真内省验收 Q1–Q6
+器官可靠度 · 知识边界 · 改进回路效力 · 自我转移 · 决策溯源 · 内省器自检。  
+**Q1–Q3 任意两条不过 → 不得称内省世界模型。**
+
+### 目标 IWM 模块
+OrganSelfModel · KnowledgeFrontier · LoopEfficacy · TransitionLedger · DecisionProvenance · calibrate 降级。  
+每条器官可靠度必须有**行为挂钩**（无挂钩不算内省）。
+
+### 分期
+I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 → I4 自检降级 → I5 与 Dream-RSI 咬合 → I6 行为探针全过后才改 README 表述。
+
+### 交付物
+- `E:\Mimo 生成\docs\2026-09-18\ARSI-introspective-world-model-design.md`
+- `E:\Mimo 生成\docs\2026-09-18\ARSI-introspective-world-model-design.html`
+
+### 路径偏差
+研究文档写入 `E:\Mimo 生成\docs\2026-09-18\`；**本轮未改 ARSI 运行代码**（仅研究方案）。
+
+### 状态
+方案已交付，**Phase I1 未开工**。待确认 Q1–Q6 验收定义后按 I1 开写。
+
+---
+
+## IWM 内省世界模型落地（2026-09-18 实现）
+
+### 原则（执行口径）
+- **Q1–Q3 任意两条不过 → 不得称内省世界模型**（空系统默认 skeleton）
+- 每条器官可靠度必须有**行为挂钩**；无挂钩 = 仪表，不算内省
+- **禁止 dream 手拧 η**（删除 `η*0.5`）；η 仅 LoopTrial 证据支持才可下降
+
+### 已交付代码
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| IWM 门面 | `src/arsi/iwm/__init__.py` | Q1–Q6 汇总、governor_advice、health、q_gate |
+| OrganSelfModel | `src/arsi/iwm/organ_self.py` | 器官滚动可靠度 + control_hooks |
+| KnowledgeFrontier | `src/arsi/iwm/frontier.py` | 已知/薄弱/欠探索 + explore_bias |
+| LoopEfficacy | `src/arsi/iwm/loop_efficacy.py` | LoopTrial before/after + 证据驱动 metric |
+| TransitionLedger | `src/arsi/iwm/transition_ledger.py` | 自我预测 vs 现实账本（落盘 jsonl） |
+| DecisionProvenance | `src/arsi/iwm/provenance.py` | 决策可回放 + IWM 快照 |
+| IntrospectorCalibrator | `src/arsi/iwm/calibrate.py` | Q6 自检；低信任 → degrade baseline |
+
+### 行为挂钩（已接线）
+| 证据 | 控制变化 | 代码位置 |
+|------|----------|----------|
+| dream 连续 neutral/hurt | 禁止默认 dream → Governor 改 learn | `governor/core.py` + `core.step` |
+| dynamics unknown/unreliable | 降权/跳过 pre-enactment | `core.step` / `governor.decide` |
+| behavior_predictor 不可靠 | prefer learn，evolve 降权 | `governor._generate_candidates` |
+| calibrator 低信任 | degrade_to_baseline | IWM.advice + Governor |
+| eval_loop live 回归 | portfolio 器官记不可靠 | `core.dream_rsi_cycle` → `iwm.observe_eval_loop` |
+
+### dream.py 修正
+- 删除 `new_eta = eta_before * 0.5`
+- dream 前后测量 holdout 行为预测误差
+- LoopTrial verdict=helped 才允许 η 向 measured 有界移动（max_step=0.15）
+- first_person 报告含 organs/frontier/loop/self_trust（不再是 4 个虚荣数字）
+
+### 测试
+```
+317 passed — 全部通过
+```
+- 新增 `tests/test_iwm.py`（OrganSelf / LoopTrial / Frontier / Provenance / Calibrate / Dream 证据 η / Governor hooks / ARSI 接线 / Q 探针）
+- 修正 `tests/test_integration.py::test_dream_reduces_eta` → 证据驱动语义
+
+### 诚实边界
+- 运行承重仍依赖 daemon 把轨迹喂厚；样本不足器官 status=unknown，不进控制
+- I6「内省世界模型 v1」宣称：需 Q1–Q6 行为探针在 live 数据上全过；当前交付为**内省骨架 + 真实控制挂钩**，不是空仪表
+- 多 agent 协议仍未做（约定最后）
+- 官方 Dream-RSI 超参仍等 Release 改 YAML
+- 本轮**未 git commit / push**（工作区含 Phase D 未提交改动 + 本次 IWM）
+
+### 交付路径
+- 源码：`E:\ARSI\src\arsi\iwm\`
+- 测试：`E:\ARSI\tests\test_iwm.py`
+- 方案（先前）：`E:\Mimo 生成\docs\2026-09-18\ARSI-introspective-world-model-design.html`
+- 冒烟脚本：`E:\Mimo 生成\cache\2026-09-18\iwm_smoke.py`
+
+---
+
+## P0–P2 执行落地（2026-09-18 规划推进）
+
+### P0 卫生
+| 项 | 状态 |
+|----|------|
+| 密钥扫描 | `start_daemon.bat` 曾硬编码 `ARSI_API_KEY` → **已移除**，改为环境变量注入；`start_loop.bat` 保持注释占位 |
+| `.gitignore` | 增加 lock/log/tmp/`.env` |
+| human_cli | 新增 `iwm` / `organs` / `qgate` / `frontier` |
+| continuous_loop | step 后打印 IWM advice + q_gate |
+| arsi_daemon health | snapshot 增加 `iwm`（organ_trust/dream_loop/q_gate） |
+| foundation/verified.py | S1：verified 必须绑 pytest/exit_code + timestamp |
+| scripts/iwm_probes.py | Q1–Q6 探针；报告写入 `archive/eval/iwm_probe_latest.json` |
+
+### P1 证据回路
+- `core.step`：pre_enactment 后 `observe_dynamics`（预测状态 vs step 后真实状态）
+- `core.step`：learn 的 `distilled` → `observe_memory`
+- dream / behavior_predictor / portfolio 器官已在此前接线
+
+### 探针结果（本轮 runner，seeded traces）
+```
+claim: introspective_v1_candidate  failed=[]
+q_pass: Q1–Q6 全 True
+eta_policy: no_evidence_dream_must_not_move_metric
+suite_verified: pytest_exit_0
+hooks_applied: 6
+```
+**诚实边界**：runner 用种子轨迹验证挂钩与探针管线；**I6 live 宣称**仍需 daemon 喂厚后的器官样本（当前 health jsonl 仍是 Phase D 旧 schema，PID 7640 未加载 IWM 前不会写 iwm 段）。
+
+### Daemon 现场
+| 进程 | PID | 说明 |
+|------|-----|------|
+| arsi_daemon | 7640 | 2026-09-18 15:50 起；tick 23 ok；trace~20k；pool=1；**需重启才能加载 IWM/新 health** |
+
+### 测试
+```
+322 passed
+```
+- +`tests/test_iwm.py`
+- +`tests/test_p0_discipline.py`（verified + probes 模块）
+- dream 集成测试改为证据驱动语义
+
+### 仍未做
+- daemon 重启加载 IWM（需在环境注入 `ARSI_API_KEY`，**禁止再写进仓库**）
+- live I6 探针（等 ≥48h 厚数据）
+- 多 agent 协议（约定最后）
+- 官方 Dream-RSI 超参回填
+- GitHub 历史中可能仍残留旧 key 提交 → **建议轮换密钥**；新代码不再提交密钥
+
