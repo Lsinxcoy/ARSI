@@ -3,7 +3,7 @@
 
 llm:
   provider: openai
-  model: grok-4.6
+  model: gpt-5.5
   api_base: https://mcgrox.top/v1
   # api_key: set via environment variable ARSI_API_KEY
   max_tokens: 2048
