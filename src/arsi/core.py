@@ -189,7 +189,13 @@ class ARSI:
         effect: float = 0.0,
         params: Optional[dict] = None,
     ) -> BehaviorTrace:
-        """Ingest a behavior trace from a host agent."""
+        """Ingest a behavior trace from a host agent.
+
+        Captures state snapshots before/after for dynamics model training.
+        """
+        # Capture state before
+        state_before = self.siwm.get_state()
+
         trace = BehaviorTrace(
             agent_id=agent_id,
             action=action,
@@ -197,8 +203,14 @@ class ARSI:
             outcome=outcome,
             effect=effect,
             generation=self.store.current_generation,
+            state_before=state_before,
         )
         self.mnemosyne.ingest_trace(trace)
+
+        # Capture state after (storage counts may have changed)
+        state_after = self.siwm.refresh_state()
+        trace.state_after = state_after
+
         return trace
 
     # ── Memory Proxy ────────────────────────────────────────────

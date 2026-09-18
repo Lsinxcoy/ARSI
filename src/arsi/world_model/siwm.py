@@ -156,67 +156,130 @@ class BehaviorPredictor:
         self._total_predictions = 0
         self._correct_predictions = 0
 
+    @staticmethod
+    def categorize_action(action: str) -> str:
+        """Categorize action into a general type."""
+        a = action.lower()
+        if a.startswith(("learn", "synthex_rule")):
+            return "learn"
+        elif a.startswith(("evolve", "synthex_gate", "mstar")):
+            return "evolve"
+        elif a.startswith(("reflect", "session_note", "session_intent")):
+            return "reflect"
+        elif a.startswith(("dream",)):
+            return "dream"
+        elif a.startswith(("maintain", "synthex_state", "synthex_wal")):
+            return "maintain"
+        elif a.startswith(("remember", "session_directive", "task_complete")):
+            return "remember"
+        elif a.startswith(("hermes_tool", "hermes_session")):
+            return "execute"
+        elif a.startswith(("hermes_model", "hermes_delivery")):
+            return "communicate"
+        elif a.startswith(("synthex_mechanism", "hermes_skill", "hermes_plan")):
+            return "configure"
+        elif a.startswith(("empower",)):
+            return "empower"
+        else:
+            return "other"
+
     def fit(self, traces: list[dict]) -> None:
         """Train from behavior traces."""
         if self.version == "v1":
             self._fit_rules(traces)
 
     def _fit_rules(self, traces: list[dict]) -> None:
-        for t in traces:
-            pattern = self._discretize(t)
-            action = t.get("action", "")
+        """Build rules from traces using sequential patterns.
+
+        Key insight: the next action category depends on the
+        recent action history, not on abstract state features.
+        """
+        # Build sequential patterns: (prev_cat, prev_outcome) → next_cat
+        for i in range(1, len(traces)):
+            prev = traces[i - 1]
+            curr = traces[i]
+
+            prev_cat = self.categorize_action(prev.get("action", ""))
+            prev_outcome = prev.get("outcome", "unknown")
+            curr_cat = self.categorize_action(curr.get("action", ""))
+
+            pattern = (prev_cat, prev_outcome)
             if pattern not in self.rules:
                 self.rules[pattern] = defaultdict(int)
-            self.rules[pattern][action] += 1
-            self.global_prior[action] += 1
+            self.rules[pattern][curr_cat] += 1
+            self.global_prior[curr_cat] += 1
 
-    def predict(self, state: WorldState) -> str:
-        """Predict next action."""
-        features = self._extract_features(state)
-        pattern = self._discretize_from_features(features)
-
-        if pattern in self.rules and self.rules[pattern]:
-            return max(self.rules[pattern], key=self.rules[pattern].get)
+    def predict(self, state: WorldState, last_action: str = "", last_outcome: str = "") -> str:
+        """Predict next action category based on recent history."""
+        if last_action:
+            pattern = (self.categorize_action(last_action), last_outcome)
+            if pattern in self.rules and self.rules[pattern]:
+                return max(self.rules[pattern], key=self.rules[pattern].get)
 
         if self.global_prior:
             return max(self.global_prior, key=self.global_prior.get)
 
-        return "unknown"
+        return "other"
 
     def evaluate(self, predicted: str, actual: str) -> float:
-        """Evaluate prediction and update accuracy."""
+        """Evaluate prediction and update accuracy.
+
+        Compares categories, not exact action names.
+        """
+        pred_cat = self.categorize_action(predicted)
+        actual_cat = self.categorize_action(actual)
         self._total_predictions += 1
-        if predicted == actual:
+        if pred_cat == actual_cat:
             self._correct_predictions += 1
         self.accuracy = self._correct_predictions / max(self._total_predictions, 1)
         return self.accuracy
 
     def _extract_features(self, state: WorldState) -> dict:
         return {
-            "eta_bucket": self._bucket(state.eta, [0.15, 0.40]),
-            "gen_bucket": self._bucket(float(state.phi.generation), [1, 5, 20]),
-            "steps_bucket": self._bucket(float(state.phi.steps_since_change), [5, 20, 100]),
-            "belief_count_bucket": self._bucket(float(len(state.psi.beliefs)), [0, 3, 10]),
+            "action_cat": "unknown",  # Will be set by caller
+            "outcome_bucket": "other",
+            "effect_bucket": 0,
+            "agent_cat": "unknown",
         }
 
     def _discretize(self, trace: dict) -> tuple:
-        state_data = trace.get("state_before", {})
-        if isinstance(state_data, dict):
-            eta = state_data.get("eta", 0.0)
-            gen = state_data.get("phi", {}).get("generation", 0)
+        """Discretize trace into pattern bucket.
+
+        Uses features available in ALL traces (not just ARSI's own):
+        - action category
+        - outcome type
+        - effect level
+        - agent category
+        """
+        action_cat = self.categorize_action(trace.get("action", ""))
+        outcome = trace.get("outcome", "unknown")
+        effect = trace.get("effect", 0.5)
+        agent = trace.get("agent_id", trace.get("params", {}).get("source", "unknown"))
+
+        # Outcome bucket
+        if outcome == "success":
+            outcome_bucket = "success"
+        elif outcome == "failure":
+            outcome_bucket = "failure"
         else:
-            eta = 0.0
-            gen = 0
-        return (
-            self._bucket(eta, [0.15, 0.40]),
-            self._bucket(float(gen), [1, 5, 20]),
-        )
+            outcome_bucket = "other"
+
+        # Effect bucket
+        effect_bucket = self._bucket(effect, [0.3, 0.6, 0.8])
+
+        # Agent category
+        agent_cat = "hermes" if "hermes" in agent or "mstar" in agent else \
+                    "synthex" if "synthex" in agent else \
+                    "mimo" if "mimo" in agent or "session" in agent else "other"
+
+        return (action_cat, outcome_bucket, effect_bucket, agent_cat)
 
     def _discretize_from_features(self, features: dict) -> tuple:
         return (
-            features["eta_bucket"],
-            features["gen_bucket"],
-            features["steps_bucket"],
+            features.get("action_cat", "other"),
+            features.get("outcome_bucket", "other"),
+            features.get("effect_bucket", 0),
+            features.get("agent_cat", "other"),
         )
 
     @staticmethod
@@ -288,16 +351,28 @@ class SIWM:
         }
 
     def predict_and_update(self, actual_action: str) -> dict:
-        """Predict next action, compare with actual, update η."""
+        """Predict next action category, compare with actual, update η."""
         state = self.get_state()
-        predicted = self.layer1.predict(state)
+
+        # Get last action for sequential prediction
+        recent = self.store.get_recent_traces(n=2)
+        last_action = recent[0].get("action", "") if recent else ""
+        last_outcome = recent[0].get("outcome", "") if recent else ""
+
+        predicted = self.layer1.predict(state, last_action, last_outcome)
         accuracy = self.layer1.evaluate(predicted, actual_action)
-        eta = self.eta.update(predicted, actual_action)
+
+        # Compare by category
+        pred_cat = self.layer1.categorize_action(predicted)
+        actual_cat = self.layer1.categorize_action(actual_action)
+        eta = self.eta.update(pred_cat, actual_cat)
 
         return {
             "predicted": predicted,
+            "predicted_category": pred_cat,
             "actual": actual_action,
-            "correct": predicted == actual_action,
+            "actual_category": actual_cat,
+            "correct": pred_cat == actual_cat,
             "accuracy": accuracy,
             "eta": eta,
         }
