@@ -752,3 +752,24 @@ hooks_applied: 6
 - 官方 Dream-RSI 超参回填
 - GitHub 历史中可能仍残留旧 key 提交 → **建议轮换密钥**；新代码不再提交密钥
 
+---
+
+## 多 agent HTTP + daemon 接线（2026-09-20 最终）
+
+| 项 | 状态 |
+|----|------|
+| HTTP 端点 | `POST /orsi/ma/register\|dispatch\|result\|cycle`，`GET /arsi/ma/health` |
+| 冒烟 | hermes：register → dispatch → result **accepted**；`organ_status=unmeasured`（&lt;3 次，符合 M3） |
+| effect | `host_outcome` external anchor **verified=true** |
+| daemon | PID **30824**（09:46）；interface **8536** |
+| LLM | NVIDIA 偶发 404/504 → `_mark_unavailable` 启发式降级 |
+| 提交 | `9572bc5` 已推送；**365 passed** |
+
+宿主最小调用：
+```text
+POST :9300/arsi/ma/register {"agent_id":"hermes","role":"worker","capabilities":["tool"]}
+POST :9300/arsi/ma/dispatch {"agent_id":"hermes","task":"..."}
+POST :9300/arsi/ma/result   {"agent_id":"hermes","task_id":"...","task":"...","outcome":"success","effect":0.6}
+GET  :9300/arsi/ma/health
+```
+
