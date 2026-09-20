@@ -141,11 +141,13 @@ class ManifestStore:
 
     def __init__(self, root: str | Path | None = None):
         if root is None:
-            root = Path(__file__).resolve().parents[3] / "archive" / "trace_pool"
+            from arsi.foundation.paths import trace_pool_dir
+            root = trace_pool_dir()
         self.root = Path(root)
         self._next_cycle = 1
         self._loaded = False
         self._cache: list[LiveCycleManifest] = []
+        self._writer_id = "arsi.meta.live_manifest.ManifestStore"
 
     def _ensure_loaded(self) -> None:
         if self._loaded:
@@ -183,7 +185,12 @@ class ManifestStore:
         iter_dir = self.root / f"iter{manifest.cycle_id:04d}"
         iter_dir.mkdir(parents=True, exist_ok=True)
         path = iter_dir / "live_cycle_manifest.json"
-        path.write_text(json.dumps(manifest.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        from arsi.foundation.paths import write_json_once
+        write_json_once(
+            path,
+            manifest.to_dict(),
+            writer_id=getattr(self, "_writer_id", "arsi.meta.live_manifest.ManifestStore.append"),
+        )
         # refresh cache entry
         self._cache = [m for m in self._cache if m.cycle_id != manifest.cycle_id]
         self._cache.append(manifest)
@@ -207,7 +214,10 @@ class ManifestStore:
         iter_dir = self.root / f"iter{cycle_id:04d}"
         iter_dir.mkdir(parents=True, exist_ok=True)
         path = iter_dir / "beta_sweep.json"
-        path.write_text(json.dumps(sweep, ensure_ascii=False, indent=2), encoding="utf-8")
+        from arsi.foundation.paths import write_json_once
+        payload = dict(sweep)
+        payload["cycle_id"] = cycle_id
+        write_json_once(path, payload, writer_id="arsi.meta.live_manifest.ManifestStore.save_beta_sweep")
         return path
 
     def load_beta_sweep(self, cycle_id: int) -> Optional[dict]:

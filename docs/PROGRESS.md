@@ -614,8 +614,27 @@ I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 �
 ```
 新增 `tests/test_layer1_live.py`
 
-### 仍在跑
-- daemon PID 12344（08:58，NVIDIA LLM，score-wall 修复代码）；首 tick 完成后 health 将带 layer1/iwm 新字段
+---
+
+## SYNTHEX P0 落地（2026-09-20 · 续）
+
+| S | 项 | 实现 |
+|---|----|------|
+| **S1** | verified 绑证据 | daemon health `VerifiedClaim`（上轮） |
+| **S3** | 单一写源 | `paths.write_json_once` / `append_jsonl`；manifest/eval/β sweep 统一经此写盘并带 `_arsi_write.writer_id` |
+| **S4** | 路径锚定仓库根 | `foundation/paths.py`：`project_root()` 扫 pyproject；archive/eval/iwm/trace_pool/config 单点解析；禁 CWD 相对 |
+| **S5** | 外部 effect 锚 | `foundation/effect_anchor.py`：eval_loop 结果记 external anchor；`evolve_attempt` 占位 **不再自评 0.5**，标 `non_external_source` |
+| **S2** | 身份同源 | ManifestStore 默认 root = `paths.trace_pool_dir()`，与写路径同函数；`identity_report()` 进 `get_stats.paths` |
+
+### 测试
+```
+348 passed
+```
+新增 `tests/test_p0_paths_effect.py`
+
+### 路径
+- 模块：`src/arsi/foundation/paths.py` · `effect_anchor.py`
+- 仍在跑：daemon（加载 score-wall + Layer1 绑定 + P0 路径代码需下次重启生效）
 
 
 ### P0 卫生

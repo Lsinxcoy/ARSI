@@ -14,7 +14,12 @@ import yaml
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_PARAMS_PATH = Path(__file__).resolve().parents[3] / "config" / "dream_rsi_params.yaml"
+def _default_params_path() -> Path:
+    from arsi.foundation.paths import config_dir
+    return config_dir() / "dream_rsi_params.yaml"
+
+
+DEFAULT_PARAMS_PATH = _default_params_path()
 
 
 @dataclass

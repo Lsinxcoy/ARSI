@@ -120,7 +120,7 @@ class ARSI:
         self._term_trees_built = 0
         self._dream_rsi_cycles = 0
         # Phase D: meta-layer (manifest / grid / gate / scheduler / adaptive)
-        self.manifest_store = ManifestStore()
+        self.manifest_store = ManifestStore()  # defaults to paths.trace_pool_dir()
         self.quality_gate = TraceQualityGate(llm=llm)
         self.operator_scheduler = OperatorScheduler()
         self.adaptive_controller = AdaptiveBehaviorController()
@@ -130,7 +130,6 @@ class ARSI:
         # Hyperparams: official unpublished → config/dream_rsi_params.yaml
         self.dream_rsi_params = load_dream_rsi_params()
         self._world_min_verdict = self.dream_rsi_params.world_min_verdict
-        # QualityGate quota + replay score mode from params
         if hasattr(self.quality_gate, "max_warn_ratio"):
             self.quality_gate.max_warn_ratio = float(getattr(self.dream_rsi_params, "max_warn_ratio", 0.25) or 0.25)
             self.quality_gate.max_admitted = int(getattr(self.dream_rsi_params, "max_admitted", 120) or 120)
@@ -140,10 +139,13 @@ class ARSI:
         )
         self._last_eval_loop: Optional[dict] = None
 
+        # Repo-anchored paths (SYNTHEX P0 S4) — never CWD-relative
+        from arsi.foundation.paths import iwm_dir, project_root
+        self.project_root = project_root()
+
         # IWM — introspective world model (Q1–Q6); organ trust drives control
-        default_iwm_dir = Path(__file__).resolve().parents[2] / "archive" / "iwm"
         try:
-            self.iwm = IWM(archive_dir=default_iwm_dir)
+            self.iwm = IWM(archive_dir=iwm_dir())
         except Exception:
             self.iwm = IWM()
         self.dream.iwm = self.iwm
@@ -549,9 +551,21 @@ class ARSI:
         if exp_count < 5:
             return {"type": "evolve", "note": f"insufficient experience ({exp_count}/5)"}
 
-        # Record an evolution attempt
-        self.store.record_effect("evolve_attempt", 0.5, "placeholder_mutation")
-        return {"type": "evolve", "note": "mutation attempted", "effect": 0.5}
+        # External effect anchor required (S5): placeholder cannot self-score as verified
+        from arsi.foundation.effect_anchor import record_external_effect
+        anchor = record_external_effect(
+            self.store,
+            mechanism="evolve_attempt",
+            effect=0.0,
+            source="internal_score",
+            evidence_ref="",
+        )
+        return {
+            "type": "evolve",
+            "note": "mutation_attempted_unanchored",
+            "effect": 0.0,
+            "effect_anchor": anchor.to_dict(),
+        }
 
     def _execute_maintain(self) -> dict:
         """Maintain: memory consolidation + decay."""
@@ -636,6 +650,7 @@ class ARSI:
                 "holdout_accuracy": round(self.siwm.last_holdout_accuracy, 4),
                 "rule_count": len(self.siwm.layer1.rules),
             },
+            "paths": __import__("arsi.foundation.paths", fromlist=["identity_report"]).identity_report(),
         }
 
     # ── Lifecycle ───────────────────────────────────────────────

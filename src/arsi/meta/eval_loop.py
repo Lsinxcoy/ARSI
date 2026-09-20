@@ -151,24 +151,36 @@ def run_eval_loop(
     else:
         result.recommendation = "DREAM_OK"
 
-    # Persist report
-    rdir = Path(report_dir) if report_dir else (
-        Path(getattr(arsi, "project_root", Path.cwd())) / "archive" / "eval"
-    )
-    # prefer E:\ARSI\archive\eval when running from project
-    default_eval = Path(__file__).resolve().parents[3] / "archive" / "eval"
-    if report_dir is None:
-        rdir = default_eval
+    # Persist report — single write source, repo-anchored (P0 S3/S4)
+    from arsi.foundation.paths import append_jsonl, eval_dir, project_root, write_json_once
+    if report_dir is not None:
+        rdir = Path(report_dir)
+    else:
+        rdir = eval_dir()
     try:
+        rdir = Path(rdir)
+        if not rdir.is_absolute():
+            rdir = project_root() / rdir
         rdir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = rdir / f"compare_{ts}.json"
-        path.write_text(json.dumps(result.to_dict(), ensure_ascii=False, indent=2), encoding="utf-8")
+        write_json_once(path, result.to_dict(), writer_id="arsi.meta.eval_loop.run_eval_loop")
         result.notes["report_path"] = str(path)
-        # also append line to rolling compare log
-        log_path = rdir / "compare_log.jsonl"
-        with log_path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
+        result.notes["write_source"] = "arsi.paths.write_json_once"
+        append_jsonl(rdir / "compare_log.jsonl", result.to_dict(), writer_id="arsi.meta.eval_loop.run_eval_loop")
+        # S5: external effect anchor from eval evidence
+        try:
+            from arsi.foundation.effect_anchor import record_external_effect
+            anchor = record_external_effect(
+                getattr(arsi, "store", None),
+                mechanism="dream_rsi_eval_loop",
+                effect=float(result.delta_score or 0.0),
+                source="eval_loop",
+                evidence_ref=str(path),
+            )
+            result.notes["effect_anchor"] = anchor.to_dict()
+        except Exception as e:
+            logger.warning(f"effect anchor failed: {e}")
     except Exception as e:
         logger.warning(f"Failed to write eval report: {e}")
         result.notes["report_error"] = str(e)
