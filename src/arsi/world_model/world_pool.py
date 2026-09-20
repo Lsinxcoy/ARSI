@@ -102,8 +102,19 @@ class WorldPool:
         candidate_policy_fns: list,
         current_name: str = "current",
         candidate_names: Optional[list[str]] = None,
+        use_paired_ab: bool = True,
     ) -> dict:
-        """Monotone selection: current policy is always in the candidate set."""
+        """S6: paired A/B + effect-size gate when enabled; else max avg_score."""
+        if use_paired_ab:
+            from arsi.meta.paired_ab import select_policy_paired
+            return select_policy_paired(
+                self,
+                current_policy_fn,
+                candidate_policy_fns,
+                current_name=current_name,
+                candidate_names=candidate_names,
+            )
+
         candidates = [(current_name, current_policy_fn)]
         names = candidate_names or [f"cand_{i+1}" for i in range(len(candidate_policy_fns))]
         for name, fn in zip(names, candidate_policy_fns):
@@ -124,6 +135,7 @@ class WorldPool:
                 for n, _, e in scored
             ],
             "monotone_ok": best_eval.get("avg_score", -1e9) >= scored[0][2].get("avg_score", -1e9),
+            "gate": {"rule": "max_avg_score_fallback"},
         }
 
     def stats(self) -> dict:

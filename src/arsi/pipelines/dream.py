@@ -247,8 +247,11 @@ class DreamPipeline:
         return reconciled
 
     def _llm_reconcile(self, old: list, new: list) -> list:
-        """LLM-powered belief reconciliation."""
+        """LLM-powered belief reconciliation under consolidation vacuum (S7)."""
         import json
+
+        from arsi.foundation.vacuum import consolidation_vacuum
+        vacuum = consolidation_vacuum()
 
         old_str = json.dumps(
             [{"content": b.content, "confidence": b.confidence} for b in old[-10:]],
@@ -260,6 +263,7 @@ class DreamPipeline:
         )
 
         prompt = f"""调和 AI 系统的新旧信念。保留准确的，修正过时的，合并重复的。
+禁止编造信念之外的新事实；只能使用下面提供的旧/新信念内容。
 
 旧信念（之前推断的）：
 {old_str}
@@ -276,9 +280,15 @@ class DreamPipeline:
 输出 JSON：
 {{"reconciled": [{{"content": "调和后的信念", "confidence": 0.0到1.0, "source": "old|new|merged"}}]}}"""
 
+        system = "你是信念调和专家。只输出 JSON。禁止发明列表之外的新事实。"
+        allowed, reason = vacuum.filter_llm_payload(prompt, system)
+        if not allowed:
+            logger.warning(f"VacuumGate blocked dream LLM reconcile: {reason}")
+            return None
+
         resp = self.llm.chat(
             prompt,
-            system="你是信念调和专家。只输出 JSON。",
+            system=system,
             max_tokens=800,
         )
 
@@ -289,15 +299,27 @@ class DreamPipeline:
         if not data or "reconciled" not in data:
             return None
 
+        # S7 validate: drop invented contents not grounded in old/new
+        allowed_contents = {b.content for b in list(old) + list(new)}
         from arsi.foundation.schema import Belief
         reconciled = []
+        dropped = 0
         for b in data["reconciled"]:
-            if isinstance(b, dict) and "content" in b:
-                reconciled.append(Belief(
-                    content=b["content"],
-                    confidence=max(0.0, min(1.0, b.get("confidence", 0.5))),
-                    source=f"llm_dream:{b.get('source', 'unknown')}",
-                ))
+            if not isinstance(b, dict) or "content" not in b:
+                continue
+            content = str(b["content"])
+            if content not in allowed_contents:
+                # allow near-merge only if substring of an existing belief
+                if not any(content in ac or ac in content for ac in allowed_contents):
+                    dropped += 1
+                    continue
+            reconciled.append(Belief(
+                content=content,
+                confidence=max(0.0, min(1.0, b.get("confidence", 0.5))),
+                source=f"llm_dream:{b.get('source', 'unknown')}",
+            ))
+        if dropped:
+            logger.info(f"VacuumGate dropped {dropped} ungrounded reconciled beliefs")
         return reconciled if reconciled else None
 
     @staticmethod

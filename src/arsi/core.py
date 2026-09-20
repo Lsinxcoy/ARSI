@@ -651,6 +651,7 @@ class ARSI:
                 "rule_count": len(self.siwm.layer1.rules),
             },
             "paths": __import__("arsi.foundation.paths", fromlist=["identity_report"]).identity_report(),
+            "vacuum": __import__("arsi.foundation.vacuum", fromlist=["consolidation_vacuum"]).consolidation_vacuum().stats,
         }
 
     # ── Lifecycle ───────────────────────────────────────────────

@@ -129,6 +129,30 @@ def run_eval_loop(
     result.notes["official_code_status"] = params.official_code_status
     result.notes["params"] = params.to_dict()
 
+    # S6: paired A/B effect-size gate on dream vs fixed (not just mean delta)
+    try:
+        from arsi.meta.paired_ab import compare_paired
+        fixed_scores = [
+            float(w.get("score", 0.0))
+            for w in (fixed_eval.get("per_world") or [])
+        ]
+        dream_scores = [
+            float(w.get("score", 0.0))
+            for w in (dream_eval.get("per_world") or [])
+        ]
+        paired = compare_paired(
+            fixed_scores,
+            dream_scores,
+            base_name="fixed",
+            cand_name="dream_rsi",
+        )
+        result.notes["paired_ab"] = paired.to_dict()
+        if not paired.promote and paired.negligible:
+            result.notes["pool_dream_wins"] = False
+            result.notes["s6_note"] = "negligible_effect_hold"
+    except Exception as e:
+        logger.warning(f"paired A/B gate failed: {e}")
+
     # D7 gate: pool monotone does NOT guarantee live monotone
     if regressed:
         prev_beta = float(result.notes.get("prev_beta", getattr(arsi.portfolio_policy, "beta", 0.6)))

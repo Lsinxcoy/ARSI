@@ -161,8 +161,13 @@ class TestWorldPool:
 
         selection = pool.select_best_policy(current, [worse, maybe_better], current_name="current")
         assert selection["monotone_ok"] is True
-        scores = {c["name"]: c["avg_score"] for c in selection["all"]}
-        assert scores[selection["best_name"]] >= scores["current"] - 1e-9
+        scores = {c["name"]: c.get("avg_score", 0.0) for c in selection["all"]}
+        # paired A/B: current always eligible; if promoted, cand must not score below current
+        assert selection["best_name"] in scores
+        if selection.get("promoted"):
+            assert scores[selection["best_name"]] >= scores.get("current", 0.0) - 1e-6
+        else:
+            assert selection["best_name"] == "current"
 
     def test_append_from_traces(self):
         pool = WorldPool()
