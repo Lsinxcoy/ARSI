@@ -316,6 +316,12 @@ class ARSI:
                 "downweight_pre_enactment",
                 "forbid_default_dream",
                 "prefer_learn",
+                "prefer_learn_reason",
+                "memory_trust",
+                "memory_status",
+                "trust_memory_for_learn",
+                "downweight_memory_ops",
+                "prefer_remember_ingest",
                 "unreliable_organs",
             )
             if k in advice

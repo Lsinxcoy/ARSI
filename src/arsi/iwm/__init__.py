@@ -270,6 +270,17 @@ class IWM:
         if dyn_status == STATUS_UNKNOWN:
             downweight_dyn = True
 
+        # Memory organ trust → governor advice (host_loop evidence path)
+        memory_trust = float(hooks.get("memory_trust", self.organ.trust_weight(ORGAN_MEMORY)) or 0.0)
+        memory_status = hooks.get("memory_status") or self.organ.status(ORGAN_MEMORY)
+        trust_memory_for_learn = bool(hooks.get("trust_memory_for_learn", False))
+        downweight_memory_ops = bool(hooks.get("downweight_memory_ops", False))
+        prefer_remember_ingest = bool(hooks.get("prefer_remember_ingest", False))
+        # Trusted memory pipeline strengthens learn; untrusted memory strengthens re-ingest
+        prefer_learn = bool(hooks.get("prefer_learn_over_evolve", False)) or trust_memory_for_learn
+        if downweight_memory_ops:
+            prefer_learn = prefer_learn or prefer_remember_ingest
+
         advice = {
             "self_trust": self_trust,
             "degrade_to_baseline": degrade,
@@ -280,8 +291,18 @@ class IWM:
                 if forbid_dream
                 else ""
             ),
-            "prefer_learn": hooks.get("prefer_learn_over_evolve", False),
+            "prefer_learn": prefer_learn,
+            "prefer_learn_reason": (
+                "memory_trust" if trust_memory_for_learn and not hooks.get("prefer_learn_over_evolve")
+                else ("behavior_predictor" if hooks.get("prefer_learn_over_evolve") else "")
+            ),
             "downweight_portfolio": hooks.get("downweight_portfolio", False),
+            "memory_trust": memory_trust,
+            "memory_status": memory_status,
+            "trust_memory_for_learn": trust_memory_for_learn,
+            "downweight_memory_ops": downweight_memory_ops,
+            "prefer_remember_ingest": prefer_remember_ingest,
+            "memory_organ_unreliable": bool(hooks.get("memory_organ_unreliable", False)),
             "explore_bias": explore,
             "exploit_bias": exploit,
             "unreliable_organs": hooks.get("unreliable_organs", []),
@@ -315,6 +336,9 @@ class IWM:
                 "forbid_default_dream",
                 "prefer_learn",
                 "degrade_to_baseline",
+                "trust_memory_for_learn",
+                "downweight_memory_ops",
+                "prefer_remember_ingest",
             ):
                 if advice.get(k):
                     hooks.append(k)
@@ -365,6 +389,10 @@ class IWM:
                 "layer1_holdout": self.last_layer1_holdout,
                 "behavior_predictor_accuracy": self.organ.reliability(ORGAN_BEHAVIOR_PREDICTOR),
                 "behavior_predictor_status": self.organ.status(ORGAN_BEHAVIOR_PREDICTOR),
+                "memory_trust": self.organ.trust_weight(ORGAN_MEMORY),
+                "memory_status": self.organ.status(ORGAN_MEMORY),
+                "trust_memory_for_learn": bool(advice.get("trust_memory_for_learn")),
+                "downweight_memory_ops": bool(advice.get("downweight_memory_ops")),
             }
         }
 

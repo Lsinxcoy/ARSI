@@ -139,12 +139,22 @@ class OrganSelfModel:
 
     def control_hooks(self) -> dict:
         """Behavioral consequences — without hooks this is only a dashboard."""
+        mem_status = self.status(ORGAN_MEMORY)
+        mem_trust = self.trust_weight(ORGAN_MEMORY)
+        mem_ok = mem_status == STATUS_OK and mem_trust >= 0.5
+        mem_bad = mem_status == STATUS_UNRELIABLE or mem_trust <= 0.0
         hooks = {
             "downweight_pre_enactment": self.trust_weight(ORGAN_DYNAMICS) <= 0.0,
             "forbid_default_dream": self.status(ORGAN_DREAM) == STATUS_UNRELIABLE,
             "downweight_portfolio": self.trust_weight(ORGAN_PORTFOLIO) <= 0.0,
             "prefer_learn_over_evolve": self.trust_weight(ORGAN_BEHAVIOR_PREDICTOR) <= 0.0,
-            "memory_organ_unreliable": self.status(ORGAN_MEMORY) == STATUS_UNRELIABLE,
+            "memory_organ_unreliable": mem_bad,
+            "memory_organ_trusted": mem_ok,
+            "trust_memory_for_learn": mem_ok,
+            "downweight_memory_ops": mem_bad,
+            "prefer_remember_ingest": mem_bad,
+            "memory_trust": mem_trust,
+            "memory_status": mem_status,
             "unreliable_organs": self.unreliable_organs(),
         }
         return hooks

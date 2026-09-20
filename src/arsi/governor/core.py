@@ -160,6 +160,12 @@ class AutopoieticGovernor:
                 hooks_applied.append("forbid_default_dream")
             if advice.get("prefer_learn"):
                 hooks_applied.append("prefer_learn")
+            if advice.get("trust_memory_for_learn"):
+                hooks_applied.append("trust_memory_for_learn")
+            if advice.get("downweight_memory_ops"):
+                hooks_applied.append("downweight_memory_ops")
+            if advice.get("prefer_remember_ingest"):
+                hooks_applied.append("prefer_remember_ingest")
 
         # Step 1: Check iron laws — IWM cannot rewrite iron laws
         if self.laws.violated(state):
@@ -198,10 +204,40 @@ class AutopoieticGovernor:
 
         # Step 4: Generate candidates and select
         candidates = self._generate_candidates(state, target_dims, advice=advice)
+        mem_reason = advice.get("prefer_learn_reason") or ""
         if advice.get("prefer_learn"):
+            tag = f"[IWM: {mem_reason or 'prefer_learn'}]"
             for c in candidates:
                 if c["action"] == "learn":
-                    c["reason"] = c.get("reason", "") + " [IWM: behavior_predictor 不可靠，优先 learn]"
+                    c["reason"] = c.get("reason", "") + f" {tag}"
+                if c["action"] == "remember" and advice.get("prefer_remember_ingest"):
+                    c["reason"] = c.get("reason", "") + " [IWM: memory 不可靠，优先重新摄入]"
+
+        # Memory-trust gate: trusted memory → prefer learn; untrusted → block evolve / allow remember
+        if advice.get("trust_memory_for_learn"):
+            for c in candidates:
+                if c["action"] == "learn":
+                    c["priority_boost"] = "memory_trust"
+        if advice.get("downweight_memory_ops"):
+            candidates = [
+                c for c in candidates
+                if c["action"] != "evolve"
+            ]
+            if not any(c["action"] == "remember" for c in candidates):
+                candidates.append({
+                    "action": "remember",
+                    "reason": "IWM memory 不可靠：重新摄入而非依赖蒸馏经验",
+                    "expected": "恢复 PROXY 证据",
+                    "risk": "low",
+                    "params": {"iwm_memory": "reingest"},
+                })
+            if not any(c["action"] == "learn" for c in candidates):
+                candidates.append({
+                    "action": "learn",
+                    "reason": "IWM memory 不可靠：用新轨迹重蒸馏",
+                    "expected": "重建可信经验",
+                    "risk": "low",
+                })
 
         # Step 5: Select best — pre-enactment downweighted when dynamics untrusted
         depth = self.siwm.eta.adaptive_depth()
@@ -284,14 +320,25 @@ class AutopoieticGovernor:
                 "risk": "low",
             })
 
-        # Evolve: only when behavior_predictor trusted (no prefer_learn)
-        if exp_count > 10 and not advice.get("prefer_learn"):
+        # Evolve: only when memory ops trusted AND behavior not forcing learn
+        if exp_count > 10 and not advice.get("prefer_learn") and not advice.get("downweight_memory_ops"):
             candidates.append({
                 "action": "evolve",
                 "reason": f"经验记忆 {exp_count} 条，可尝试机制突变",
                 "expected": "机制效果提升",
                 "risk": "medium",
             })
+
+        # Trusted memory organ → learn is a first-class candidate when proxy backlog exists
+        if advice.get("trust_memory_for_learn") and trace_count > exp_count:
+            if not any(c["action"] == "learn" for c in candidates):
+                candidates.append({
+                    "action": "learn",
+                    "reason": f"IWM memory trusted (trust={advice.get('memory_trust')}), PROXY 未蒸馏 {trace_count - exp_count}",
+                    "expected": "可信经验蒸馏",
+                    "risk": "low",
+                    "params": {"iwm_memory": "trusted_learn"},
+                })
 
         # Consider maintain if memory is growing
         if trace_count > 100:
@@ -349,6 +396,12 @@ class AutopoieticGovernor:
         if advice.get("prefer_learn"):
             priority["learn"] = max(priority.get("learn", 2), 3)
             priority["evolve"] = 0
+        if advice.get("trust_memory_for_learn"):
+            priority["learn"] = max(priority.get("learn", 2), 4)
+        if advice.get("downweight_memory_ops"):
+            priority["evolve"] = 0
+            priority["remember"] = max(priority.get("remember", 1), 3)
+            priority["learn"] = max(priority.get("learn", 2), 3)
         return max(candidates, key=lambda c: priority.get(c["action"], 0))
 
     def _score_candidate(self, candidate: dict, state: WorldState) -> float:
@@ -406,4 +459,7 @@ class AutopoieticGovernor:
         if self.iwm is not None:
             out["iwm_hooks"] = self._last_iwm_advice.get("degrade_to_baseline")
             out["forbid_default_dream"] = self._last_iwm_advice.get("forbid_default_dream")
+            out["memory_trust"] = self._last_iwm_advice.get("memory_trust")
+            out["trust_memory_for_learn"] = self._last_iwm_advice.get("trust_memory_for_learn")
+            out["downweight_memory_ops"] = self._last_iwm_advice.get("downweight_memory_ops")
         return out
