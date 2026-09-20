@@ -395,7 +395,10 @@ class ARSI:
         # 4. Update η (predict what we did) + IWM observation
         pred = self.siwm.predict_and_update(decision["action"])
         result["prediction"] = {
-            k: pred.get(k) for k in ("predicted_category", "actual_category", "correct", "eta")
+            k: pred.get(k) for k in (
+                "predicted_category", "actual_category", "correct", "eta",
+                "live_accuracy", "holdout_accuracy",
+            )
         }
         if self.iwm is not None:
             self.iwm.observe_behavior(
@@ -405,6 +408,15 @@ class ARSI:
                 predicted=pred.get("predicted_category"),
                 predicted_correct=pred.get("correct"),
             )
+            # Bind measured Layer1 holdout to organ every few steps
+            if self._step_count % 3 == 0 or self._step_count == 1:
+                try:
+                    train_res = self.siwm.train_from_history()
+                    holdout = float(train_res.get("holdout_accuracy") or pred.get("holdout_accuracy") or 0.0)
+                    self.iwm.observe_layer1_holdout(holdout, note=f"live={pred.get('live_accuracy')}")
+                    result["layer1_train"] = train_res
+                except Exception as e:
+                    logger.warning(f"layer1 holdout bind failed: {e}")
             # Dynamics organ: pre-enactment predicted delta vs post-step state
             if result.get("decision_source", "").startswith("pre_enactment"):
                 try:
@@ -619,6 +631,11 @@ class ARSI:
             "last_eval_loop": self._last_eval_loop,
             "iwm": self.iwm.health() if self.iwm is not None else {},
             "iwm_q_gate": self.iwm.q_gate()[1] if self.iwm is not None else {},
+            "layer1": {
+                "live_accuracy": round(getattr(self.siwm.layer1, "live_accuracy", 0.0) or 0.0, 4),
+                "holdout_accuracy": round(self.siwm.last_holdout_accuracy, 4),
+                "rule_count": len(self.siwm.layer1.rules),
+            },
         }
 
     # ── Lifecycle ───────────────────────────────────────────────

@@ -170,10 +170,7 @@ class ARSIDaemon:
                     "unreliable_organs": (iwm_inner or {}).get("unreliable_organs"),
                     "q_gate": stats.get("iwm_q_gate", {}),
                 },
-                "verified": {
-                    "iwm_in_stats": bool(stats.get("iwm")),
-                    "timestamp": datetime.now().isoformat(),
-                },
+                "verified": self._health_verified(stats),
             })
 
         except Exception as e:
@@ -324,6 +321,29 @@ class ARSIDaemon:
                 logger.info(f"Resumed from checkpoint: tick={self._tick_count}")
             except Exception as e:
                 logger.warning(f"Checkpoint load failed: {e}")
+
+    @staticmethod
+    def _health_verified(stats: dict) -> dict:
+        """S1: verified claims bind runtime evidence fields + timestamp, not constants."""
+        from arsi.foundation.verified import VerifiedClaim
+        iwm_ok = bool(stats.get("iwm"))
+        layer1 = stats.get("layer1") or {}
+        holdout = layer1.get("holdout_accuracy")
+        claim = VerifiedClaim(
+            claim="daemon_health_iwm_and_layer1",
+            verified=bool(iwm_ok and holdout is not None),
+            reason="runtime_stats_present" if (iwm_ok and holdout is not None) else "missing_runtime_fields",
+            exit_code=0 if (iwm_ok and holdout is not None) else 2,
+            command="arsi_daemon._health_verified",
+            detail={
+                "iwm_in_stats": iwm_ok,
+                "layer1_holdout_accuracy": holdout,
+                "layer1_live_accuracy": layer1.get("live_accuracy"),
+                "world_pool_size": stats.get("world_pool_size"),
+                "manifest_cycles": stats.get("manifest_cycles"),
+            },
+        )
+        return claim.to_dict()
 
     def _write_snapshot(self, data: dict) -> None:
         """Write health snapshot to JSONL."""

@@ -591,10 +591,31 @@ I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 �
 - 旧池内世界仍是历史低质量数据；新 harvest 才按 PASS 重建  
 - live 能力分提升仍需 daemon 持续跑 + 更高质量轨迹，不是单次改分就能「变聪明」
 
-### 交付路径
-- 代码：`replay_world.py` / `core.py` / `quality_gate.py` / `beta_sweep.py` / `exploration_policy.py` / `calibrate.py` / `discovery_tree.py`  
-- 诊断：`E:\ARSI\archive\eval\score_dump_latest.json`  
-- 测试：`E:\ARSI\tests\test_runtime_fixes.py`
+---
+
+## 下一步：Layer1 live 绑定 + S1 verified（2026-09-20）
+
+### Layer1
+| 项 | 结果 |
+|----|------|
+| holdout（生产库 800 轨迹） | **0.9057–0.9091**（train 400 / test 100） |
+| rules / pair_rules | 24 / 49 |
+| 旧 live_accuracy 易低估 | 未 fit 时全预测 other；现加 majority fallback + 时序 holdout |
+| IWM 绑定 | `observe_layer1_holdout` → behavior_predictor 器官 + health.layer1 |
+
+`scripts/layer1_live_report.py` → `archive/eval/layer1_live_report.json`
+
+### S1 verified（daemon health）
+`verified` 字段改为 `VerifiedClaim`：绑定 `iwm_in_stats` + `layer1_holdout_accuracy` 运行字段与时间戳，**禁止常量自证**。
+
+### 测试
+```
+338 passed
+```
+新增 `tests/test_layer1_live.py`
+
+### 仍在跑
+- daemon PID 12344（08:58，NVIDIA LLM，score-wall 修复代码）；首 tick 完成后 health 将带 layer1/iwm 新字段
 
 
 ### P0 卫生

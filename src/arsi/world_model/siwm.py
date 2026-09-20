@@ -251,6 +251,38 @@ class BehaviorPredictor:
         self.accuracy = self._correct_predictions / max(self._total_predictions, 1)
         return self.accuracy
 
+    def holdout_accuracy(self, traces: list[dict]) -> float:
+        """Temporal holdout: predict t+1 from t on already-fitted rules.
+
+        Does not mutate cumulative accuracy counters (live metrics stay separate).
+        """
+        traces = list(traces or [])
+        if len(traces) < 3:
+            return 0.0
+        correct = 0
+        total = 0
+        for i in range(1, len(traces)):
+            prev = traces[i - 1]
+            curr = traces[i]
+            last_action = prev.get("action", "")
+            last_outcome = prev.get("outcome", "unknown")
+            # majority fallback among recent context
+            context = [self.categorize_action(t.get("action", "")) for t in traces[max(0, i - 4):i]]
+            maj = max(set(context), key=context.count) if context else "other"
+            pred = self.predict(WorldState(), last_action=last_action, last_outcome=last_outcome)
+            pred_cat = self.categorize_action(pred)
+            if pred_cat == "other" and maj != "other":
+                pred_cat = maj
+            actual_cat = self.categorize_action(curr.get("action", ""))
+            total += 1
+            if pred_cat == actual_cat:
+                correct += 1
+        return correct / max(total, 1)
+
+    @property
+    def live_accuracy(self) -> float:
+        return self.accuracy
+
     def _extract_features(self, state: WorldState) -> dict:
         return {
             "action_cat": "unknown",  # Will be set by caller
@@ -360,32 +392,51 @@ class SIWM:
         )
 
     def train_from_history(self) -> dict:
-        """Train Layer 1 from historical traces."""
+        """Train Layer 1 from historical traces + measure holdout accuracy."""
         traces = self.store.get_recent_traces(n=500)
         if not traces:
-            return {"status": "no_data", "trace_count": 0}
+            return {"status": "no_data", "trace_count": 0, "holdout_accuracy": 0.0}
 
-        self.layer1.fit(traces)
+        split = max(3, int(len(traces) * 0.8))
+        train, test = traces[:split], traces[split:] or traces[-max(3, len(traces) // 5):]
+        self.layer1.fit(train)
+        holdout = self.layer1.holdout_accuracy(test)
+        self._last_holdout_accuracy = holdout
         return {
             "status": "trained",
             "trace_count": len(traces),
             "rule_count": len(self.layer1.rules),
+            "pair_rule_count": len(self.layer1._pair_rules),
+            "holdout_accuracy": round(holdout, 4),
+            "live_accuracy": round(self.layer1.live_accuracy, 4),
+            "train_size": len(train),
+            "test_size": len(test),
         }
+
+    @property
+    def last_holdout_accuracy(self) -> float:
+        return float(getattr(self, "_last_holdout_accuracy", 0.0) or 0.0)
 
     def predict_and_update(self, actual_action: str) -> dict:
         """Predict next action category, compare with actual, update η."""
         state = self.get_state()
 
-        # Get last action for sequential prediction
-        recent = self.store.get_recent_traces(n=2)
+        # Sequential context from recent traces
+        recent = self.store.get_recent_traces(n=6)
         last_action = recent[0].get("action", "") if recent else ""
         last_outcome = recent[0].get("outcome", "") if recent else ""
+        context_cats = [
+            self.layer1.categorize_action(t.get("action", "")) for t in recent[1:5]
+        ] if len(recent) > 1 else []
+        maj = max(set(context_cats), key=context_cats.count) if context_cats else None
 
         predicted = self.layer1.predict(state, last_action, last_outcome)
-        accuracy = self.layer1.evaluate(predicted, actual_action)
-
-        # Compare by category
         pred_cat = self.layer1.categorize_action(predicted)
+        if pred_cat == "other" and maj:
+            predicted = f"recent_majority:{maj}"
+            pred_cat = maj
+
+        accuracy = self.layer1.evaluate(predicted, actual_action)
         actual_cat = self.layer1.categorize_action(actual_action)
         eta = self.eta.update(pred_cat, actual_cat)
 
@@ -396,5 +447,7 @@ class SIWM:
             "actual_category": actual_cat,
             "correct": pred_cat == actual_cat,
             "accuracy": accuracy,
+            "live_accuracy": self.layer1.live_accuracy,
+            "holdout_accuracy": self.last_holdout_accuracy,
             "eta": eta,
         }

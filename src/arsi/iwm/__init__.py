@@ -131,6 +131,27 @@ class IWM:
     def observe_memory(self, helped: bool, note: str = "") -> None:
         self.organ.record(ORGAN_MEMORY, helped, control_hint=note)
 
+    def observe_layer1_holdout(self, holdout_accuracy: float, note: str = "") -> None:
+        """Bind measured Layer1 holdout accuracy to behavior_predictor organ (Q1)."""
+        acc = max(0.0, min(1.0, float(holdout_accuracy or 0.0)))
+        hint = note or f"holdout_acc={acc:.3f}"
+        self.organ.record_score(ORGAN_BEHAVIOR_PREDICTOR, acc, control_hint=hint)
+        self.ledger.record_prediction(
+            organ=ORGAN_BEHAVIOR_PREDICTOR,
+            action="layer1_holdout",
+            predicted=acc,
+            actual=acc,
+            error=round(1.0 - acc, 4),
+            correct=acc >= 0.5,
+            evidence_refs=["siwm.layer1.holdout"],
+            meta={"holdout_accuracy": acc},
+        )
+        self._last_layer1_holdout = acc
+
+    @property
+    def last_layer1_holdout(self) -> float:
+        return float(getattr(self, "_last_layer1_holdout", 0.0) or 0.0)
+
     def observe_eval_loop(self, compare_result: Any) -> None:
         """Portfolio organ evidence from Phase D7 fixed-vs-dream compare."""
         d = compare_result.to_dict() if hasattr(compare_result, "to_dict") else dict(compare_result or {})
@@ -314,6 +335,7 @@ class IWM:
             "ledger": self.ledger.stats(),
             "provenance": self.provenance.stats(),
             "calibrator": self.calibrator.report(),
+            "layer1_holdout": self.last_layer1_holdout,
         }
         if world_state is not None:
             phi = getattr(world_state, "phi", None)
@@ -340,6 +362,9 @@ class IWM:
                 "loop_trials": self.loops.report()["trial_count"],
                 "hooks_applied": self._hooks_applied_count,
                 "advice_count": self._advice_count,
+                "layer1_holdout": self.last_layer1_holdout,
+                "behavior_predictor_accuracy": self.organ.reliability(ORGAN_BEHAVIOR_PREDICTOR),
+                "behavior_predictor_status": self.organ.status(ORGAN_BEHAVIOR_PREDICTOR),
             }
         }
 
