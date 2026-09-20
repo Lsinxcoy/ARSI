@@ -812,3 +812,19 @@ python E:\ARSI\scripts\host_loop.py --cycles 1 --http
 
 **含义**：M3 门槛已过，IWM 可消费宿主可信度；下一步看 multi-agent health 与 IWM 是否把 host 结果纳入控制。
 
+---
+
+## memory trust → Governor 建议（2026-09-20）
+
+| 项 | 实现 |
+|----|------|
+| OrganSelf hooks | `trust_memory_for_learn` / `downweight_memory_ops` / `prefer_remember_ingest` / `memory_trust` / `memory_status` |
+| governor_advice | 上述字段 + `prefer_learn_reason=memory_trust` |
+| Governor | memory 可信 → **优先 learn**；memory 不可靠 → **禁 evolve**，补 remember/learn 重摄入 |
+| health | `iwm.memory_trust` / `trust_memory_for_learn` / `downweight_memory_ops` |
+| 测试 | **370 passed**（`tests/test_memory_trust_governor.py`） |
+| 证明 | `archive/eval/memory_trust_advice_proof.json`：trusted→`trust_memory_for_learn=true`；untrusted→`downweight_memory_ops=true` |
+
+提交 `db7b248` 已推送。
+
+
