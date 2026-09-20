@@ -15,8 +15,8 @@ class TestPairedAB:
         cand = [0.101, 0.109, 0.091, 0.102, 0.118, 0.101]
         cmp = compare_paired(base, cand)
         assert cmp.promote is False
-        assert cmp.negligible is True
-        assert "hold" in cmp.reason or "negligible" in cmp.reason
+        assert cmp.hold is True
+        assert "hold" in cmp.reason
 
     def test_clear_effect_promotes(self):
         base = [0.1, 0.1, 0.1, 0.1, 0.1, 0.1]

@@ -616,7 +616,27 @@ I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 �
 
 ---
 
-## SYNTHEX P0 落地（2026-09-20 · 续）
+## 主线：验收 runtime + 并行 S6/S7（2026-09-20）
+
+### 运行验收（观察）
+| 信号 | 值 |
+|------|-----|
+| 最新 compare | **09:23** fixed/dream **0.69 / 0.69**（已离开 **-3.67** 墙） |
+| β 冻结 | `frozen_plateau` ×6；sweep notes `degenerate_freeze_beta_0.60` |
+| paired_ab | `hold_insufficient_samples_n=1<5`（池重建中，样本未满） |
+| 池质量 | 池侧 gate 暂空（PASS 重建中）；health 尾条仍是部署前旧 tick |
+| daemon | PID **23136** 在跑；新 health 行要等完整 tick |
+
+报告：`E:\Mimo 生成\docs\2026-09-20\runtime-acceptance.json`
+
+### S6/S7 交付
+- `meta/paired_ab.py`：配对 Δ + Cohen’s d；tiny mean / negligible → **hold**；champion 恒在候选集
+- `world_pool.select_best_policy` 默认走配对门
+- `foundation/vacuum.py`：巩固期真空带；dream LLM 调和 **只允许 grounded 信念**
+- `eval_loop.notes.paired_ab`；`get_stats.vacuum`
+
+提交 `4580411` 已推送。
+
 
 | S | 项 | 实现 |
 |---|----|------|
