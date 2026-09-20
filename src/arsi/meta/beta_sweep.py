@@ -145,6 +145,14 @@ def sweep_beta(
     same = [p for p in result.points if abs(p.beta - prev_beta) < 0.05]
     prev_point = same[0] if same else None
 
+    # Hard rule (analysis): degenerate sweep → FREEZE beta, no thrashing
+    if not result.non_degenerate:
+        result.selected_default_beta = prev_beta
+        result.reason = f"degenerate_freeze_beta_{prev_beta:.2f}"
+        logger.info(f"β sweep degenerate → freeze beta={prev_beta}")
+        result.selected_default_beta = max(0.0, min(1.0, float(result.selected_default_beta)))
+        return result
+
     if improving and prev_point is not None:
         # keep prior unless sweep clearly shows better nearby beta
         nearby = [p for p in result.points if abs(p.beta - prev_beta) <= 0.25]
@@ -181,12 +189,8 @@ def sweep_beta(
                 result.selected_default_beta = best_point.beta
                 result.reason = "plateau_best_pareto"
     else:
-        if result.non_degenerate:
-            result.selected_default_beta = best_point.beta
-            result.reason = "insufficient_live_use_best_pareto"
-        else:
-            result.selected_default_beta = 0.6
-            result.reason = "degenerate_or_empty_history_bootstrap_0.6"
+        result.selected_default_beta = best_point.beta
+        result.reason = "insufficient_live_use_best_pareto"
 
     result.selected_default_beta = max(0.0, min(1.0, float(result.selected_default_beta)))
     return result

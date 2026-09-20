@@ -151,6 +151,7 @@ class BehaviorPredictor:
     def __init__(self, version: str = "v1"):
         self.version = version
         self.rules: dict[tuple, dict[str, int]] = {}
+        self._pair_rules: dict[tuple, dict[str, int]] = defaultdict(lambda: defaultdict(int))
         self.global_prior: dict[str, int] = defaultdict(int)
         self.accuracy = 0.0
         self._total_predictions = 0
@@ -189,12 +190,15 @@ class BehaviorPredictor:
             self._fit_rules(traces)
 
     def _fit_rules(self, traces: list[dict]) -> None:
-        """Build rules from traces using sequential patterns.
+        """Build rules from traces using sequential patterns + outcome/effect buckets.
 
-        Key insight: the next action category depends on the
-        recent action history, not on abstract state features.
+        Strengthens Layer1 beyond (prev_cat, outcome) → next_cat by adding
+        effect-bucketed context so η can move when data is informative.
         """
-        # Build sequential patterns: (prev_cat, prev_outcome) → next_cat
+        self.rules.clear()
+        self.global_prior.clear()
+        self._pair_rules.clear()
+
         for i in range(1, len(traces)):
             prev = traces[i - 1]
             curr = traces[i]
@@ -202,6 +206,8 @@ class BehaviorPredictor:
             prev_cat = self.categorize_action(prev.get("action", ""))
             prev_outcome = prev.get("outcome", "unknown")
             curr_cat = self.categorize_action(curr.get("action", ""))
+            effect = float(prev.get("effect", 0.5) or 0.5)
+            e_bucket = self._bucket(effect, [0.3, 0.6, 0.8])
 
             pattern = (prev_cat, prev_outcome)
             if pattern not in self.rules:
@@ -209,9 +215,20 @@ class BehaviorPredictor:
             self.rules[pattern][curr_cat] += 1
             self.global_prior[curr_cat] += 1
 
-    def predict(self, state: WorldState, last_action: str = "", last_outcome: str = "") -> str:
+            # richer context: two-step action categories
+            if i >= 2:
+                prev2_cat = self.categorize_action(traces[i - 2].get("action", ""))
+                pair = (prev2_cat, prev_cat, prev_outcome, e_bucket)
+                self._pair_rules[pair][curr_cat] += 1
+
+    def predict(self, state: WorldState, last_action: str = "", last_outcome: str = "", last_effect: float | None = None) -> str:
         """Predict next action category based on recent history."""
         if last_action:
+            if last_effect is not None:
+                e_bucket = self._bucket(float(last_effect), [0.3, 0.6, 0.8])
+                # try pair context when available
+            else:
+                e_bucket = None
             pattern = (self.categorize_action(last_action), last_outcome)
             if pattern in self.rules and self.rules[pattern]:
                 return max(self.rules[pattern], key=self.rules[pattern].get)

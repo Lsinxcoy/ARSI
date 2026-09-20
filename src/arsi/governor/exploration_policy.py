@@ -25,15 +25,50 @@ from arsi.world_model.discovery_tree import DiscoveryTree
 logger = logging.getLogger(__name__)
 
 
-def _parse_llm_json(content: str) -> Optional[dict]:
+def _parse_llm_json(content: str) -> Optional[str]:
+    """Extract policy source code from LLM reply (handles fences + CJK punctuation)."""
+    if not content:
+        return None
     c = content.strip()
+    # Prefer fenced python block
+    if "```" in c:
+        parts = c.split("```")
+        for p in parts:
+            p = p.strip()
+            if p.startswith("python"):
+                p = p[6:].lstrip("\n")
+            if "def select_nodes" in p:
+                c = p
+                break
     if c.startswith("```python"):
         c = c[9:]
     elif c.startswith("```"):
         c = c[3:]
     if c.endswith("```"):
         c = c[:-3]
-    return c.strip()
+    c = c.strip()
+    # Strip reasoning prefixes / trailing Chinese prose
+    if "def select_nodes" in c:
+        c = c[c.index("def select_nodes"):]
+    # Sanitize common CJK punctuation that breaks Python exec
+    replacements = {
+        "。": ".",
+        "，": ",",
+        "；": ";",
+        "：": ":",
+        "（": "(",
+        "）": ")",
+        "“": '"',
+        "”": '"',
+        "‘": "'",
+        "’": "'",
+        "　": " ",
+    }
+    for a, b in replacements.items():
+        c = c.replace(a, b)
+    if "def select_nodes" not in c:
+        return None
+    return c
 
 
 class ExplorationPolicy:

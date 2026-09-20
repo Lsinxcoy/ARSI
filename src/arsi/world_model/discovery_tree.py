@@ -107,21 +107,24 @@ class DiscoveryTree:
         prev_node_id = self.root_id
 
         for i, trace in enumerate(traces):
-            # Classify outcome to score
-            outcome = trace.get("outcome", "unknown")
-            effect = trace.get("effect", 0.5)
-            if outcome == "success":
-                score = effect
-            elif outcome == "failure":
-                score = -effect
+            # Quality signal must be readable — near-zero scores let β1·N
+            # dominate replay selection (runtime wall at ~-3.673).
+            effect = float(trace.get("effect", 0.5) or 0.5)
+            outcome = str(trace.get("outcome", "unknown") or "unknown").lower()
+            if "success" in outcome:
+                score = 0.2 + max(0.0, min(1.0, effect)) * 0.8
+            elif "fail" in outcome:
+                score = -abs(effect) if effect else -0.2
+            elif "partial" in outcome or "recorded" in outcome:
+                score = max(0.05, effect * 0.5)
             else:
-                score = 0.0
+                score = effect * 0.5 if effect else 0.0
 
             node = DiscoveryNode(
                 parent_id=prev_node_id,
                 action=trace.get("action", "unknown"),
                 agent_id=agent,
-                outcome=outcome,
+                outcome=trace.get("outcome", outcome),
                 score=score,
                 cost=trace.get("params", {}).get("token_count", 0) / 1000.0,
                 depth=i + 1,

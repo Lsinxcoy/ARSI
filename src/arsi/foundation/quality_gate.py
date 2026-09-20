@@ -35,8 +35,10 @@ class QualityVerdict(str, Enum):
 class TraceQualityGate:
     """NeoHorse-inspired quality pipeline for trace ingestion."""
 
-    def __init__(self, llm: Optional[LLMClient] = None):
+    def __init__(self, llm: Optional[LLMClient] = None, max_warn_ratio: float = 0.25, max_admitted: int = 120):
         self.llm = llm
+        self.max_warn_ratio = max_warn_ratio
+        self.max_admitted = max_admitted
         self._gate1_pass = 0
         self._gate1_fail = 0
         self._gate3_counts = {"C0": 0, "C1": 0, "C2": 0, "C3": 0}
@@ -106,22 +108,40 @@ class TraceQualityGate:
         return self._heuristic_semantic(trace)
 
     def _heuristic_semantic(self, trace: dict) -> dict:
-        """Heuristic fallback for semantic evaluation."""
-        outcome = trace.get("outcome", "")
-        effect = trace.get("effect", 0.5)
+        """Heuristic fallback for semantic evaluation.
 
-        if outcome == "success" and effect > 0.7:
-            verdict = QualityVerdict.PASS
-        elif outcome == "failure":
+        Tuned for world-pool admission: PASS needs real signal, but
+        success + moderate effect must not drown the pool in WARN-only junk.
+        """
+        outcome = str(trace.get("outcome", "") or "").lower()
+        effect = float(trace.get("effect", 0.5) or 0.0)
+        action = str(trace.get("action", "") or "")
+
+        if "fail" in outcome or effect < 0:
             verdict = QualityVerdict.FAIL
+        elif "success" in outcome and effect >= 0.55:
+            verdict = QualityVerdict.PASS
+        elif "success" in outcome and effect >= 0.35:
+            # partial success with measurable effect → PASS on goal dimension
+            verdict = QualityVerdict.PASS
+        elif effect >= 0.7 and "fail" not in outcome:
+            verdict = QualityVerdict.PASS
+        elif "recorded" in outcome or "partial" in outcome:
+            verdict = QualityVerdict.WARN
         else:
+            verdict = QualityVerdict.WARN
+
+        # mission-critical actions with unknown outcome stay WARN not PASS
+        if verdict == QualityVerdict.PASS and not action:
             verdict = QualityVerdict.WARN
 
         return {
             "goal_achievement": verdict.value,
             "instruction_following": QualityVerdict.NOT_EVALUATED.value,
             "tool_usage": QualityVerdict.NOT_EVALUATED.value,
-            "evidence_consistency": QualityVerdict.NOT_EVALUATED.value,
+            "evidence_consistency": (
+                QualityVerdict.PASS.value if verdict == QualityVerdict.PASS else QualityVerdict.NOT_EVALUATED.value
+            ),
             "error_recovery": QualityVerdict.NOT_EVALUATED.value,
             "termination": QualityVerdict.NOT_EVALUATED.value,
         }

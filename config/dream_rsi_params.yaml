@@ -40,8 +40,14 @@ grid_plan:
   default_cost_budget: 8.0
 
 quality_gate:
-  world_min_verdict: WARN         # PASS | WARN
+  world_min_verdict: PASS        # PASS-first; WARN only up to quota
   semantic: auto                  # auto | off
+  max_warn_ratio: 0.25
+  max_admitted: 120
+  score_mode: quality_anchored   # quality_anchored | paper
+  weak_quality_cost_scale: 0.2
+  min_quality_signal: 0.08
+  freeze_beta_on_degenerate: true
 
 eval_loop:
   # D7: pool-monotone ≠ live-monotone

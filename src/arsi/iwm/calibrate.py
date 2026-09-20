@@ -20,16 +20,28 @@ class ControlOutcome:
 
 
 class IntrospectorCalibrator:
-    def __init__(self, min_samples: int = 5, degrade_below: float = 0.35):
+    def __init__(self, min_samples: int = 5, degrade_below: float = 0.35, require_baseline: bool = False):
         self.min_samples = min_samples
         self.degrade_below = degrade_below
+        self.require_baseline = require_baseline
         self._outcomes: Deque[ControlOutcome] = deque(maxlen=100)
         self._iwm_hits = 0
         self._iwm_total = 0
         self._baseline_hits = 0
         self._baseline_total = 0
 
+    @staticmethod
+    def is_meaningful_success(success: bool, note: str = "") -> bool:
+        """Stricter than exec_ok: empty/no-op actions are not success."""
+        n = (note or "").lower()
+        if "no new traces" in n or "waiting" in n or "unknown action" in n:
+            return False
+        if "skipped" in n or "insufficient" in n or "no_distill" in n or "learn_no_distill" in n:
+            return False
+        return bool(success)
+
     def record(self, decision_id: str, used_iwm: bool, success: bool, note: str = "") -> None:
+        success = self.is_meaningful_success(success, note)
         ts = datetime.now().isoformat()
         self._outcomes.append(ControlOutcome(decision_id, used_iwm, success, note, ts))
         if used_iwm:
@@ -54,22 +66,28 @@ class IntrospectorCalibrator:
         return self._baseline_hits / self._baseline_total
 
     def self_trust(self) -> float:
-        """Trust in IWM-based control. Unknown until enough IWM outcomes."""
+        """Trust in IWM-based control. Cap at 0.85 without baseline arm."""
         if self._iwm_total < self.min_samples:
-            return 0.5  # neutral unknown — do not fully ignore, do not fully trust
-        return self.iwm_success_rate
+            return 0.5
+        rate = self.iwm_success_rate
+        if self._baseline_total < self.min_samples:
+            # No control arm → cannot claim full trust (Q6 honesty)
+            return min(rate, 0.75)
+        return rate
 
     def should_degrade_to_baseline(self) -> bool:
         if self._iwm_total < self.min_samples:
             return False
         if self.iwm_success_rate < self.degrade_below:
             return True
-        # IWM clearly worse than baseline with enough samples
         if (
             self._baseline_total >= self.min_samples
             and self.iwm_success_rate + 0.1 < self.baseline_success_rate
         ):
             return True
+        # Perfect rate with zero baseline evidence is not trustworthy enough to dominate
+        if self.require_baseline and self._baseline_total < self.min_samples and self.iwm_success_rate >= 0.99:
+            return False  # not degrade, but trust is capped above
         return False
 
     def report(self) -> dict:
@@ -82,4 +100,5 @@ class IntrospectorCalibrator:
             "degrade_to_baseline": self.should_degrade_to_baseline(),
             "min_samples": self.min_samples,
             "degrade_below": self.degrade_below,
+            "trust_capped_without_baseline": self._baseline_total < self.min_samples,
         }

@@ -36,7 +36,13 @@ class DreamRSIParams:
     hard_max_refine_count: int = 8
     cost_unit_per_focus_step: float = 1.0
     default_cost_budget: float = 8.0
-    world_min_verdict: str = "WARN"
+    world_min_verdict: str = "PASS"
+    max_warn_ratio: float = 0.25
+    max_admitted: int = 120
+    score_mode: str = "quality_anchored"
+    weak_quality_cost_scale: float = 0.2
+    min_quality_signal: float = 0.08
+    freeze_beta_on_degenerate: bool = True
     rollback_window: int = 3
     rollback_delta_eps: float = 0.02
     brief_policy: str = "structured"
@@ -73,6 +79,12 @@ class DreamRSIParams:
         obj.default_cost_budget = float(gp.get("default_cost_budget", obj.default_cost_budget))
         qg = data.get("quality_gate") or {}
         obj.world_min_verdict = str(qg.get("world_min_verdict", obj.world_min_verdict))
+        obj.max_warn_ratio = float(qg.get("max_warn_ratio", obj.max_warn_ratio))
+        obj.max_admitted = int(qg.get("max_admitted", obj.max_admitted))
+        obj.score_mode = str(qg.get("score_mode", obj.score_mode))
+        obj.weak_quality_cost_scale = float(qg.get("weak_quality_cost_scale", obj.weak_quality_cost_scale))
+        obj.min_quality_signal = float(qg.get("min_quality_signal", obj.min_quality_signal))
+        obj.freeze_beta_on_degenerate = bool(qg.get("freeze_beta_on_degenerate", True))
         el = data.get("eval_loop") or {}
         obj.rollback_window = int(el.get("rollback_window", obj.rollback_window))
         obj.rollback_delta_eps = float(el.get("rollback_delta_eps", obj.rollback_delta_eps))
@@ -96,6 +108,9 @@ class DreamRSIParams:
             "grid_bootstrap": [self.bootstrap_branch_count, self.bootstrap_refine_count],
             "grid_hard_max": [self.hard_max_branch_count, self.hard_max_refine_count],
             "world_min_verdict": self.world_min_verdict,
+            "max_warn_ratio": self.max_warn_ratio,
+            "score_mode": self.score_mode,
+            "freeze_beta_on_degenerate": self.freeze_beta_on_degenerate,
             "rollback_window": self.rollback_window,
             "rollback_delta_eps": self.rollback_delta_eps,
             "brief_policy": self.brief_policy,

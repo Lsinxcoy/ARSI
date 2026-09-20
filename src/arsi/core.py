@@ -130,6 +130,10 @@ class ARSI:
         # Hyperparams: official unpublished → config/dream_rsi_params.yaml
         self.dream_rsi_params = load_dream_rsi_params()
         self._world_min_verdict = self.dream_rsi_params.world_min_verdict
+        # QualityGate quota + replay score mode from params
+        if hasattr(self.quality_gate, "max_warn_ratio"):
+            self.quality_gate.max_warn_ratio = float(getattr(self.dream_rsi_params, "max_warn_ratio", 0.25) or 0.25)
+            self.quality_gate.max_admitted = int(getattr(self.dream_rsi_params, "max_admitted", 120) or 120)
         self.portfolio_policy = PortfolioPolicy(
             beta=self.dream_rsi_params.beta_default_uncertain,
             max_workers=self.dream_rsi_params.bootstrap_branch_count,
@@ -377,6 +381,16 @@ class ARSI:
             isinstance(exec_result, dict)
             and exec_result.get("type") in ("freeze", "error")
         ) and not (isinstance(exec_result, dict) and exec_result.get("note") == "unknown action")
+        # Stricter meaningful success for IWM calibrator
+        exec_note = ""
+        if isinstance(exec_result, dict):
+            exec_note = str(exec_result.get("note") or exec_result.get("type") or "")
+            if decision["action"] == "learn" and int(exec_result.get("distilled", 0) or 0) <= 0:
+                exec_ok = False
+                exec_note = exec_note or "learn_no_distill"
+            if decision["action"] == "remember":
+                exec_ok = False
+                exec_note = "waiting_new_traces"
 
         # 4. Update η (predict what we did) + IWM observation
         pred = self.siwm.predict_and_update(decision["action"])
@@ -424,11 +438,18 @@ class ARSI:
                     note=f"distilled={distilled}",
                 )
             if result.get("decision", {}).get("provenance_id"):
+                # Periodically record baseline arm (no IWM) for Q6 comparison
+                used_iwm = bool(advice) and not (
+                    advice.get("degrade_to_baseline") or advice.get("downweight_pre_enactment")
+                )
+                # every 5th decision treated as baseline sample when hooks idle
+                if self._step_count % 5 == 0 and not advice.get("forbid_default_dream"):
+                    used_iwm = False
                 self.iwm.apply_outcome(
                     result["decision"]["provenance_id"],
-                    used_iwm=bool(advice),
+                    used_iwm=used_iwm,
                     success=bool(exec_ok),
-                    note=result["decision_source"],
+                    note=f"{result['decision_source']}|{exec_note}",
                 )
 
         # 5. Governor metabolism (distill policy)
@@ -764,6 +785,14 @@ class ARSI:
             world_id=world_id,
             max_parallelism=self.portfolio_policy.max_workers,
         )
+        # Apply configured replay score mode to new worlds
+        try:
+            mode = getattr(self.dream_rsi_params, "score_mode", "quality_anchored") or "quality_anchored"
+            world.score_mode = mode
+            world.min_quality_signal = float(getattr(self.dream_rsi_params, "min_quality_signal", 0.08) or 0.08)
+            world.weak_quality_cost_scale = float(getattr(self.dream_rsi_params, "weak_quality_cost_scale", 0.2) or 0.2)
+        except Exception:
+            pass
         # Keep latest tree object in sync for legacy APIs
         self.discovery_tree = DiscoveryTree()
         self.discovery_tree.build_from_traces(filtered)
@@ -790,11 +819,17 @@ class ARSI:
         return "WARN"
 
     def _filter_traces_for_world(self, traces: list[dict]) -> tuple[list[dict], dict]:
-        """NeoHorse quality gate → only clean traces become replay worlds."""
-        min_v = (self._world_min_verdict or "WARN").upper()
+        """NeoHorse quality gate → only clean traces become replay worlds.
+
+        PASS-first: always prefer PASS; WARN admitted only up to quota.
+        """
+        min_v = (self._world_min_verdict or "PASS").upper()
         keep_order = {"PASS": 2, "WARN": 1, "FAIL": 0, "NOT_EVALUATED": 0}
-        min_rank = keep_order.get(min_v, 1)
-        kept = []
+        min_rank = keep_order.get(min_v, 2)
+        max_warn_ratio = float(getattr(self.quality_gate, "max_warn_ratio", 0.25) or 0.25)
+        max_admitted = int(getattr(self.quality_gate, "max_admitted", 120) or 120)
+
+        scored: list[tuple[str, float, dict]] = []
         stats = {"pass": 0, "warn": 0, "fail": 0, "not_evaluated": 0}
         for t in traces:
             result = self.quality_gate.evaluate(dict(t))
@@ -810,14 +845,38 @@ class ARSI:
                 stats["fail"] += 1
             else:
                 stats["not_evaluated"] += 1
-            if keep_order.get(verdict, 0) >= min_rank:
-                nt = dict(t)
-                nt.setdefault("params", {})
-                if isinstance(nt["params"], dict):
-                    nt["params"]["difficulty"] = result.get("gate3_difficulty")
-                    nt["params"]["gate_verdict"] = verdict
-                nt["fail_class"] = "ok" if verdict != "FAIL" else "unknown"
-                kept.append(nt)
+            rank = keep_order.get(verdict, 0)
+            if rank < min_rank and verdict != "PASS":
+                # still allow WARN only if min_rank allows and quota later permits
+                if rank < keep_order.get("WARN", 1):
+                    continue
+            effect = float(t.get("effect", 0.0) or 0.0)
+            nt = dict(t)
+            nt.setdefault("params", {})
+            if isinstance(nt["params"], dict):
+                nt["params"]["difficulty"] = result.get("gate3_difficulty")
+                nt["params"]["gate_verdict"] = verdict
+            nt["fail_class"] = "ok" if verdict != "FAIL" else "unknown"
+            # sort key: PASS first, then higher effect
+            scored.append((verdict, effect, nt))
+
+        pass_items = [x for x in scored if x[0] == "PASS"]
+        warn_items = [x for x in scored if x[0] == "WARN"]
+        # Prefer high-effect PASS
+        pass_items.sort(key=lambda x: x[1], reverse=True)
+        warn_items.sort(key=lambda x: x[1], reverse=True)
+
+        kept: list[dict] = [x[2] for x in pass_items]
+        warn_quota = max(0, int(len(kept) * max_warn_ratio / max(1e-6, 1 - max_warn_ratio)))
+        if min_rank <= 1:
+            kept.extend(x[2] for x in warn_items[:warn_quota])
+        if len(kept) > max_admitted:
+            kept = kept[:max_admitted]
+        stats["warn_quota"] = warn_quota
+        stats["warn_admitted"] = min(len(warn_items), warn_quota) if min_rank <= 1 else 0
+        stats["pass_admitted"] = min(len(pass_items), max_admitted)
+        stats["kept"] = len(kept)
+        stats["min_verdict"] = min_v
         return kept, stats
 
     def plan_next_grid(self) -> GridPlan:
@@ -953,27 +1012,37 @@ class ARSI:
                 "all": [{"name": self.portfolio_policy.name, "avg_score": current_eval.get("avg_score", 0.0)}],
             }
 
-        # Redeploy
+        # Redeploy — freeze β when sweep is degenerate (no information)
         deployed = selection["best_name"]
         deployed_score = selection["best_eval"].get("avg_score", 0.0)
-        if revised and deployed == new_policy.name:
-            self.exploration_policy = new_policy
-        if deployed.startswith("beta_"):
-            try:
+        sweep_reason = getattr(sweep, "reason", "") or ""
+        degenerate = (not getattr(sweep, "non_degenerate", True)) or sweep_reason.startswith("degenerate_freeze")
+        if degenerate:
+            deployed = f"frozen_plateau_{self.portfolio_policy.beta:.2f}"
+            deployed_score = float(current_eval.get("avg_score", 0.0) or 0.0)
+            # do NOT thrash portfolio beta names
+        else:
+            if revised and deployed == new_policy.name:
+                self.exploration_policy = new_policy
+            if deployed.startswith("beta_") and not degenerate:
+                try:
+                    self.portfolio_policy = PortfolioPolicy(
+                        beta=float(deployed.split("_")[1]),
+                        max_workers=max(1, grid_plan.branch_count),
+                        name=deployed,
+                    )
+                except ValueError:
+                    pass
+            elif (
+                not degenerate
+                and abs(sweep.selected_default_beta - self.portfolio_policy.beta) > 0.05
+                and sweep_reason.startswith("plateau")
+            ):
                 self.portfolio_policy = PortfolioPolicy(
-                    beta=float(deployed.split("_")[1]),
+                    beta=sweep.selected_default_beta,
                     max_workers=max(1, grid_plan.branch_count),
-                    name=deployed,
+                    name=f"portfolio_beta_{sweep.selected_default_beta:.2f}",
                 )
-            except ValueError:
-                pass
-        elif abs(sweep.selected_default_beta - self.portfolio_policy.beta) > 0.05 and sweep.reason.startswith("plateau"):
-            # trust sweep rule even if not selected as separate candidate winner
-            self.portfolio_policy = PortfolioPolicy(
-                beta=sweep.selected_default_beta,
-                max_workers=max(1, grid_plan.branch_count),
-                name=f"portfolio_beta_{sweep.selected_default_beta:.2f}",
-            )
 
         # Adaptive controller + performance
         self.adaptive_controller.record_performance(deployed_score)

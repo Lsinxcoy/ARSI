@@ -559,7 +559,43 @@ I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 �
 
 ---
 
-## P0–P2 执行落地（2026-09-18 规划推进）
+## 运行修复落地（2026-09-20 · 按深度分析建议）
+
+### 根因（评分墙）
+`replay_score = quality − β₁·N + β₂·(N/k)`  
+在 quality≈0、N≈38、β₁=0.1 时 → **−3.67**，所有策略同坑 → β sweep 退化、live 冻结。
+
+### 已交付修复
+| 项 | 变更 |
+|----|------|
+| **A 评分诊断+锚定** | `ReplayResult.score_breakdown`；默认 `score_mode=quality_anchored`：quality 低于阈值时成本项缩放（`weak_quality_cost_scale`）；`paper` 模式保留原公式 |
+| **质量信号** | discovery 成功节点 score = `0.2+0.8*effect`（不再贴近 0） |
+| **B 池准入** | `world_min_verdict=PASS`；WARN 仅配额（默认 ≤25%）；PASS 按 effect 优先；`max_admitted` 上限 |
+| **C β 冻结** | sweep `non_degenerate=false` → `degenerate_freeze_beta_*`，**不再 plateau_raise 空转**；部署名 `frozen_plateau_*` |
+| **策略编译** | `_parse_llm_json` 剥离 CJK 标点/代码围栏，降低 `invalid character '。'` |
+| **Q6 calibrator** | no-op/learn 无蒸馏/remember 不算 success；无 baseline 臂时 self_trust **封顶 0.75**；step 采样 baseline 臂 |
+| **Layer1** | 增加 effect-bucket / 二阶 pair 规则上下文 |
+
+### 配置
+- `config/dream_rsi_params.yaml` + `config/arsi.yaml`：PASS 优先、score_mode、freeze_beta_on_degenerate  
+- NVIDIA LLM：`nvidia/nemotron-3.5-lightning-30b-a3b` @ integrate.api.nvidia.com
+
+### 测试
+```
+335 passed
+```
+新增 `tests/test_runtime_fixes.py`（评分墙/PASS池/β冻结/策略消毒/calibrator）。
+
+### 诚实边界
+- quality_anchored 是 **ARSI 标定偏差**（官方未发布超参前）；官方代码放出后只改 YAML 回填 paper 模式参数  
+- 旧池内世界仍是历史低质量数据；新 harvest 才按 PASS 重建  
+- live 能力分提升仍需 daemon 持续跑 + 更高质量轨迹，不是单次改分就能「变聪明」
+
+### 交付路径
+- 代码：`replay_world.py` / `core.py` / `quality_gate.py` / `beta_sweep.py` / `exploration_policy.py` / `calibrate.py` / `discovery_tree.py`  
+- 诊断：`E:\ARSI\archive\eval\score_dump_latest.json`  
+- 测试：`E:\ARSI\tests\test_runtime_fixes.py`
+
 
 ### P0 卫生
 | 项 | 状态 |
@@ -590,7 +626,22 @@ hooks_applied: 6
 ### Daemon 现场
 | 进程 | PID | 说明 |
 |------|-----|------|
-| arsi_daemon | 7640 | 2026-09-18 15:50 起；tick 23 ok；trace~20k；pool=1；**需重启才能加载 IWM/新 health** |
+| arsi_daemon | **14292** | 2026-09-20 08:49+，**NVIDIA LLM**，tick-sleep 300 |
+| arsi_interface | **16956** | :9300，`/arsi/health` → `llm: true` |
+
+**LLM 切换（2026-09-20）**
+| 项 | 值 |
+|----|-----|
+| provider | openai（OpenAI 兼容） |
+| model | `nvidia/nemotron-3.5-lightning-30b-a3b` |
+| api_base | `https://integrate.api.nvidia.com/v1` |
+| key | 进程环境 `ARSI_API_KEY=nvapi-...`（**未写入仓库**） |
+| proxy | `use_proxy: false`（直连 200 OK） |
+| 验证 | 直连/代理 chat.completions 均 200；daemon 日志 NVIDIA 200 |
+
+旧 mcgrox.top / deepseek 已因余额不足 403 弃用。
+
+启动方式：进程环境注入 `PYTHONPATH/ARSI_API_KEY/TEMP→E:\ARSI\archive\tmp`。
 
 ### 测试
 ```

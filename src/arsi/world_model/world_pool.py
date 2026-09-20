@@ -89,9 +89,11 @@ class WorldPool:
                     "rounds": r.rounds,
                     "anchors": r.successful_anchors,
                     "repairables": r.repairables,
+                    "score_breakdown": getattr(r, "score_breakdown", {}),
                 }
                 for r in results
             ],
+            "score_mode": getattr(self.worlds[0], "score_mode", None) if self.worlds else None,
         }
 
     def select_best_policy(

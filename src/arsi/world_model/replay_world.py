@@ -104,6 +104,23 @@ class ReplayResult:
     successful_anchors: int = 0
     repairables: int = 0
     trajectory: list[dict] = field(default_factory=list)
+    score_breakdown: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        return {
+            "world_id": self.world_id,
+            "policy_name": self.policy_name,
+            "quality": self.quality,
+            "cost": self.cost,
+            "parallelism": self.parallelism,
+            "replay_score": self.replay_score,
+            "rounds": self.rounds,
+            "probes": self.probes,
+            "opened_branches": self.opened_branches,
+            "successful_anchors": self.successful_anchors,
+            "repairables": self.repairables,
+            "score_breakdown": self.score_breakdown,
+        }
 
 
 class ReplayWorld:
@@ -132,6 +149,9 @@ class ReplayWorld:
         self.beta1 = beta1
         self.beta2 = beta2
         self.parallel_lambda = parallel_lambda
+        self.score_mode = "quality_anchored"  # quality_anchored | paper
+        self.min_quality_signal = 0.08
+        self.weak_quality_cost_scale = 0.2
         self._observed: set[str] = set()
         self._obs_cache: dict[str, Observation] = {}
         self._probes = 0
@@ -229,7 +249,25 @@ class ReplayWorld:
         n = self._probes
         k = max(1, self._rounds)
         parallelism = n / k
-        score = quality - self.beta1 * n + self.beta2 * parallelism
+        cost_term = self.beta1 * n
+        bonus = self.beta2 * parallelism
+        # Diagnosis: wall of -3.673 = near-zero quality − 0.1*~38 probes.
+        # quality_anchored (default): when discovery finds almost no signal,
+        # do not let raw probe cost dominate every policy into the same pit.
+        mode = (getattr(self, "score_mode", None) or "quality_anchored").lower()
+        min_signal = float(getattr(self, "min_quality_signal", 0.08) or 0.08)
+        if mode == "paper":
+            eff_cost = cost_term
+        else:
+            weak_scale = float(getattr(self, "weak_quality_cost_scale", 0.2) or 0.2)
+            if quality < min_signal:
+                eff_cost = cost_term * weak_scale
+            else:
+                # Progressive cost: full β₁·N only when discovery quality is strong.
+                # Stops weak-quality pools from collapsing every policy to ~-3.7.
+                scale = min(1.0, weak_scale + quality)
+                eff_cost = cost_term * scale
+        score = quality - eff_cost + bonus
         # Optional pareto-style parallel penalty term
         effective_seq = sum(
             max(1, (len(t["batch"]) + self.max_parallelism - 1) // self.max_parallelism)
@@ -237,6 +275,19 @@ class ReplayWorld:
         )
         parallel_penalty = (effective_seq / max(n, 1)) if n else 0.0
         pareto = quality - self.parallel_lambda * parallel_penalty
+        breakdown = {
+            "mode": mode,
+            "quality": round(quality, 4),
+            "probes": n,
+            "beta1": self.beta1,
+            "beta2": self.beta2,
+            "raw_cost_term": round(cost_term, 4),
+            "effective_cost_term": round(eff_cost, 4),
+            "parallel_bonus": round(bonus, 4),
+            "parallelism": round(parallelism, 4),
+            "pareto": round(pareto, 4),
+            "formula": "quality - effective_cost + parallel_bonus",
+        }
 
         anchors = sum(1 for o in self._obs_cache.values() if o.success and o.score > self.baseline_score)
         repairables = sum(
@@ -257,6 +308,7 @@ class ReplayWorld:
             successful_anchors=anchors,
             repairables=repairables,
             trajectory=trajectory,
+            score_breakdown=breakdown,
         )
 
     def observation_signals(self) -> dict:
