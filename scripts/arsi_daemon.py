@@ -140,6 +140,18 @@ class ARSIDaemon:
             if self._tick_count % 8 == 0:
                 self._run_dream_rsi()
 
+            # 5c. Multi-agent orchestration pass (if any host agents registered)
+            ma_info: dict = {}
+            if getattr(self.arsi, "multi_agent", None) is not None:
+                try:
+                    ma = self.arsi.multi_agent
+                    if ma.agents:
+                        ma.cycle()
+                    ma_info = ma.health().get("multi_agent") or {}
+                except Exception as e:
+                    logger.warning(f"multi-agent cycle failed: {e}")
+                    ma_info = {"error": str(e)}
+
             # 6. Save checkpoint
             self._save_checkpoint()
 
@@ -171,6 +183,9 @@ class ARSIDaemon:
                     "q_gate": stats.get("iwm_q_gate", {}),
                 },
                 "verified": self._health_verified(stats),
+                "multi_agent": ma_info or (stats.get("multi_agent") or {}),
+                "layer1": stats.get("layer1"),
+                "paths": stats.get("paths"),
             })
 
         except Exception as e:

@@ -133,6 +133,12 @@ class LLMClient:
         """Check if LLM is available."""
         return self._client is not None
 
+    def _mark_unavailable(self, reason: str = "") -> None:
+        """Drop client after hard API failures so system degrades to heuristics."""
+        self._client = None
+        self._hard_fail_reason = reason or "hard_fail"
+        logger.warning(f"LLM marked unavailable: {self._hard_fail_reason}")
+
     def chat(
         self,
         prompt: str,
@@ -161,6 +167,9 @@ class LLMClient:
                 return LLMResponse(success=False, error=f"Unknown provider: {self.config.provider}")
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
+            err = str(e)
+            if "404" in err or "Not Found" in err or "model" in err.lower() and "not" in err.lower():
+                self._mark_unavailable(err[:200])
             if self.config.fallback_to_heuristic:
                 return self._heuristic_fallback(prompt)
             return LLMResponse(success=False, error=str(e))
@@ -171,12 +180,19 @@ class LLMClient:
             messages.append({"role": "system", "content": system})
         messages.append({"role": "user", "content": prompt})
 
-        response = self._client.chat.completions.create(
-            model=self.config.model,
-            messages=messages,
-            temperature=temp,
-            max_tokens=tokens,
-        )
+        try:
+            response = self._client.chat.completions.create(
+                model=self.config.model,
+                messages=messages,
+                temperature=temp,
+                max_tokens=tokens,
+            )
+        except Exception as e:
+            err = str(e)
+            logger.error(f"OpenAI-compatible LLM call failed: {e}")
+            if "404" in err or "Not Found" in err:
+                self._mark_unavailable(err[:200])
+            raise
 
         return LLMResponse(
             content=response.choices[0].message.content or "",
