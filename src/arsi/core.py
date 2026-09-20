@@ -114,7 +114,10 @@ class ARSI:
         self.discovery_tree = DiscoveryTree()
         self.exploration_policy = ExplorationPolicy(name="arsi_default")
         self.policy_developer = PolicyDevelopmentAgent(llm=llm)
-        self.world_pool = WorldPool()
+        # Persistent world pool — survive daemon restarts
+        from arsi.foundation.paths import archive_dir
+        self._world_pool_path = archive_dir() / "world_pool_snapshot.json"
+        self.world_pool = WorldPool.load_from(self._world_pool_path)
         self.portfolio_policy = PortfolioPolicy(beta=0.6, max_workers=3)
         self._live_cycle_history: list[dict] = []
         self._term_trees_built = 0
@@ -443,7 +446,7 @@ class ARSI:
                 except Exception as e:
                     logger.warning(f"layer1 holdout bind failed: {e}")
             # Dynamics organ: pre-enactment predicted delta vs post-step state
-            if result.get("decision_source", "").startswith("pre_enactment"):
+            if result.get("decision_source", "").startswith("pre_enactment") or self._step_count % 2 == 0:
                 try:
                     after = self.siwm.refresh_state()
                     predicted_delta = {
@@ -843,6 +846,10 @@ class ARSI:
             world_id=world_id,
             max_parallelism=self.portfolio_policy.max_workers,
         )
+        try:
+            self.world_pool.persist_to(self._world_pool_path)
+        except Exception as e:
+            logger.warning(f"world pool persist failed: {e}")
         # Apply configured replay score mode to new worlds
         try:
             mode = getattr(self.dream_rsi_params, "score_mode", "quality_anchored") or "quality_anchored"

@@ -150,3 +150,60 @@ class WorldPool:
         p = Path(path)
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps({"manifest": self._manifest, "stats": self.stats()}, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def export_snapshot(self) -> dict:
+        """Serialize all worlds for crash-safe pool accumulation."""
+        worlds = []
+        for w in self.worlds:
+            worlds.append({
+                "world_id": w.world_id,
+                "nodes": w._full,
+                "baseline_score": w.baseline_score,
+                "max_parallelism": w.max_parallelism,
+                "beta1": getattr(w, "beta1", 0.1),
+                "beta2": getattr(w, "beta2", 0.05),
+                "score_mode": getattr(w, "score_mode", "quality_anchored"),
+            })
+        return {
+            "schema": "arsi.world_pool.v1",
+            "max_worlds": self.max_worlds,
+            "manifest": self._manifest,
+            "worlds": worlds,
+        }
+
+    @classmethod
+    def from_snapshot(cls, data: dict) -> "WorldPool":
+        pool = cls(max_worlds=int(data.get("max_worlds") or 50))
+        pool._manifest = list(data.get("manifest") or [])
+        for item in data.get("worlds") or []:
+            w = ReplayWorld(
+                world_id=item.get("world_id") or f"T{len(pool.worlds)+1}",
+                nodes=item.get("nodes") or {},
+                baseline_score=float(item.get("baseline_score") or 0.0),
+                max_parallelism=int(item.get("max_parallelism") or 3),
+                beta1=float(item.get("beta1") or 0.1),
+                beta2=float(item.get("beta2") or 0.05),
+            )
+            if item.get("score_mode"):
+                w.score_mode = item["score_mode"]
+            pool.worlds.append(w)
+        return pool
+
+    def persist_to(self, path: str | Path) -> Path:
+        from arsi.foundation.paths import write_json_once, project_root
+        p = Path(path)
+        if not p.is_absolute():
+            p = project_root() / p
+        return write_json_once(p, self.export_snapshot(), writer_id="arsi.world_model.world_pool.persist")
+
+    @classmethod
+    def load_from(cls, path: str | Path) -> "WorldPool":
+        p = Path(path)
+        if not p.exists():
+            return cls()
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            return cls.from_snapshot(data)
+        except Exception as e:
+            logger.warning(f"WorldPool load failed: {e}")
+            return cls()

@@ -124,6 +124,19 @@ class ARSIDaemon:
             logger.info(f"  Ingested: {new_traces} new traces")
             self._write_progress_snapshot("after_ingest", new_traces=new_traces, changes=changes)
 
+            # 2b. Light harvest every tick — grow WorldPool for paired A/B / I6
+            try:
+                if new_traces > 0:
+                    harv = self.arsi.harvest_term_tree()
+                    logger.info(f"  harvest: pool={harv.get('pool_size')} kept={harv.get('traces_kept')} gate={harv.get('quality_gate')}")
+                    self._write_progress_snapshot("after_harvest", harvest={
+                        "pool_size": harv.get("pool_size"),
+                        "traces_kept": harv.get("traces_kept"),
+                        "quality_gate": harv.get("quality_gate"),
+                    })
+            except Exception as e:
+                logger.warning(f"harvest failed: {e}")
+
             # 3. Run ARSI steps (cap per tick to avoid runaway LLM)
             for _ in range(2):
                 result = self.arsi.step()
@@ -191,6 +204,12 @@ class ARSIDaemon:
                 "iwm": {
                     "self_trust": (iwm_inner or {}).get("self_trust"),
                     "organ_trust": (iwm_inner or {}).get("organ_trust"),
+                    "memory_trust": (iwm_inner or {}).get("memory_trust"),
+                    "memory_status": (iwm_inner or {}).get("memory_status"),
+                    "trust_memory_for_learn": (iwm_inner or {}).get("trust_memory_for_learn"),
+                    "downweight_memory_ops": (iwm_inner or {}).get("downweight_memory_ops"),
+                    "layer1_holdout": (iwm_inner or {}).get("layer1_holdout"),
+                    "behavior_predictor_accuracy": (iwm_inner or {}).get("behavior_predictor_accuracy"),
                     "dream_loop": (iwm_inner or {}).get("dream_loop"),
                     "forbid_default_dream": (iwm_inner or {}).get("dream_loop", {}).get("allowed_default") is False
                     if isinstance(iwm_inner.get("dream_loop"), dict) else None,

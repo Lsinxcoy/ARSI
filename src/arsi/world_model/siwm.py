@@ -190,15 +190,10 @@ class BehaviorPredictor:
             self._fit_rules(traces)
 
     def _fit_rules(self, traces: list[dict]) -> None:
-        """Build rules from traces using sequential patterns + outcome/effect buckets.
-
-        Strengthens Layer1 beyond (prev_cat, outcome) → next_cat by adding
-        effect-bucketed context so η can move when data is informative.
-        """
-        self.rules.clear()
-        self.global_prior.clear()
-        self._pair_rules.clear()
-
+        """Build sequential rules; merge into existing tables (cumulative Layer1)."""
+        if getattr(self, "_pair_rules", None) is None:
+            self._pair_rules = defaultdict(lambda: defaultdict(int))
+        # accumulate — avoid rule_count collapse on thin refits
         for i in range(1, len(traces)):
             prev = traces[i - 1]
             curr = traces[i]
@@ -393,13 +388,21 @@ class SIWM:
 
     def train_from_history(self) -> dict:
         """Train Layer 1 from historical traces + measure holdout accuracy."""
-        traces = self.store.get_recent_traces(n=500)
+        traces = self.store.get_recent_traces(n=800)
         if not traces:
             return {"status": "no_data", "trace_count": 0, "holdout_accuracy": 0.0}
 
+        # Keep cumulative rules across refits when new data is thin/repetitive
         split = max(3, int(len(traces) * 0.8))
         train, test = traces[:split], traces[split:] or traces[-max(3, len(traces) // 5):]
+        prev_rules = len(self.layer1.rules)
         self.layer1.fit(train)
+        # If refit collapsed rules on a flat batch, retain prior global priors
+        if len(self.layer1.rules) < max(2, prev_rules // 4) and prev_rules > len(self.layer1.rules):
+            # merge: refit on union of older history
+            older = self.store.get_recent_traces(n=2000)
+            if len(older) > len(train):
+                self.layer1.fit(older[: max(split, 800)])
         holdout = self.layer1.holdout_accuracy(test)
         self._last_holdout_accuracy = holdout
         return {

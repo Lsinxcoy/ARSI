@@ -476,11 +476,17 @@ class DimensionOrchestrator:
         return result
 
     def run_all(self, traces: list[dict], state: WorldState) -> dict:
-        """Run all three dimensions."""
+        """Run all dimensions with a shared LLM budget across sense calls."""
         results = {}
+        budget_left = int(getattr(self, "_run_llm_budget", 3))
         for dim in self.dimensions:
             try:
+                impl = self.dimensions[dim]
+                if impl is not None:
+                    impl._llm_budget_left = budget_left
                 results[dim.value] = self.run_dimension(dim, traces, state)
+                if impl is not None:
+                    budget_left = int(getattr(impl, "_llm_budget_left", budget_left))
             except Exception as e:
                 logger.error(f"Dimension {dim.value} failed: {e}")
                 results[dim.value] = {"error": str(e)}
@@ -749,15 +755,19 @@ class EnvironmentDimension:
             try:
                 trace_summary = json.dumps(
                     [{"action": t.get("action"), "outcome": t.get("outcome"),
-                      "params": _pkeys(t)} for t in traces[-15:]],
+                      "params": _pkeys(t)} for t in traces[-8:]],
                     ensure_ascii=False,
                 )
             except Exception:
                 trace_summary = json.dumps(
-                    [{"action": t.get("action"), "outcome": t.get("outcome")} for t in traces[-10:]],
+                    [{"action": t.get("action"), "outcome": t.get("outcome")} for t in traces[-6:]],
                     ensure_ascii=False,
                 )
-            prompt = f"""分析以下行为轨迹，判断环境配置是否需要改进。
+            # Hard LLM budget for daemon ticks
+            budget = int(getattr(self, "_llm_budget_left", 2))
+            if budget > 0:
+                self._llm_budget_left = budget - 1
+                prompt = f"""分析以下行为轨迹，判断环境配置是否需要改进。
 
 轨迹：
 {trace_summary}
@@ -770,9 +780,11 @@ class EnvironmentDimension:
 输出 JSON：
 {{"env_issue": true/false, "weak_areas": ["薄弱领域"], "suggestion": "环境改进建议"}}"""
 
-            resp = self.llm.chat(prompt, system="你是环境配置分析专家。只输出 JSON。", max_tokens=400)
-            if resp.success:
-                analysis = _parse_llm_json(resp.content)
+                resp = self.llm.chat(prompt, system="你是环境配置分析专家。只输出 JSON。", max_tokens=400)
+                if resp.success:
+                    analysis = _parse_llm_json(resp.content)
+            else:
+                analysis = None
 
         return {
             "gap_detected": gap_detected or (analysis and analysis.get("env_issue")),

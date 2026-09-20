@@ -84,6 +84,7 @@ def run_probes(arsi: ARSI, steps: int = 6) -> dict:
     ok, gate = arsi.iwm.q_gate()
     health = arsi.iwm.health()
     claim = verified_from_pytest("arsi.iwm.suite", PROJECT_ROOT, pytest_args=["-q", "tests/test_iwm.py"])
+    advice = arsi.iwm.governor_advice(arsi.siwm.get_state())
     return {
         "q_gate_ok": ok,
         "claim": gate["claim"],
@@ -97,8 +98,17 @@ def run_probes(arsi: ARSI, steps: int = 6) -> dict:
         "ledger_size": arsi.iwm.ledger.size,
         "hooks_applied": health.get("iwm", {}).get("hooks_applied", 0),
         "suite_verified": claim.to_dict(),
-        "live_data_ready": False,
-        "note": "probe runner uses seeded traces; live I6 requires daemon-fed organ samples",
+        "memory_trust": advice.get("memory_trust"),
+        "trust_memory_for_learn": advice.get("trust_memory_for_learn"),
+        "downweight_memory_ops": advice.get("downweight_memory_ops"),
+        "organ_trust": advice.get("organ_trust"),
+        "world_pool_size": arsi.world_pool.size,
+        "layer1": arsi.get_stats().get("layer1"),
+        "live_data_ready": arsi.world_pool.size >= 5,
+        "note": (
+            "live I6 requires pool>=5 + organ evidence on daemon-fed data; "
+            "empty/thin organs → document as skeleton"
+        ),
     }
 
 
