@@ -616,7 +616,41 @@ I1 删假η+OrganSelf+Ledger+LoopTrial → I2 Frontier → I3 Governor 接入 �
 
 ---
 
-## 主线：验收 runtime + 并行 S6/S7（2026-09-20）
+## 二次验收 + 多 agent 协议（2026-09-20 续）
+
+### Fast live acceptance（关 LLM，生产库）
+| 项 | 值 |
+|----|-----|
+| Layer1 holdout | **0.9192**（已 bind IWM） |
+| Harvest PASS 门 | **pass=60 kept，warn_admitted=0**（fail=68 剔除；WARN 配额生效） |
+| Pool score_mode | **quality_anchored** |
+| dream vs fixed | **-2.606 vs -2.6995**（quality **0.76**；Δ +0.0935） |
+| 墙 | **已离开 -3.67** |
+| paired AB | hold n=1<5（进程内新池，daemon 持续后会变厚） |
+| frozen_plateau | 累计 8；`degenerate_freeze_beta_0.60` |
+| daemon | PID **30160 / 25668**（09:34） |
+
+产物：
+- `E:\ARSI\archive\eval\fast_acceptance_latest.json`
+- `E:\Mimo 生成\docs\2026-09-20\fast-acceptance-latest.json`
+
+### 多 agent 协议 M1–M4（约定中的「最后」，已最小闭环）
+- `src/arsi/multiagent/protocol.py`：注册 / ASSIGN+BRIEF / RESULT / freeze
+- 接 `ARSIInterface.brief/report`；host effect → **external anchor**
+- **M3**：&lt;3 次 outcome → organ=`unmeasured`；≥3 才 `measured` 并 bind IWM
+- **M4**：iron law / freeze → 拒绝 dispatch
+- `get_stats.multi_agent`
+
+### 测试
+```
+365 passed
+```
+
+### 仍未做
+- 真宿主进程对接（HTTP/MiMo Desktop 实调用）——协议层已就绪
+- 官方 Dream-RSI 趞参回填
+- live I6：等 daemon 池 n≥5 + paired promote 证据
+
 
 ### 运行验收（观察）
 | 信号 | 值 |

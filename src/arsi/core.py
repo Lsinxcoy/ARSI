@@ -151,6 +151,10 @@ class ARSI:
         self.dream.iwm = self.iwm
         self.governor.iwm = self.iwm
 
+        # Multi-agent protocol (thin orchestration; multi-agent was deferred-last)
+        from arsi.multiagent import MultiAgentOrchestrator
+        self.multi_agent = MultiAgentOrchestrator(arsi=self, interface=None)
+
         # N1: Gain decomposition
         self.gain_decomposer = GainDecomposer(store, llm=llm)
 
@@ -652,6 +656,7 @@ class ARSI:
             },
             "paths": __import__("arsi.foundation.paths", fromlist=["identity_report"]).identity_report(),
             "vacuum": __import__("arsi.foundation.vacuum", fromlist=["consolidation_vacuum"]).consolidation_vacuum().stats,
+            "multi_agent": getattr(self, "multi_agent", None).health() if getattr(self, "multi_agent", None) else {},
         }
 
     # ── Lifecycle ───────────────────────────────────────────────
