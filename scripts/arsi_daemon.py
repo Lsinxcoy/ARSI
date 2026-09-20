@@ -122,23 +122,28 @@ class ARSIDaemon:
             # 2. Extract and ingest traces
             new_traces = self._extract_and_ingest()
             logger.info(f"  Ingested: {new_traces} new traces")
+            self._write_progress_snapshot("after_ingest", new_traces=new_traces, changes=changes)
 
-            # 3. Run ARSI steps
-            for _ in range(3):
+            # 3. Run ARSI steps (cap per tick to avoid runaway LLM)
+            for _ in range(2):
                 result = self.arsi.step()
                 logger.info(f"  Step: {result['decision']['action']} [{result['decision']['source']}]")
+            self._write_progress_snapshot("after_steps")
 
-            # 4. Periodic dimension analysis (every 5 ticks)
+            # 4. Periodic dimension analysis (every 5 ticks) — LLM-budgeted in gate/dims
             if self._tick_count % 5 == 0:
                 self._run_dimension_analysis()
+                self._write_progress_snapshot("after_dimensions")
 
             # 5. Periodic dream (every 10 ticks or when η high)
             if self._tick_count % 10 == 0 or self.arsi.siwm.eta.should_dream():
                 self._run_dream()
+                self._write_progress_snapshot("after_dream")
 
-            # 5b. Phase D: Dream-RSI meta cycle (every 8 ticks) — manifest + grid + β sweep
+            # 5b. Dream-RSI meta cycle (every 8 ticks) — skip LLM revise in daemon
             if self._tick_count % 8 == 0:
-                self._run_dream_rsi()
+                self._run_dream_rsi(skip_llm=True)
+                self._write_progress_snapshot("after_dream_rsi")
 
             # 5c. Multi-agent orchestration pass (if any host agents registered)
             ma_info: dict = {}
@@ -335,11 +340,11 @@ class ARSIDaemon:
         new_state = self.arsi.dream.execute(state)
         logger.info(f"    η: {eta_before:.4f} → {new_state.eta:.4f}")
 
-    def _run_dream_rsi(self) -> None:
+    def _run_dream_rsi(self, skip_llm: bool = True) -> None:
         """Phase D: Dream-RSI meta-exploration cycle (world pool + manifest + β sweep)."""
         try:
-            logger.info("  Running Dream-RSI meta cycle...")
-            result = self.arsi.dream_rsi_cycle()
+            logger.info(f"  Running Dream-RSI meta cycle (skip_llm={skip_llm})...")
+            result = self.arsi.dream_rsi_cycle(skip_llm=skip_llm)
             if not result.get("ran"):
                 logger.info(f"    skipped: {result.get('reason')}")
                 return
@@ -352,6 +357,36 @@ class ARSIDaemon:
             logger.info(f"    grid: W={gp.get('branch_count')} R={gp.get('refine_count')} ({gp.get('reason')})")
         except Exception as e:
             logger.error(f"    Dream-RSI cycle failed: {e}")
+
+    def _write_progress_snapshot(self, phase: str, **extra) -> None:
+        """Mid-tick health so operators are not blind for multi-hour ticks."""
+        try:
+            stats = self.arsi.get_stats()
+            iwm_stats = stats.get("iwm") or {}
+            iwm_inner = iwm_stats.get("iwm") if isinstance(iwm_stats, dict) else {}
+            row = {
+                "tick": self._tick_count,
+                "status": f"running:{phase}",
+                "phase": phase,
+                "timestamp": datetime.now().isoformat(),
+                "eta": stats.get("eta"),
+                "trace_count": stats.get("trace_count"),
+                "experience_count": stats.get("experience_count"),
+                "world_pool_size": stats.get("world_pool_size"),
+                "manifest_cycles": stats.get("manifest_cycles"),
+                "beta": stats.get("beta"),
+                "iwm": {
+                    "organ_trust": (iwm_inner or {}).get("organ_trust"),
+                    "memory_trust": (iwm_inner or {}).get("memory_trust"),
+                    "layer1_holdout": (iwm_inner or {}).get("layer1_holdout"),
+                    "trust_memory_for_learn": (iwm_inner or {}).get("trust_memory_for_learn"),
+                },
+                "layer1": stats.get("layer1"),
+            }
+            row.update(extra or {})
+            self._write_snapshot(row)
+        except Exception as e:
+            logger.warning(f"progress snapshot failed: {e}")
 
     def _save_checkpoint(self) -> None:
         """Save checkpoint for crash recovery."""

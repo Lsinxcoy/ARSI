@@ -35,13 +35,29 @@ class QualityVerdict(str, Enum):
 class TraceQualityGate:
     """NeoHorse-inspired quality pipeline for trace ingestion."""
 
-    def __init__(self, llm: Optional[LLMClient] = None, max_warn_ratio: float = 0.25, max_admitted: int = 120):
+    def __init__(
+        self,
+        llm: Optional[LLMClient] = None,
+        max_warn_ratio: float = 0.25,
+        max_admitted: int = 120,
+        llm_eval_budget: int = 8,
+    ):
         self.llm = llm
         self.max_warn_ratio = max_warn_ratio
         self.max_admitted = max_admitted
+        self.llm_eval_budget = int(llm_eval_budget)
+        self._llm_evals_used = 0
         self._gate1_pass = 0
         self._gate1_fail = 0
         self._gate3_counts = {"C0": 0, "C1": 0, "C2": 0, "C3": 0}
+
+    def _llm_allowed(self) -> bool:
+        """Hard budget: avoid hundreds of LLM calls per harvest (tick hang)."""
+        return (
+            self.llm is not None
+            and getattr(self.llm, "available", False)
+            and self._llm_evals_used < self.llm_eval_budget
+        )
 
     def gate1_structural(self, trace: dict) -> tuple[bool, str]:
         """Structural validation: required fields + valid ranges."""
@@ -74,8 +90,9 @@ class TraceQualityGate:
         - error_recovery: did it recover from errors?
         - termination: did it terminate properly?
         """
-        if not self.llm or not self.llm.available:
+        if not self._llm_allowed():
             return self._heuristic_semantic(trace)
+        self._llm_evals_used += 1
 
         prompt = f"""评估以下行为轨迹的质量：
 
@@ -199,6 +216,8 @@ class TraceQualityGate:
             "gate1_pass": self._gate1_pass,
             "gate1_fail": self._gate1_fail,
             "gate3_distribution": self._gate3_counts,
+            "llm_eval_budget": self.llm_eval_budget,
+            "llm_evals_used": self._llm_evals_used,
         }
 
 

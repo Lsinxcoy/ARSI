@@ -200,7 +200,7 @@ class ARSI:
 
         logger.info(f"ARSI initialized (db={config.db_path}, llm={'yes' if llm and llm.available else 'no'})")
 
-        return cls(
+        inst = cls(
             store=store,
             mnemosyne=mnemosyne,
             siwm=siwm,
@@ -210,6 +210,19 @@ class ARSI:
             iron_laws=iron_laws,
             llm=llm,
         )
+        # quality_gate knobs from arsi.yaml (llm budget prevents tick hang)
+        try:
+            raw = yaml.safe_load(Path(config_path).read_text(encoding="utf-8")) or {}
+            qg = raw.get("quality_gate") or {}
+            if hasattr(inst.quality_gate, "llm_eval_budget") and qg.get("llm_eval_budget") is not None:
+                inst.quality_gate.llm_eval_budget = int(qg["llm_eval_budget"])
+            if qg.get("max_warn_ratio") is not None:
+                inst.quality_gate.max_warn_ratio = float(qg["max_warn_ratio"])
+            if qg.get("max_admitted") is not None:
+                inst.quality_gate.max_admitted = int(qg["max_admitted"])
+        except Exception as e:
+            logger.warning(f"quality_gate yaml load failed: {e}")
+        return inst
 
     @staticmethod
     def _build_llm(config: ARSIConfig) -> Optional[LLMClient]:
@@ -503,7 +516,8 @@ class ARSI:
         # simulator, NOT semantic guidance injected into prompts.
         every_n = getattr(self.dream_rsi_params, "dream_every_n_steps", 8) or 8
         if self._step_count % every_n == 0:
-            dream_rsi = self.dream_rsi_cycle()
+            # skip LLM policy revision in hot step loop (daemon hang fix)
+            dream_rsi = self.dream_rsi_cycle(skip_llm=True)
             result["dream_rsi"] = dream_rsi
 
         return result
@@ -872,6 +886,9 @@ class ARSI:
         min_rank = keep_order.get(min_v, 2)
         max_warn_ratio = float(getattr(self.quality_gate, "max_warn_ratio", 0.25) or 0.25)
         max_admitted = int(getattr(self.quality_gate, "max_admitted", 120) or 120)
+        # reset LLM budget per harvest batch (tick-hang fix)
+        if hasattr(self.quality_gate, "_llm_evals_used"):
+            self.quality_gate._llm_evals_used = 0
 
         scored: list[tuple[str, float, dict]] = []
         stats = {"pass": 0, "warn": 0, "fail": 0, "not_evaluated": 0}
@@ -976,10 +993,11 @@ class ARSI:
             self.governor.dims.max_per_term = self.current_grid_plan.branch_count
         return self.current_grid_plan
 
-    def dream_rsi_cycle(self, num_revisions: int = 2) -> dict:
+    def dream_rsi_cycle(self, num_revisions: int = 2, skip_llm: bool = False) -> dict:
         """Full Dream-RSI offline phase: dream over world pool, redeploy best policy.
 
         Phase D: plans grid, sweeps beta, writes live_cycle_manifest + beta_sweep.
+        skip_llm=True: no policy LLM revision (daemon-safe / hang-proof).
         """
         grid_plan = self.plan_next_grid()
         harvest = self.harvest_term_tree()
@@ -992,12 +1010,21 @@ class ARSI:
         )
 
         # LLM policy revision using structured replay feedback (NOT semantic guidance)
-        feedback = self._pool_feedback_for_llm(current_eval)
-        new_policy = ExplorationPolicy(
-            name=f"portfolio_r{self._dream_rsi_cycles + 1}",
-            code=self.exploration_policy.code,
-        )
-        revised = new_policy.revise(feedback, self.llm) if self.llm and self.llm.available else False
+        revised = False
+        new_policy = None
+        feedback = ""
+        if not skip_llm and self.llm and self.llm.available:
+            try:
+                feedback = self._pool_feedback_for_llm(current_eval)
+                new_policy = ExplorationPolicy(
+                    name=f"portfolio_r{self._dream_rsi_cycles + 1}",
+                    code=self.exploration_policy.code,
+                )
+                revised = new_policy.revise(feedback, self.llm)
+            except Exception as e:
+                logger.warning(f"dream_rsi LLM revise skipped: {e}")
+                revised = False
+                new_policy = None
 
         # Phase D3: beta sweep on pool + live history rule
         live_hist = self.manifest_store.beta_history(n=3) or self._live_cycle_history[-3:]

@@ -741,11 +741,22 @@ class EnvironmentDimension:
         # LLM analysis
         analysis = None
         if self.llm and self.llm.available and traces:
-            trace_summary = json.dumps(
-                [{"action": t.get("action"), "outcome": t.get("outcome"),
-                  "params": list(t.get("action_params", {}).keys())} for t in traces[-15:]],
-                ensure_ascii=False,
-            )
+            def _pkeys(t: dict) -> list:
+                p = t.get("action_params", t.get("params", {}))
+                if isinstance(p, dict):
+                    return list(p.keys())
+                return []
+            try:
+                trace_summary = json.dumps(
+                    [{"action": t.get("action"), "outcome": t.get("outcome"),
+                      "params": _pkeys(t)} for t in traces[-15:]],
+                    ensure_ascii=False,
+                )
+            except Exception:
+                trace_summary = json.dumps(
+                    [{"action": t.get("action"), "outcome": t.get("outcome")} for t in traces[-10:]],
+                    ensure_ascii=False,
+                )
             prompt = f"""分析以下行为轨迹，判断环境配置是否需要改进。
 
 轨迹：

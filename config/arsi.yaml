@@ -6,9 +6,9 @@ llm:
   model: nvidia/nemotron-3.5-lightning-30b-a3b
   api_base: https://integrate.api.nvidia.com/v1
   # api_key: set via environment variable ARSI_API_KEY (NVIDIA nvapi-...)
-  max_tokens: 2048
+  max_tokens: 1024
   temperature: 0.3
-  timeout: 60
+  timeout: 20
   use_proxy: false
   proxy_url: http://127.0.0.1:7890
   fallback_to_heuristic: true
@@ -29,6 +29,7 @@ quality_gate:
   semantic: auto            # auto | off
   max_warn_ratio: 0.25
   max_admitted: 120
+  llm_eval_budget: 6        # max LLM semantic evals per harvest batch
 grid_plan:
   hard_max_branch_count: 4
   hard_max_refine_count: 8
