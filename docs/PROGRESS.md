@@ -798,3 +798,17 @@ set PYTHONPATH=E:\ARSI\src
 python E:\ARSI\scripts\host_loop.py --cycles 1 --http
 ```
 
+---
+
+## host_loop 入 daemon + 器官 measured（2026-09-20）
+
+| 项 | 结果 |
+|----|------|
+| daemon | `_run_host_loop` 每 **3 tick** 且数据源有变更时执行；health 记 `host_loop` |
+| 三 cycle 实测 | hermes / mimo-desktop / synthex：**organ_status=measured**，success_rate **1.0**，assigned=3 |
+| 真实摄入/圈 | hermes **333** + mimo **41** + synthex **83** |
+| Layer1 | holdout **0.899** |
+| 副作用 | Hermes skills / MiMo feedback / SYNTHEX docs guidance 均已落盘 |
+
+**含义**：M3 门槛已过，IWM 可消费宿主可信度；下一步看 multi-agent health 与 IWM 是否把 host 结果纳入控制。
+

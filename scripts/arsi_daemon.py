@@ -152,6 +152,16 @@ class ARSIDaemon:
                     logger.warning(f"multi-agent cycle failed: {e}")
                     ma_info = {"error": str(e)}
 
+            # 5d. Real host loop every 3 ticks — MiMo/Hermes/SYNTHEX side effects
+            host_loop_info = {}
+            if self._tick_count % 3 == 0 and changes:
+                try:
+                    host_loop_info = self._run_host_loop()
+                    logger.info(f"  host_loop: {host_loop_info.get('summary')}")
+                except Exception as e:
+                    logger.warning(f"host_loop failed: {e}")
+                    host_loop_info = {"error": str(e)}
+
             # 6. Save checkpoint
             self._save_checkpoint()
 
@@ -184,6 +194,7 @@ class ARSIDaemon:
                 },
                 "verified": self._health_verified(stats),
                 "multi_agent": ma_info or (stats.get("multi_agent") or {}),
+                "host_loop": host_loop_info if "host_loop_info" in locals() else {},
                 "layer1": stats.get("layer1"),
                 "paths": stats.get("paths"),
             })
@@ -195,6 +206,38 @@ class ARSIDaemon:
                 "status": "error",
                 "error": str(e),
             })
+
+    def _run_host_loop(self) -> dict:
+        """Invoke real host loop in-process via scripts/host_loop helpers."""
+        import importlib.util
+        hl_path = Path(__file__).parent / "host_loop.py"
+        spec = importlib.util.spec_from_file_location("arsi_host_loop", hl_path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        interface = None
+        try:
+            from arsi.adapters.bidirectional_interface import ARSIInterface
+            interface = ARSIInterface(self.arsi)
+        except Exception:
+            pass
+        orch = self.arsi.multi_agent
+        if orch is not None and interface is not None:
+            orch.interface = interface
+        report = mod.run_cycle(self.arsi, orch, cycle_id=self._tick_count)
+        execs = report.get("executions") or {}
+        summary = {
+            "ingest": report.get("ingest"),
+            "layer1_holdout": (report.get("layer1") or {}).get("holdout_accuracy"),
+            "hosts": {
+                k: {"success": v.get("success"), "effect": v.get("effect")}
+                for k, v in execs.items()
+            },
+            "multi_agent_agents": {
+                aid: a.get("organ_status")
+                for aid, a in ((report.get("multi_agent") or {}).get("multi_agent") or {}).get("agents", {}).items()
+            },
+        }
+        return summary
 
     def _detect_changes(self) -> list[str]:
         """Detect which data sources have changed."""
