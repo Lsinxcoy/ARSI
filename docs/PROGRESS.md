@@ -773,3 +773,28 @@ POST :9300/arsi/ma/result   {"agent_id":"hermes","task_id":"...","task":"...","o
 GET  :9300/arsi/ma/health
 ```
 
+---
+
+## 真实宿主循环 host_loop（2026-09-20）
+
+### 脚本
+`scripts/host_loop.py` — 不再合成宿主，直接接本机 MiMo / Hermes / SYNTHEX。
+
+### 本轮实测（cycle 1）
+| 宿主 | 真实数据 | 真实副作用 | 结果 |
+|------|----------|------------|------|
+| **Hermes** | state.db **3529 sessions / 758556 msgs / 54 tools**；ingest **333** | EmpowermentApplier 写 `AppData/Local/hermes/skills/arsi-*/SKILL.md`（09:51:41） | success effect **0.35** |
+| **MiMo** | ingest **41**（session memory） | `arsi_feedback/latest_suggestions.md` **+host_loop 段**（5204B） | success effect **0.5** |
+| **SYNTHEX** | ingest **83**；home/state 存在 | `E:\SYNTHEX Autopoiesis\docs\arsi_host_loop_guidance.md`（**core 未改**） | success effect **0.4** |
+
+- Layer1 holdout：**0.8889**（真实混合轨迹）
+- HTTP 多 agent：hermes-http register/dispatch/result **accepted**，external anchor verified
+- organ 三宿主均为 `unmeasured`（&lt;3 次结果，符合 M3）
+- 报告：`E:\ARSI\archive\eval\host_loop_latest.json`
+
+### 运行
+```text
+set PYTHONPATH=E:\ARSI\src
+python E:\ARSI\scripts\host_loop.py --cycles 1 --http
+```
+
