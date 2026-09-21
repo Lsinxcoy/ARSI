@@ -89,7 +89,10 @@ class EvidenceReceipt:
         if not self.quotes:
             ok = False
             reasons.append("no_quotes")
-        if self.source_path and Path(self.source_path).exists():
+        if not self.source_path:
+            ok = False
+            reasons.append("no_source_archive_ungrounded")
+        elif Path(self.source_path).exists():
             try:
                 data = Path(self.source_path).read_bytes()
                 h = hashlib.sha256(data).hexdigest()[:16]
@@ -102,8 +105,10 @@ class EvidenceReceipt:
             if not self.grounded:
                 ok = False
                 reasons.append("quote_not_in_source")
+        else:
+            ok = False
+            reasons.append("source_path_missing")
         if self.compression_ok is False and self.source_bytes > 0:
-            # receipt larger than source is allowed but noted
             reasons.append("receipt_not_smaller")
         self.verified = ok
         self.reason = ";".join(reasons) if reasons else "ok"
