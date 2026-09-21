@@ -130,6 +130,9 @@ class ARSI:
         self.current_grid_plan = GridPlan(reason="unplanned")
         self._world_min_verdict = "WARN"  # PASS | WARN
         self._term_best_scores: list[float] = []
+        # Score tracks (root-cause fix): never mix pool replay with live capability
+        self._live_capability_scores: list[float] = []
+        self._pool_scores: list[float] = []
         # Hyperparams: official unpublished → config/dream_rsi_params.yaml
         self.dream_rsi_params = load_dream_rsi_params()
         self._world_min_verdict = self.dream_rsi_params.world_min_verdict
@@ -623,13 +626,60 @@ class ARSI:
     # ── Sealed Evaluation ───────────────────────────────────────
 
     def run_evaluation(self, task_set_path: Optional[str] = None) -> dict:
-        """Run sealed evaluation (requires agent adapter)."""
-        # Simplified: report current stats as a proxy for evaluation
+        """Live capability evaluation (track: live_capability).
+
+        Weighted, explainable score — NOT pool replay_score.
+        Components: distill, Layer1 holdout, eta health, optional host success.
+        """
         stats = self.get_stats()
+        traces = float(stats.get("trace_count") or 0)
+        exp = float(stats.get("experience_count") or 0)
+        distill = exp / traces if traces > 0 else 0.0
+        layer1 = stats.get("layer1") or {}
+        holdout = float(layer1.get("holdout_accuracy") or 0.0)
+        if holdout <= 0:
+            holdout = float(getattr(self.siwm, "last_holdout_accuracy", 0.0) or 0.0)
+        eta = float(stats.get("eta") or 0.0)
+        eta_health = max(0.0, min(1.0, 1.0 - eta))
+
+        host_success = None
+        ma = stats.get("multi_agent") or {}
+        if isinstance(ma, dict):
+            inner = ma.get("multi_agent") if isinstance(ma.get("multi_agent"), dict) else ma
+            agents = (inner or {}).get("agents") or {}
+            comp = fail = 0
+            for a in agents.values():
+                if not isinstance(a, dict):
+                    continue
+                comp += int(a.get("tasks_completed") or 0)
+                fail += int(a.get("tasks_failed") or 0)
+            if comp + fail > 0:
+                host_success = comp / (comp + fail)
+
+        parts = {
+            "distill_ratio": max(0.0, min(1.0, distill * 3.0)),
+            "layer1_holdout": max(0.0, min(1.0, holdout)),
+            "eta_health": eta_health,
+        }
+        weights = {"distill_ratio": 0.25, "layer1_holdout": 0.45, "eta_health": 0.30}
+        if host_success is not None:
+            parts["host_success_rate"] = max(0.0, min(1.0, host_success))
+            weights["host_success_rate"] = 0.25
+        wsum = sum(weights[k] for k in parts)
+        score = sum(parts[k] * weights[k] for k in parts) / wsum if wsum else 0.0
+
         return {
-            "capability_proxy": stats["experience_count"] / max(stats["trace_count"], 1),
-            "self_model_eta": self.siwm.eta.value,
-            "generation": stats["generation"],
+            "score": round(score, 6),
+            "capability": round(score, 6),
+            "success_rate": round(score, 6),
+            "avg_score": round(score, 6),
+            "capability_proxy": round(distill, 6),
+            "self_model_eta": eta,
+            "generation": stats.get("generation", 0),
+            "components": {k: round(v, 6) for k, v in parts.items()},
+            "weights": {k: weights[k] for k in parts},
+            "track": "live_capability",
+            "note": "live capability weighted score; never mix with pool replay_score",
         }
 
     # ── Stats ───────────────────────────────────────────────────
@@ -691,12 +741,25 @@ class ARSI:
 
         # Phase D: plan grid + schedule operators for this term
         grid_plan = self.plan_next_grid()
+        uncovered = []
+        try:
+            uncovered = list(
+                (self.current_grid_plan.to_dict().get("evidence") or {}).get("uncovered") or []
+            )
+        except Exception:
+            uncovered = []
         scheduled = self.operator_scheduler.schedule(
             budget=max(1.0, float(self.current_grid_plan.branch_count)),
             max_operators=self.current_grid_plan.branch_count,
+            uncovered=uncovered,
         )
         scheduled_dims = [op.dimension.value for op in scheduled]
-        n_steps = min(n_steps, max(1, self.current_grid_plan.branch_count * self.current_grid_plan.refine_count))
+        # Caller-requested n_steps is authoritative; only cap by hard max (not W*R
+        # which can collapse to 2 when refine_count=1).
+        hard = int(getattr(self.dream_rsi_params, "hard_max_branch_count", 4)) * int(
+            getattr(self.dream_rsi_params, "hard_max_refine_count", 8)
+        )
+        n_steps = max(1, min(int(n_steps), max(hard, 1)))
 
         # Reset cost ledger for this term
         self.cost_ledger.reset()
@@ -733,12 +796,14 @@ class ARSI:
         # Adaptive controller: feed performance
         best_score = float(after_eval.get("score", after_eval.get("success_rate", 0.0)) or 0.0)
         if isinstance(after_eval, dict):
-            for key in ("score", "total", "success_rate", "avg_score"):
+            for key in ("score", "capability", "total", "success_rate", "avg_score"):
                 if key in after_eval and isinstance(after_eval[key], (int, float)):
                     best_score = float(after_eval[key])
                     break
         self.adaptive_controller.record_performance(best_score)
-        self._term_best_scores.append(best_score)
+        # D7 uses live capability track only
+        self._live_capability_scores.append(float(best_score))
+        self._term_best_scores.append(best_score)  # backward-compatible alias
 
         # MetaRSI Law 2: capability change invalidates operator signals
         self.operator_scheduler.mark_capability_change()
@@ -767,6 +832,7 @@ class ARSI:
             decision_rounds=n_steps,
             best_score=best_score,
             avg_score=best_score,
+            live_capability_score=float(best_score),
             beta=self.portfolio_policy.beta,
             deployed_policy=self.portfolio_policy.name,
             pool_size_after=self.world_pool.size,
@@ -1013,7 +1079,7 @@ class ARSI:
 
         current_fn = build_policy_fn(self.portfolio_policy)
         current_eval = self.world_pool.evaluate_policy_across_pool(
-            current_fn, policy_name=self.portfolio_policy.name
+            current_fn, policy_name=self.portfolio_policy.name, max_rounds=12
         )
 
         # LLM policy revision using structured replay feedback (NOT semantic guidance)
@@ -1124,6 +1190,15 @@ class ARSI:
 
         # Adaptive controller + performance
         self.adaptive_controller.record_performance(deployed_score)
+        # Pool track for strategy selection metrics
+        self._pool_scores.append(float(deployed_score))
+        # Refresh live capability alongside pool cycle (separate track)
+        try:
+            live_eval = self.run_evaluation()
+            self._live_capability_scores.append(float(live_eval.get("score") or 0.0))
+            live_cap = float(live_eval.get("score") or 0.0)
+        except Exception:
+            live_cap = None
         self._term_best_scores.append(deployed_score)
 
         gate_stats = harvest.get("quality_gate") or {}
@@ -1146,6 +1221,7 @@ class ARSI:
                     for op in self.operator_scheduler.schedule(
                         budget=float(grid_plan.branch_count),
                         max_operators=grid_plan.branch_count,
+                        uncovered=list((grid_plan.to_dict().get("evidence") or {}).get("uncovered") or []),
                     )
                 ],
             ),
@@ -1160,6 +1236,7 @@ class ARSI:
             decision_rounds=int(self.world_pool.size),
             best_score=float(deployed_score),
             avg_score=float(current_eval.get("avg_score", 0.0)),
+            live_capability_score=live_cap,
             beta=self.portfolio_policy.beta,
             deployed_policy=deployed,
             pool_size_after=self.world_pool.size,

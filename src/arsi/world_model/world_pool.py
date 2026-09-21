@@ -59,20 +59,24 @@ class WorldPool:
         tree.build_from_traces(traces)
         return self.append_tree(tree, world_id=world_id, **kwargs)
 
-    def evaluate_policy_across_pool(self, policy_fn, policy_name: str = "policy", max_rounds: int = 20) -> dict:
-        """Dream-RSI multi-world evaluation: score policy on EVERY historical world."""
+    def evaluate_policy_across_pool(self, policy_fn, policy_name: str = "policy", max_rounds: int = 12) -> dict:
+        """Dream-RSI multi-world evaluation: score policy on EVERY historical world.
+
+        max_rounds default 12 — cost control; worlds still get probe diversity.
+        """
         if not self.worlds:
             return {"available": False, "reason": "empty_pool", "avg_score": 0.0, "results": []}
 
         results: list[ReplayResult] = []
         for world in self.worlds:
-            # Deep-copy semantics: replay resets inside world
             result = world.replay(policy_fn, policy_name=policy_name, max_rounds=max_rounds)
             results.append(result)
 
         avg_score = sum(r.replay_score for r in results) / len(results)
         avg_quality = sum(r.quality for r in results) / len(results)
         avg_probes = sum(r.probes for r in results) / len(results)
+        # pool diversity proxy: unique node counts / fail mixes
+        node_counts = [len(w._full) for w in self.worlds]
         return {
             "available": True,
             "policy_name": policy_name,
@@ -80,6 +84,13 @@ class WorldPool:
             "avg_score": round(avg_score, 4),
             "avg_quality": round(avg_quality, 4),
             "avg_probes": round(avg_probes, 4),
+            "pool_diversity": {
+                "node_count_min": min(node_counts) if node_counts else 0,
+                "node_count_max": max(node_counts) if node_counts else 0,
+                "node_count_mean": round(sum(node_counts) / len(node_counts), 2) if node_counts else 0,
+            },
+            "track": "pool_replay",
+            "max_rounds": max_rounds,
             "per_world": [
                 {
                     "world_id": r.world_id,
@@ -90,6 +101,7 @@ class WorldPool:
                     "anchors": r.successful_anchors,
                     "repairables": r.repairables,
                     "score_breakdown": getattr(r, "score_breakdown", {}),
+                    "node_count": len(next((w._full for w in self.worlds if w.world_id == r.world_id), {}) or {}),
                 }
                 for r in results
             ],

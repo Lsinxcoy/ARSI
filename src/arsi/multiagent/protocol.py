@@ -272,12 +272,15 @@ class MultiAgentOrchestrator:
             except Exception as e:
                 anchor = {"error": str(e)}
 
-        # IWM: bind host success as portfolio/memory-adjacent evidence when measured
+        # IWM: bind EVERY host outcome into memory organ (not only measured)
         iwm_bind = None
-        if self.arsi is not None and getattr(self.arsi, "iwm", None) is not None and measured:
+        if self.arsi is not None and getattr(self.arsi, "iwm", None) is not None:
             try:
-                self.arsi.iwm.observe_memory(success, note=f"multiagent:{agent_id}:{outcome}")
+                self.arsi.iwm.observe_memory(success, note=f"multiagent:{agent_id}:{outcome}:measured={measured}")
                 iwm_bind = "observe_memory"
+                if measured:
+                    # stronger score when organ formally measured
+                    self.arsi.iwm.observe_memory(success, note=f"multiagent:{agent_id}:measured_weight")
             except Exception:
                 iwm_bind = None
 

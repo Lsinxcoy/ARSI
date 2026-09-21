@@ -97,31 +97,47 @@ def run_eval_loop(
 
     result.world_count = pool.size
     fixed_eval = pool.evaluate_policy_across_pool(
-        fixed_exploration_fn(), policy_name="fixed"
+        fixed_exploration_fn(), policy_name="fixed", max_rounds=12
     )
     dream_eval = pool.evaluate_policy_across_pool(
-        build_policy_fn(arsi.portfolio_policy), policy_name="dream_rsi"
+        build_policy_fn(arsi.portfolio_policy), policy_name="dream_rsi", max_rounds=12
     )
     result.fixed_avg_score = float(fixed_eval.get("avg_score", 0.0))
     result.fixed_avg_quality = float(fixed_eval.get("avg_quality", 0.0))
     result.dream_avg_score = float(dream_eval.get("avg_score", 0.0))
     result.dream_avg_quality = float(dream_eval.get("avg_quality", 0.0))
     result.delta_score = round(result.dream_avg_score - result.fixed_avg_score, 4)
+    result.notes["pool_track"] = {
+        "fixed_avg_score": result.fixed_avg_score,
+        "dream_avg_score": result.dream_avg_score,
+        "delta": result.delta_score,
+        "world_count": result.world_count,
+    }
 
-    live = list(getattr(arsi, "_term_best_scores", []) or [])
-    # merge manifest live scores
+    # LIVE track only: capability scores — never pool replay_score (root-cause fix)
+    live = [float(x) for x in (getattr(arsi, "_live_capability_scores", None) or [])]
     try:
-        for row in arsi.manifest_store.beta_history(n=20):
-            if "best_score" in row:
-                live.append(float(row["best_score"]))
+        for m in arsi.manifest_store.recent(20):
+            v = getattr(m, "live_capability_score", None)
+            if v is not None:
+                live.append(float(v))
     except Exception:
         pass
-    result.live_scores = [float(x) for x in live]
-    regressed, reg_reason = detect_live_regression(
-        result.live_scores,
-        window=params.rollback_window,
-        eps=params.rollback_delta_eps,
-    )
+    result.live_scores = live
+    result.notes["live_track"] = {
+        "source": "live_capability_only",
+        "n": len(live),
+        "tail": live[-8:],
+    }
+    min_live_n = int(getattr(params, "rollback_window", 3) or 3) + 1
+    if len(live) < min_live_n:
+        regressed, reg_reason = False, f"insufficient_live_capability_samples n={len(live)}<{min_live_n}"
+    else:
+        regressed, reg_reason = detect_live_regression(
+            result.live_scores,
+            window=params.rollback_window,
+            eps=params.rollback_delta_eps,
+        )
     result.live_regression = regressed
     result.notes["regression_reason"] = reg_reason
     result.notes["pool_dream_wins"] = result.dream_wins_pool

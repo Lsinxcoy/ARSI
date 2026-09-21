@@ -88,6 +88,23 @@ class ARSIDaemon:
         self.arsi = ARSI.from_config("config/arsi.yaml")
         self.applier = EmpowermentApplier(self.arsi.store)
         self.orchestrator = DimensionOrchestrator(self.arsi.store, llm=self.arsi.llm)
+        # Register standard hosts so IWM can accumulate organ evidence
+        try:
+            if getattr(self.arsi, "multi_agent", None) is not None:
+                for aid, role, caps in (
+                    ("hermes", "tool_runner", ["skills", "tools"]),
+                    ("mimo-desktop", "worker", ["sessions", "memory"]),
+                    ("synthex-mothernest", "researcher", ["mechanisms", "state"]),
+                ):
+                    if aid not in self.arsi.multi_agent.agents:
+                        self.arsi.multi_agent.register(aid, role=role, capabilities=caps)
+                try:
+                    from arsi.adapters.bidirectional_interface import ARSIInterface
+                    self.arsi.multi_agent.interface = ARSIInterface(self.arsi)
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"host pre-register failed: {e}")
 
         logger.info(f"ARSI daemon started (tick_sleep={self.tick_sleep}s, max_ticks={self.max_ticks or '∞'})")
 
@@ -170,15 +187,19 @@ class ARSIDaemon:
                     logger.warning(f"multi-agent cycle failed: {e}")
                     ma_info = {"error": str(e)}
 
-            # 5d. Real host loop every 3 ticks — MiMo/Hermes/SYNTHEX side effects
+            # 5d. Real host loop — every 2 ticks or when agents already registered
             host_loop_info = {}
-            if self._tick_count % 3 == 0 and changes:
-                try:
-                    host_loop_info = self._run_host_loop()
-                    logger.info(f"  host_loop: {host_loop_info.get('summary')}")
-                except Exception as e:
-                    logger.warning(f"host_loop failed: {e}")
-                    host_loop_info = {"error": str(e)}
+            ma_agents = 0
+            if getattr(self.arsi, "multi_agent", None) is not None:
+                ma_agents = len(self.arsi.multi_agent.agents or {})
+            if self._tick_count % 2 == 0 or ma_agents > 0:
+                if changes or ma_agents > 0:
+                    try:
+                        host_loop_info = self._run_host_loop()
+                        logger.info(f"  host_loop: {host_loop_info.get('summary')}")
+                    except Exception as e:
+                        logger.warning(f"host_loop failed: {e}")
+                        host_loop_info = {"error": str(e)}
 
             # 6. Save checkpoint
             self._save_checkpoint()

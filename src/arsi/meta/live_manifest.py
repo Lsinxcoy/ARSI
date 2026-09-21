@@ -69,6 +69,7 @@ class LiveCycleManifest:
     decision_rounds: int = 0
     best_score: float = 0.0
     avg_score: float = 0.0
+    live_capability_score: Optional[float] = None
     beta: float = 0.6
     deployed_policy: str = "portfolio"
     pool_size_after: int = 0
@@ -110,6 +111,11 @@ class LiveCycleManifest:
             decision_rounds=int(d.get("decision_rounds", 0)),
             best_score=float(d.get("best_score", 0.0)),
             avg_score=float(d.get("avg_score", 0.0)),
+            live_capability_score=(
+                float(d["live_capability_score"])
+                if d.get("live_capability_score") is not None
+                else None
+            ),
             beta=float(d.get("beta", 0.6)),
             deployed_policy=str(d.get("deployed_policy", "portfolio")),
             pool_size_after=int(d.get("pool_size_after", 0)),
@@ -125,6 +131,7 @@ class LiveCycleManifest:
         return {
             "best_score": self.best_score,
             "beta": self.beta,
+            "live_capability_score": self.live_capability_score,
             "cycle_id": self.cycle_id,
             "probe_work": self.probe_work,
             "planned_w": self.planned_grid.branch_count,

@@ -108,8 +108,8 @@ class TestEvalLoop:
         arsi.world_pool.append_tree(_tree(0.8, "w1"), world_id="T1")
         arsi.world_pool.append_tree(_tree(0.6, "w2"), world_id="T2")
         arsi.portfolio_policy = PortfolioPolicy(beta=0.6, max_workers=2)
-        # simulate live regression
-        arsi._term_best_scores = [0.5, 0.5, 0.5, 0.40, 0.35, 0.30]
+        # simulate live capability regression (D7 track only after full-repair)
+        arsi._live_capability_scores = [0.5, 0.5, 0.5, 0.40, 0.35, 0.30]
 
         result = run_eval_loop(arsi, params=arsi.dream_rsi_params, report_dir=tmp_path / "eval")
         assert result.world_count == 2
