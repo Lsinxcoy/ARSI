@@ -154,6 +154,19 @@ class ARSIBrief:
             lines.append("## Note")
             lines.append("  History is provided as structured stats only (no direction advice).")
 
+        # A-line: IWM strategy structured facts
+        strategy = getattr(self, "channel_strategy", None)
+        if strategy is not None:
+            if hasattr(strategy, "as_structured_block"):
+                lines.extend(strategy.as_structured_block())
+                lines.append("")
+            elif isinstance(strategy, dict):
+                lines.append("## IWM Strategy (structured facts)")
+                for k in ("focus", "confidence", "control_flags", "operational_warnings"):
+                    if k in strategy:
+                        lines.append(f"- {k}: {strategy[k]}")
+                lines.append("")
+
         # Channel evidence (B-line)
         receipt = getattr(self, "channel_receipt", None)
         if receipt:
@@ -277,6 +290,24 @@ class ARSIInterface:
         # 8. Dream-RSI: Build history simulator from discovery tree
         history_simulator = self._build_history_simulator(task_description)
 
+        # 9. A-line: IWM host empowerment strategy (structured facts)
+        strategy = None
+        try:
+            from arsi.iwm.host_strategy import build_host_strategy
+            strategy = build_host_strategy(self.arsi, agent_id=agent_id)
+            # confidence blend: experience volume + IWM strategy confidence
+            confidence = max(0.05, min(0.95, 0.5 * confidence + 0.5 * strategy.confidence))
+            # skill priors from IWM join task skills
+            for s in strategy.skill_priorities:
+                if s not in skills:
+                    skills.append(s)
+            for w in strategy.operational_warnings:
+                tag = f"[IWM:{w}]"
+                if tag not in warnings:
+                    warnings.append(tag)
+        except Exception as e:
+            logger.warning(f"IWM host strategy failed: {e}")
+
         brief = ARSIBrief(
             task_description=task_description,
             agent_id=agent_id,
@@ -288,6 +319,12 @@ class ARSIInterface:
             history_simulator=history_simulator,
             policy=self.brief_policy,
         )
+        if strategy is not None:
+            brief.channel_strategy = strategy
+            if self.brief_policy == ARSIBrief.POLICY_FULL:
+                meta = strategy.meta_only_recommendations()
+                if meta:
+                    brief.recommendations = list(brief.recommendations) + meta
 
         self._active_briefs[brief.brief_id] = brief
 

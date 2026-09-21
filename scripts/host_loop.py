@@ -129,6 +129,10 @@ def execute_hermes(arsi: ARSI, orchestrator: MultiAgentOrchestrator, task_id: st
         dim_results = {"_error": {"error": str(e)}}
 
     applier = EmpowermentApplier(arsi.store)
+    try:
+        applier.bind_arsi(arsi)
+    except Exception:
+        pass
     apply_res = applier.apply_all(dim_results, agent_id="hermes")
 
     after = {}
@@ -177,13 +181,25 @@ def execute_mimo(arsi: ARSI, orchestrator: MultiAgentOrchestrator, task_id: str)
     state = arsi.siwm.refresh_state()
     advice = arsi.iwm.governor_advice(state) if getattr(arsi, "iwm", None) else {}
     frontier = arsi.iwm.frontier.exploit_bias() if getattr(arsi, "iwm", None) else []
+    try:
+        from arsi.iwm.host_strategy import build_host_strategy
+        strategy = build_host_strategy(arsi, agent_id="mimo-desktop")
+        strat_block = "\n".join(strategy.as_structured_block())
+        focus = strategy.focus
+        conf = strategy.confidence
+    except Exception:
+        strat_block = ""
+        focus = "execute_with_evidence"
+        conf = advice.get("self_trust") or 0.5
     line = (
         f"\n## host_loop {datetime.now().isoformat()}\n"
         f"- eta={state.eta:.3f} layer1_holdout={getattr(arsi.siwm, 'last_holdout_accuracy', 0)}\n"
         f"- iwm_forbid_dream={advice.get('forbid_default_dream')} "
         f"prefer_learn={advice.get('prefer_learn')}\n"
+        f"- memory_trust={advice.get('memory_trust')} focus={focus} conf={conf:.2f}\n"
         f"- frontier_exploit={frontier[:5]}\n"
-        f"- 建议：优先处理 host_loop 写入的器官不可靠项；勿依赖无证据 dream\n"
+        f"{strat_block}\n"
+        f"- 建议：按 IWM Strategy focus 执行；Receipt 必须 grounded\n"
     )
     MIMO_FEEDBACK.parent.mkdir(parents=True, exist_ok=True)
     existing = MIMO_FEEDBACK.read_text(encoding="utf-8") if MIMO_FEEDBACK.exists() else "# ARSI 赋能建议\n"
