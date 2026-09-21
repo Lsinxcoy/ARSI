@@ -187,10 +187,20 @@ def execute_mimo(arsi: ARSI, orchestrator: MultiAgentOrchestrator, task_id: str)
     )
     MIMO_FEEDBACK.parent.mkdir(parents=True, exist_ok=True)
     existing = MIMO_FEEDBACK.read_text(encoding="utf-8") if MIMO_FEEDBACK.exists() else "# ARSI 赋能建议\n"
-    MIMO_FEEDBACK.write_text(existing + line, encoding="utf-8")
+    body = existing + line
+    try:
+        from arsi.foundation.evidence_receipt import fusion_write_and_verify
+        fusion = fusion_write_and_verify(MIMO_FEEDBACK, body, receipt_kind="mimo_feedback")
+        success = bool(fusion.get("write_ok"))
+        effect = 0.5 if success else 0.1
+        notes_extra = fusion
+    except Exception:
+        MIMO_FEEDBACK.write_text(body, encoding="utf-8")
+        after = _file_size(MIMO_FEEDBACK)
+        success = after > before and after > 0
+        effect = 0.5 if success else 0.0
+        notes_extra = {"bytes_before": before, "bytes_after": after}
     after = _file_size(MIMO_FEEDBACK)
-    success = after > before and after > 0
-    effect = 0.5 if success else 0.0
     result = orchestrator.submit_result(
         agent_id="mimo-desktop",
         task_id=task_id,

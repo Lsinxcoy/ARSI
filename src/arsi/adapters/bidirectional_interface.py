@@ -104,8 +104,10 @@ class ARSIBrief:
     def format_for_agent(self) -> str:
         """Format brief for agent consumption.
 
-        structured policy: no Recommendations / Past Lessons sections (§5.1).
-        full policy: legacy complete brief.
+        B-line (SoL-Pi channel):
+          - structured policy: no Recommendations / Past Lessons (§5.1)
+          - large payload → ObservationPack handle + excerpt
+          - evidence receipt block when channel_receipt is attached
         """
         lines = [
             f"# ARSI Brief [{self.brief_id}]",
@@ -151,7 +153,30 @@ class ARSIBrief:
         else:
             lines.append("## Note")
             lines.append("  History is provided as structured stats only (no direction advice).")
-        return "\n".join(lines)
+
+        # Channel evidence (B-line)
+        receipt = getattr(self, "channel_receipt", None)
+        if receipt:
+            lines.append("## Evidence Receipt (channel)")
+            if hasattr(receipt, "brief_snippet"):
+                lines.append(receipt.brief_snippet())
+            elif isinstance(receipt, dict):
+                lines.append(f"- id: {receipt.get('receipt_id')}")
+                lines.append(f"- verified: {receipt.get('verified')} ({receipt.get('reason')})")
+                for q in (receipt.get("quotes") or [])[:3]:
+                    lines.append(f"  - {q}")
+            lines.append("")
+
+        body = "\n".join(lines)
+        # ObservationPack: large brief → handle for host, full text archived
+        try:
+            from arsi.foundation.observation_pack import pack_for_host
+            packed = pack_for_host(body, kind=f"brief_{self.agent_id}")
+            if packed.startswith("# ARSI Observation Handle"):
+                return packed + "\n\n## Full brief handle note\nOriginal archived; retrieve via handle.\n"
+            return body
+        except Exception:
+            return body
 
 
 class ARSIReport:
@@ -507,11 +532,25 @@ class ARSIInterface:
         return ""
 
     def _write_feedback(self, brief: ARSIBrief) -> None:
-        """Write brief to feedback file for agent to read."""
+        """Write brief to feedback file — fused write + evidence receipt (B-line)."""
         try:
             FEEDBACK_DIR.mkdir(parents=True, exist_ok=True)
             feedback_file = FEEDBACK_DIR / "latest_brief.md"
-            feedback_file.write_text(brief.format_for_agent(), encoding="utf-8")
+            body = brief.format_for_agent()
+            try:
+                from arsi.foundation.evidence_receipt import build_receipt_from_text, fusion_write_and_verify
+                result = fusion_write_and_verify(feedback_file, body, receipt_kind="host_brief")
+                brief.channel_receipt = result.get("receipt")
+                # also persist structured receipt json beside feedback
+                build_receipt_from_text(
+                    body,
+                    source_kind="host_brief",
+                    fields={"brief_id": brief.brief_id, "agent_id": brief.agent_id},
+                    archive_name=f"host_brief_{brief.brief_id}.txt",
+                )
+            except Exception as e:
+                feedback_file.write_text(body, encoding="utf-8")
+                logger.warning(f"receipt path failed, plain write: {e}")
         except Exception as e:
             logger.warning(f"Failed to write feedback: {e}")
 

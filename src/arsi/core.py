@@ -730,6 +730,15 @@ class ARSI:
             "paths": __import__("arsi.foundation.paths", fromlist=["identity_report"]).identity_report(),
             "vacuum": __import__("arsi.foundation.vacuum", fromlist=["consolidation_vacuum"]).consolidation_vacuum().stats,
             "multi_agent": getattr(self, "multi_agent", None).health() if getattr(self, "multi_agent", None) else {},
+            "channel": {
+                "note": "SoL-Pi B-line host empowerment channel",
+                "modules": [
+                    "foundation/evidence_receipt",
+                    "foundation/observation_pack",
+                    "foundation/efficiency_gate",
+                ],
+                "brief_policy": "structured+receipt+pack_handle",
+            },
         }
 
     # ── Lifecycle ───────────────────────────────────────────────

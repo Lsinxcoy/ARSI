@@ -193,7 +193,12 @@ Expected Calibration Error (ECE): {ece:.3f}
 
         skill_dir = self._skills_dir / "arsi-calibration"
         skill_dir.mkdir(parents=True, exist_ok=True)
-        (skill_dir / "SKILL.md").write_text(cal_content, encoding="utf-8")
+        try:
+            from arsi.foundation.evidence_receipt import fusion_write_and_verify
+            fusion = fusion_write_and_verify(skill_dir / "SKILL.md", cal_content, receipt_kind="hermes_skill")
+        except Exception:
+            (skill_dir / "SKILL.md").write_text(cal_content, encoding="utf-8")
+            fusion = {"fused_write": False}
 
         self._append_feedback(f"\n## 置信度校准\n- ECE: {ece:.3f}\n- 建议: {'需要校准' if ece > 0.15 else '校准良好'}\n")
 
