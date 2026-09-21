@@ -51,6 +51,8 @@ class DiscoveryNode:
             "depth": self.depth,
             "timestamp": self.timestamp,
             "children": self.children,
+            "metadata": self.metadata,
+            "fail_class": (self.metadata or {}).get("fail_class", "ok"),
         }
 
 

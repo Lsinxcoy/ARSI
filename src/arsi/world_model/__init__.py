@@ -3,6 +3,7 @@ from arsi.world_model.siwm import SIWM, EtaTracker, MindZero, BehaviorPredictor
 from arsi.world_model.discovery_tree import DiscoveryTree
 from arsi.world_model.replay_world import ReplayWorld, Observation, ReplayResult
 from arsi.world_model.world_pool import WorldPool
+from arsi.world_model.world_evolver import WorldEvolver, EvolutionResult, verify_world, evolve_traces
 from arsi.world_model.dream_rsi_deep import (
     ActionBatch,
     AdaptiveBehaviorController,
@@ -23,6 +24,10 @@ __all__ = [
     "Observation",
     "ReplayResult",
     "WorldPool",
+    "WorldEvolver",
+    "EvolutionResult",
+    "verify_world",
+    "evolve_traces",
     "ActionBatch",
     "AdaptiveBehaviorController",
     "DeepReplaySimulator",

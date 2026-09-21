@@ -220,6 +220,7 @@ class ARSIDaemon:
                 "experience_count": stats.get("experience_count", 0),
                 "world_pool_size": stats.get("world_pool_size", 0),
                 "manifest_cycles": stats.get("manifest_cycles", 0),
+                "env_evolution": stats.get("env_evolution") or {},
                 "beta": stats.get("beta", 0.6),
                 "grid_plan": stats.get("grid_plan", {}),
                 "iwm": {

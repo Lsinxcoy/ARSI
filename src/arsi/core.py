@@ -136,6 +136,11 @@ class ARSI:
         # Hyperparams: official unpublished → config/dream_rsi_params.yaml
         self.dream_rsi_params = load_dream_rsi_params()
         self._world_min_verdict = self.dream_rsi_params.world_min_verdict
+        # Environment Evolution (arXiv:2609.04128): D_T + WorldEvolver + EL Scheduler
+        try:
+            self.world_pool.configure_env_evolution(**self.dream_rsi_params.env_evolution_cfg())
+        except Exception:
+            pass
         if hasattr(self.quality_gate, "max_warn_ratio"):
             self.quality_gate.max_warn_ratio = float(getattr(self.dream_rsi_params, "max_warn_ratio", 0.25) or 0.25)
             self.quality_gate.max_admitted = int(getattr(self.dream_rsi_params, "max_admitted", 120) or 120)
@@ -713,6 +718,7 @@ class ARSI:
             "cost_verifier_queries": self.cost_ledger.snapshot()["verifier"]["queries"],
             "iron_laws": self.iron_laws.law_ids,
             "world_pool_size": self.world_pool.size,
+            "env_evolution": self.world_pool.env_evolution_health(),
             "manifest_cycles": self.manifest_store.size,
             "beta": self.portfolio_policy.beta,
             "grid_plan": self.current_grid_plan.to_dict(),
@@ -916,16 +922,21 @@ class ARSI:
                 "quality_gate": gate_stats,
             }
 
+        env_cfg = getattr(self.dream_rsi_params, "env_evolution_cfg", lambda: {})() or {}
+        evolve_every = max(1, int(env_cfg.get("evolve_every_n", 1) or 1))
+        max_evolved = int(env_cfg.get("max_evolved_per_harvest", 1) or 0)
+        # Seed world enters lineage g0; children go to g+1 via WorldEvolver
         world = self.world_pool.append_from_traces(
             filtered,
             world_id=world_id,
             max_parallelism=self.portfolio_policy.max_workers,
+            meta={
+                "source": "harvest",
+                "generation": 0,
+                "evolved": False,
+                "lineage_id": f"lin_{world_id or f'T{self.world_pool.size}'}",
+            },
         )
-        try:
-            self.world_pool.persist_to(self._world_pool_path)
-        except Exception as e:
-            logger.warning(f"world pool persist failed: {e}")
-        # Apply configured replay score mode to new worlds
         try:
             mode = getattr(self.dream_rsi_params, "score_mode", "quality_anchored") or "quality_anchored"
             world.score_mode = mode
@@ -933,10 +944,34 @@ class ARSI:
             world.weak_quality_cost_scale = float(getattr(self.dream_rsi_params, "weak_quality_cost_scale", 0.2) or 0.2)
         except Exception:
             pass
+
+        evolution = {"attempted": False, "accepted": []}
+        if env_cfg.get("enabled", True) and max_evolved > 0:
+            self._term_trees_built += 1
+            if (self._term_trees_built % evolve_every) == 0:
+                evolution["attempted"] = True
+                try:
+                    accepted = self.world_pool.evolve_from_seed(
+                        world,
+                        n=max_evolved,
+                        effort=str(env_cfg.get("effort", "high")),
+                    )
+                    evolution["accepted"] = accepted
+                    evolution["accepted_count"] = sum(1 for a in accepted if a.get("accepted"))
+                except Exception as e:
+                    logger.warning(f"env evolution failed: {e}")
+                    evolution["error"] = str(e)
+        else:
+            self._term_trees_built += 1
+
+        try:
+            self.world_pool.persist_to(self._world_pool_path)
+        except Exception as e:
+            logger.warning(f"world pool persist failed: {e}")
+
         # Keep latest tree object in sync for legacy APIs
         self.discovery_tree = DiscoveryTree()
         self.discovery_tree.build_from_traces(filtered)
-        self._term_trees_built += 1
         return {
             "harvested": True,
             "world_id": world.world_id,
@@ -945,6 +980,9 @@ class ARSI:
             "traces_in": len(traces),
             "traces_kept": len(filtered),
             "quality_gate": gate_stats,
+            "env_difficulty": getattr(world, "env_difficulty", {}) or {},
+            "lineage_id": getattr(world, "lineage_id", None),
+            "evolution": evolution,
         }
 
     @staticmethod
@@ -1087,9 +1125,23 @@ class ARSI:
             return {"ran": False, "reason": "empty_pool", "harvest": harvest, "grid_plan": grid_plan.to_dict()}
 
         current_fn = build_policy_fn(self.portfolio_policy)
+        use_el = bool(getattr(self.dream_rsi_params, "env_use_el_in_dream", True))
         current_eval = self.world_pool.evaluate_policy_across_pool(
-            current_fn, policy_name=self.portfolio_policy.name, max_rounds=12
+            current_fn,
+            policy_name=self.portfolio_policy.name,
+            max_rounds=12,
+            use_el=use_el,
         )
+        if not current_eval.get("el_used"):
+            try:
+                self.world_pool.record_policy_probes(current_eval)
+            except Exception:
+                pass
+        el_advances = []
+        try:
+            el_advances = self.world_pool.el_advance_all()
+        except Exception:
+            el_advances = []
 
         # LLM policy revision using structured replay feedback (NOT semantic guidance)
         revised = False
@@ -1275,6 +1327,13 @@ class ARSI:
             "ran": True,
             "harvest": harvest,
             "pool_size": self.world_pool.size,
+            "env_evolution": {
+                "harvest": harvest.get("evolution"),
+                "el_used": current_eval.get("el_used"),
+                "el_advances": el_advances,
+                "el_health": (current_eval.get("el_health") or self.world_pool.el_scheduler.health()),
+                "pool_difficulty": self.world_pool.env_evolution_health().get("difficulty"),
+            },
             "current_score": current_eval.get("avg_score", 0.0),
             "deployed": deployed,
             "deployed_score": deployed_score,

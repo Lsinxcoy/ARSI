@@ -58,3 +58,15 @@ eval_loop:
 
 brief:
   policy: structured              # structured | full
+
+# Environment Evolution — arXiv:2609.04128 (ARSI adapted)
+# Official EL τ paper uses 6/8=0.75. Hyperparams are ARSI-operational, not paper-copied training knobs.
+env_evolution:
+  enabled: true
+  el_tau: 0.75
+  el_batch: 8
+  effort: high                    # low | high | max (max discouraged)
+  evolve_every_n: 1
+  max_evolved_per_harvest: 1
+  min_seed_nodes: 3
+  use_el_in_dream: true

@@ -10,6 +10,14 @@ from arsi.meta.grid_plan import GridPlan, GridPlanningContext, plan_grid
 from arsi.meta.beta_sweep import BetaSweepResult, sweep_beta
 from arsi.meta.dream_rsi_params import DreamRSIParams, load_dream_rsi_params
 from arsi.meta.eval_loop import CompareResult, detect_live_regression, run_eval_loop
+from arsi.meta.env_difficulty import (
+    DifficultyComponents,
+    ReferenceCorpus,
+    compute_env_difficulty,
+    pool_difficulty_stats,
+    weakness_vs_difficulty,
+)
+from arsi.meta.el_scheduler import ELScheduler, LineageState
 
 __all__ = [
     "LiveCycleManifest",
@@ -24,4 +32,11 @@ __all__ = [
     "CompareResult",
     "detect_live_regression",
     "run_eval_loop",
+    "DifficultyComponents",
+    "ReferenceCorpus",
+    "compute_env_difficulty",
+    "pool_difficulty_stats",
+    "weakness_vs_difficulty",
+    "ELScheduler",
+    "LineageState",
 ]

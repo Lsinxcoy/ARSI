@@ -52,6 +52,15 @@ class DreamRSIParams:
     rollback_delta_eps: float = 0.02
     brief_policy: str = "structured"
     official_code_status: str = "not_released"
+    # Environment Evolution (arXiv:2609.04128)
+    env_evolution_enabled: bool = True
+    env_el_tau: float = 0.75
+    env_el_batch: int = 8
+    env_effort: str = "high"
+    env_evolve_every_n: int = 1
+    env_max_evolved_per_harvest: int = 1
+    env_min_seed_nodes: int = 3
+    env_use_el_in_dream: bool = True
     raw: dict = field(default_factory=dict)
 
     @classmethod
@@ -95,10 +104,31 @@ class DreamRSIParams:
         obj.rollback_delta_eps = float(el.get("rollback_delta_eps", obj.rollback_delta_eps))
         br = data.get("brief") or {}
         obj.brief_policy = str(br.get("policy", obj.brief_policy))
+        ee = data.get("env_evolution") or {}
+        obj.env_evolution_enabled = bool(ee.get("enabled", obj.env_evolution_enabled))
+        obj.env_el_tau = float(ee.get("el_tau", obj.env_el_tau))
+        obj.env_el_batch = int(ee.get("el_batch", obj.env_el_batch))
+        obj.env_effort = str(ee.get("effort", obj.env_effort))
+        obj.env_evolve_every_n = int(ee.get("evolve_every_n", obj.env_evolve_every_n))
+        obj.env_max_evolved_per_harvest = int(ee.get("max_evolved_per_harvest", obj.env_max_evolved_per_harvest))
+        obj.env_min_seed_nodes = int(ee.get("min_seed_nodes", obj.env_min_seed_nodes))
+        obj.env_use_el_in_dream = bool(ee.get("use_el_in_dream", obj.env_use_el_in_dream))
         paper = data.get("paper") or {}
         obj.official_code_status = str(paper.get("official_code_status", obj.official_code_status))
         obj.raw = data
         return obj
+
+    def env_evolution_cfg(self) -> dict:
+        return {
+            "enabled": self.env_evolution_enabled,
+            "el_tau": self.env_el_tau,
+            "el_batch": self.env_el_batch,
+            "effort": self.env_effort,
+            "evolve_every_n": self.env_evolve_every_n,
+            "max_evolved_per_harvest": self.env_max_evolved_per_harvest,
+            "min_seed_nodes": self.env_min_seed_nodes,
+            "use_el_in_dream": self.env_use_el_in_dream,
+        }
 
     def to_dict(self) -> dict:
         return {
@@ -120,6 +150,7 @@ class DreamRSIParams:
             "rollback_delta_eps": self.rollback_delta_eps,
             "brief_policy": self.brief_policy,
             "official_code_status": self.official_code_status,
+            "env_evolution": self.env_evolution_cfg(),
         }
 
 
