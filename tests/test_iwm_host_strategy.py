@@ -47,7 +47,8 @@ def _arsi(tmp_path):
 
 class TestHostStrategy:
     def test_untrusted_memory_focus_reingest(self):
-        arsi = _arsi(__import__("tempfile").mkdtemp())
+        import tempfile
+        arsi = _arsi(Path(tempfile.mkdtemp()))
         for _ in range(4):
             arsi.iwm.organ.record(ORGAN_MEMORY, False)
         st = build_host_strategy(arsi, agent_id="hermes")
