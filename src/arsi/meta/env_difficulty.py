@@ -164,6 +164,69 @@ def compute_env_difficulty(
     )
 
 
+def compute_env_difficulty_dyn(
+    world,
+    reference: Optional[ReferenceCorpus] = None,
+    w_l: float = 0.50,
+    w_sigma: float = 0.25,
+    w_kappa: float = 0.25,
+) -> DifficultyComponents:
+    """D_T on dyn features only (ODEWorld decoupling): no host/agent static identity.
+
+    scenario novelty = (action, fail_class) rarity — skill structure, not agent name noise.
+    """
+    ref = reference or ReferenceCorpus.uniform()
+    nodes = _nodes_from_world(world)
+    if not nodes:
+        return DifficultyComponents(note="empty_world_dyn", w_l=w_l, w_sigma=w_sigma, w_kappa=w_kappa)
+
+    depths = [int(n.get("depth") or 0) for n in nodes]
+    L = float(max(depths) if depths else len(nodes))
+    L_term = math.log1p(max(0.0, L))
+
+    actions = []
+    fails = []
+    pairs = []
+    sigma_terms = []
+    kappa_terms = []
+    for n in nodes:
+        action = str(n.get("action", "unknown"))
+        meta = n.get("metadata") or n.get("params") or {}
+        if not isinstance(meta, dict):
+            meta = {}
+        fail = str(
+            n.get("fail_class")
+            or meta.get("fail_class")
+            or ("ok" if "success" in str(n.get("outcome", "")).lower() else "unknown")
+        )
+        actions.append(action)
+        fails.append(fail)
+        pairs.append((action, fail))
+        p_sig = ref.p_pair(fail, action)  # pair keyed by fail×action (dyn), not agent
+        p_kap = ref.p_action(action)
+        sigma_terms.append(-math.log(max(p_sig, 1e-9)))
+        kappa_terms.append(-math.log(max(p_kap, 1e-9)))
+
+    scenario_novelty = sum(sigma_terms) / len(sigma_terms) if sigma_terms else 0.0
+    skill_rarity = sum(kappa_terms) / len(kappa_terms) if kappa_terms else 0.0
+    d_t = w_l * L_term + w_sigma * scenario_novelty + w_kappa * skill_rarity
+
+    return DifficultyComponents(
+        L=L,
+        scenario_novelty=round(scenario_novelty, 4),
+        skill_rarity=round(skill_rarity, 4),
+        d_t=round(d_t, 4),
+        w_l=w_l,
+        w_sigma=w_sigma,
+        w_kappa=w_kappa,
+        n_nodes=len(nodes),
+        n_agents=len(set(n.get("agent_id", "unknown") for n in nodes)),
+        n_actions=len(set(actions)),
+        unique_pairs=len(set(pairs)),
+        note="off_policy_env_difficulty_dyn_only",
+    )
+
+
 def weakness_vs_difficulty(
     d_t: float,
     policy_score: float,

@@ -4,6 +4,14 @@ from arsi.world_model.discovery_tree import DiscoveryTree
 from arsi.world_model.replay_world import ReplayWorld, Observation, ReplayResult
 from arsi.world_model.world_pool import WorldPool
 from arsi.world_model.world_evolver import WorldEvolver, EvolutionResult, verify_world, evolve_traces
+from arsi.world_model.capability_flow import (
+    CapabilityFlowTracker,
+    VelocityField,
+    encode_dyn_state,
+    encode_static_context,
+    integrate,
+    velocity_gt,
+)
 from arsi.world_model.dream_rsi_deep import (
     ActionBatch,
     AdaptiveBehaviorController,
@@ -28,6 +36,12 @@ __all__ = [
     "EvolutionResult",
     "verify_world",
     "evolve_traces",
+    "CapabilityFlowTracker",
+    "VelocityField",
+    "encode_dyn_state",
+    "encode_static_context",
+    "integrate",
+    "velocity_gt",
     "ActionBatch",
     "AdaptiveBehaviorController",
     "DeepReplaySimulator",

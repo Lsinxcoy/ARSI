@@ -141,6 +141,9 @@ class ARSI:
             self.world_pool.configure_env_evolution(**self.dream_rsi_params.env_evolution_cfg())
         except Exception:
             pass
+        # Capability flow (arXiv:2607.27924 PT-Flow): wall-clock velocity field + RankMe
+        from arsi.world_model.capability_flow import CapabilityFlowTracker
+        self.capability_flow = CapabilityFlowTracker()
         if hasattr(self.quality_gate, "max_warn_ratio"):
             self.quality_gate.max_warn_ratio = float(getattr(self.dream_rsi_params, "max_warn_ratio", 0.25) or 0.25)
             self.quality_gate.max_admitted = int(getattr(self.dream_rsi_params, "max_admitted", 120) or 120)
@@ -719,6 +722,9 @@ class ARSI:
             "iron_laws": self.iron_laws.law_ids,
             "world_pool_size": self.world_pool.size,
             "env_evolution": self.world_pool.env_evolution_health(),
+            "capability_flow": self.capability_flow.health() if getattr(self, "capability_flow", None) else {},
+            "live_history": list(self._live_capability_scores[-16:]),
+            "pool_history": list(self._pool_scores[-16:]),
             "manifest_cycles": self.manifest_store.size,
             "beta": self.portfolio_policy.beta,
             "grid_plan": self.current_grid_plan.to_dict(),
@@ -981,8 +987,14 @@ class ARSI:
             "traces_kept": len(filtered),
             "quality_gate": gate_stats,
             "env_difficulty": getattr(world, "env_difficulty", {}) or {},
+            "env_difficulty_dyn": getattr(world, "env_difficulty_dyn", {}) or {},
             "lineage_id": getattr(world, "lineage_id", None),
             "evolution": evolution,
+            "capability_flow": (
+                self.capability_flow.observe(self.get_stats(), note="harvest").to_dict()
+                if getattr(self, "capability_flow", None)
+                else {}
+            ),
         }
 
     @staticmethod
@@ -1333,7 +1345,13 @@ class ARSI:
                 "el_advances": el_advances,
                 "el_health": (current_eval.get("el_health") or self.world_pool.el_scheduler.health()),
                 "pool_difficulty": self.world_pool.env_evolution_health().get("difficulty"),
+                "pool_dyn_rankme": self.world_pool.env_evolution_health().get("pool_dyn_rankme"),
             },
+            "capability_flow": (
+                self.capability_flow.observe(self.get_stats(), note="dream_rsi").to_dict()
+                if getattr(self, "capability_flow", None)
+                else {}
+            ),
             "current_score": current_eval.get("avg_score", 0.0),
             "deployed": deployed,
             "deployed_score": deployed_score,

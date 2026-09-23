@@ -14,6 +14,7 @@ from arsi.meta.env_difficulty import (
     DifficultyComponents,
     ReferenceCorpus,
     compute_env_difficulty,
+    compute_env_difficulty_dyn,
     pool_difficulty_stats,
     weakness_vs_difficulty,
 )
@@ -35,6 +36,7 @@ __all__ = [
     "DifficultyComponents",
     "ReferenceCorpus",
     "compute_env_difficulty",
+    "compute_env_difficulty_dyn",
     "pool_difficulty_stats",
     "weakness_vs_difficulty",
     "ELScheduler",

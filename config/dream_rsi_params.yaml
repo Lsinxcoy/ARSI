@@ -70,3 +70,12 @@ env_evolution:
   max_evolved_per_harvest: 1
   min_seed_nodes: 3
   use_el_in_dream: true
+
+# Capability velocity field / RankMe — arXiv:2607.27924 PT-Flow (statistical adapt)
+# Official neural ODE is NOT ported; this is first-order dyn flow + collapse rank.
+capability_flow:
+  enabled: true
+  min_dt_seconds: 0.5
+  history_size: 128
+  horizon_seconds: 600
+  rankme_collapse_ratio: 0.15

@@ -40,6 +40,18 @@ for d in rows[-10:]:
             "homog", diff.get("homogeneous"),
             "el_adv", elh.get("advances"), "lin", len(elh.get("lineages") or {}),
         )
+    cf = d.get("capability_flow")
+    if isinstance(cf, dict) and cf:
+        print(
+            "  capability_flow",
+            "n", cf.get("n_samples"), "v_upd", cf.get("n_v_updates"),
+            "mse", cf.get("field_mse_ewma"),
+            "neg_organs", cf.get("last_negative_organs"),
+        )
+        rk = cf.get("last_rankme") or {}
+        zw = rk.get("z_window") or {}
+        if zw:
+            print("  rankme_z", zw.get("effective_rank"), "collapse", zw.get("collapse"), "dim", zw.get("dim"))
     iw = d.get("iwm")
     if isinstance(iw, dict):
         inner = iw.get("iwm") if isinstance(iw.get("iwm"), dict) else iw

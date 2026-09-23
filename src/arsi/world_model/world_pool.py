@@ -32,10 +32,16 @@ class WorldPool:
         self._manifest: list[dict] = []
         # Environment evolution (lazy imports to keep import graph light)
         from arsi.meta.el_scheduler import ELScheduler
-        from arsi.meta.env_difficulty import ReferenceCorpus, compute_env_difficulty, pool_difficulty_stats
+        from arsi.meta.env_difficulty import (
+            ReferenceCorpus,
+            compute_env_difficulty,
+            compute_env_difficulty_dyn,
+            pool_difficulty_stats,
+        )
         from arsi.world_model.world_evolver import WorldEvolver
 
         self._compute_env_difficulty = compute_env_difficulty
+        self._compute_env_difficulty_dyn = compute_env_difficulty_dyn
         self._pool_difficulty_stats = pool_difficulty_stats
         self.el_scheduler = ELScheduler(tau=0.75, batch=8)
         self.evolver = WorldEvolver()
@@ -79,6 +85,44 @@ class WorldPool:
             return self._compute_env_difficulty(world, reference=self.reference).to_dict()
         except Exception as e:
             return {"d_t": 0.0, "note": f"error:{e}"}
+
+    def difficulty_dyn_of(self, world) -> dict:
+        """D_T on dyn features only (static host identity excluded)."""
+        try:
+            return self._compute_env_difficulty_dyn(world, reference=self.reference).to_dict()
+        except Exception as e:
+            return {"d_t": 0.0, "note": f"error:{e}"}
+
+    @staticmethod
+    def split_static_dyn(world) -> tuple[dict, dict]:
+        """ODEWorld decoupling: static context vs dyn trajectory features."""
+        nodes = getattr(world, "_full", {}) or {}
+        agents, actions, fails, scores, depths = [], [], [], [], []
+        for nid, n in nodes.items():
+            if nid == "root" or not isinstance(n, dict):
+                continue
+            agents.append(str(n.get("agent_id", "unknown")))
+            actions.append(str(n.get("action", "unknown")))
+            meta = n.get("metadata") or n.get("params") or {}
+            fails.append(str(n.get("fail_class") or (meta or {}).get("fail_class") or "ok"))
+            scores.append(float(n.get("score") or 0.0))
+            depths.append(int(n.get("depth") or 0))
+        static = {
+            "agents": sorted(set(agents)),
+            "agent_count": len(set(agents)),
+            "world_id": getattr(world, "world_id", ""),
+            "baseline_score": getattr(world, "baseline_score", 0.0),
+        }
+        dyn = {
+            "actions": actions,
+            "fail_classes": fails,
+            "scores": scores,
+            "max_depth": max(depths) if depths else 0,
+            "n_nodes": len(actions),
+            "unique_actions": sorted(set(actions)),
+            "unique_fail_classes": sorted(set(fails)),
+        }
+        return static, dyn
 
     def _register_world_lineage(self, world, meta: Optional[dict] = None) -> tuple[str, int]:
         meta = meta or {}
@@ -126,8 +170,24 @@ class WorldPool:
         world.world_id = wid
         # D_T — third track (policy-independent environment difficulty)
         d = self.difficulty_of(world)
+        d_dyn = self.difficulty_dyn_of(world)
+        static_ctx, dyn_feats = self.split_static_dyn(world)
         try:
             world.env_difficulty = d
+            world.env_difficulty_dyn = d_dyn
+            world.static_context = static_ctx
+            world.dyn_features = {
+                k: v for k, v in dyn_feats.items() if k not in ("actions", "fail_classes", "scores")
+            }
+            # compact dyn row for RankMe
+            world.dyn_row = {
+                "d_t_dyn": d_dyn.get("d_t", 0.0),
+                "L": d_dyn.get("L", 0.0),
+                "skill_rarity": d_dyn.get("skill_rarity", 0.0),
+                "scenario_novelty_dyn": d_dyn.get("scenario_novelty", 0.0),
+                "n_nodes": d_dyn.get("n_nodes", 0),
+                "n_actions": d_dyn.get("n_actions", 0),
+            }
         except Exception:
             pass
         self._register_world_lineage(world, meta)
@@ -137,6 +197,15 @@ class WorldPool:
             "baseline_score": world.baseline_score,
             "max_parallelism": world.max_parallelism,
             "env_difficulty": {"d_t": d.get("d_t"), "L": d.get("L"), "scenario_novelty": d.get("scenario_novelty"), "skill_rarity": d.get("skill_rarity")},
+            "env_difficulty_dyn": {
+                "d_t": d_dyn.get("d_t"),
+                "L": d_dyn.get("L"),
+                "scenario_novelty": d_dyn.get("scenario_novelty"),
+                "skill_rarity": d_dyn.get("skill_rarity"),
+                "note": d_dyn.get("note"),
+            },
+            "static_context": static_ctx,
+            "dyn_features": world.dyn_features,
             "lineage_id": self._world_lineage.get(wid, {}).get("lineage_id"),
             "generation": self._world_lineage.get(wid, {}).get("generation"),
             "evolved": self._world_lineage.get(wid, {}).get("evolved", False),
@@ -396,6 +465,16 @@ class WorldPool:
             "gate": {"rule": "max_avg_score_fallback"},
         }
 
+    def pool_dyn_rankme(self) -> dict:
+        """RankMe on dyn rows of pool worlds — collapse alarm (ODEWorld App.C)."""
+        from arsi.foundation.rankme import centered_effective_rank
+        keys = ("d_t_dyn", "L", "skill_rarity", "scenario_novelty_dyn", "n_nodes", "n_actions")
+        rows = []
+        for w in self.worlds:
+            row = getattr(w, "dyn_row", None) or {}
+            rows.append([float(row.get(k, 0.0) or 0.0) for k in keys])
+        return centered_effective_rank(rows)
+
     def env_evolution_health(self) -> dict:
         worlds = self.worlds
         d_stats = {}
@@ -407,6 +486,7 @@ class WorldPool:
         return {
             "config": self._env_cfg,
             "difficulty": d_stats,
+            "pool_dyn_rankme": self.pool_dyn_rankme() if worlds else {},
             "el": self.el_scheduler.health(),
             "evolved_worlds": evolved_n,
             "evolution_accepted": sum(1 for e in self._evolution_log if e.get("accepted")),
@@ -463,6 +543,10 @@ class WorldPool:
                 "effort": lin.get("effort", getattr(w, "effort", "")),
                 "parent_world_id": lin.get("parent_world_id", getattr(w, "parent_world_id", "")),
                 "env_difficulty": getattr(w, "env_difficulty", {}) or {},
+                "env_difficulty_dyn": getattr(w, "env_difficulty_dyn", {}) or {},
+                "static_context": getattr(w, "static_context", {}) or {},
+                "dyn_features": getattr(w, "dyn_features", {}) or {},
+                "dyn_row": getattr(w, "dyn_row", {}) or {},
                 "source": lin.get("source", getattr(w, "source", "harvest")),
             })
         return {
@@ -501,6 +585,14 @@ class WorldPool:
                 w.score_mode = item["score_mode"]
             if item.get("env_difficulty"):
                 w.env_difficulty = item["env_difficulty"]
+            if item.get("env_difficulty_dyn"):
+                w.env_difficulty_dyn = item["env_difficulty_dyn"]
+            if item.get("static_context"):
+                w.static_context = item["static_context"]
+            if item.get("dyn_features"):
+                w.dyn_features = item["dyn_features"]
+            if item.get("dyn_row"):
+                w.dyn_row = item["dyn_row"]
             pool.worlds.append(w)
             pool._register_world_lineage(
                 w,

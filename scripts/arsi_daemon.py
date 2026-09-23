@@ -221,6 +221,7 @@ class ARSIDaemon:
                 "world_pool_size": stats.get("world_pool_size", 0),
                 "manifest_cycles": stats.get("manifest_cycles", 0),
                 "env_evolution": stats.get("env_evolution") or {},
+                "capability_flow": stats.get("capability_flow") or {},
                 "beta": stats.get("beta", 0.6),
                 "grid_plan": stats.get("grid_plan", {}),
                 "iwm": {
