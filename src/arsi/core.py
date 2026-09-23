@@ -144,6 +144,10 @@ class ARSI:
         # Capability flow (arXiv:2607.27924 PT-Flow): wall-clock velocity field + RankMe
         from arsi.world_model.capability_flow import CapabilityFlowTracker
         self.capability_flow = CapabilityFlowTracker()
+        try:
+            self.pre_enactment.bind_capability_flow(self)
+        except Exception:
+            pass
         if hasattr(self.quality_gate, "max_warn_ratio"):
             self.quality_gate.max_warn_ratio = float(getattr(self.dream_rsi_params, "max_warn_ratio", 0.25) or 0.25)
             self.quality_gate.max_admitted = int(getattr(self.dream_rsi_params, "max_admitted", 120) or 120)
@@ -995,6 +999,11 @@ class ARSI:
                 if getattr(self, "capability_flow", None)
                 else {}
             ),
+            "flow_guidance": (
+                self.capability_flow.flow_guidance()
+                if getattr(self, "capability_flow", None)
+                else {}
+            ),
         }
 
     @staticmethod
@@ -1335,6 +1344,12 @@ class ARSI:
                 logger.warning(f"IWM observe_eval_loop failed: {e}")
         self._last_eval_loop = eval_loop.to_dict()
 
+        # Bind z-subgoal into pre-enactment for next steps (ODEWorld P1)
+        try:
+            self.pre_enactment.bind_capability_flow(self)
+        except Exception:
+            pass
+
         return {
             "ran": True,
             "harvest": harvest,
@@ -1349,6 +1364,16 @@ class ARSI:
             },
             "capability_flow": (
                 self.capability_flow.observe(self.get_stats(), note="dream_rsi").to_dict()
+                if getattr(self, "capability_flow", None)
+                else {}
+            ),
+            "flow_guidance": (
+                self.capability_flow.flow_guidance()
+                if getattr(self, "capability_flow", None)
+                else {}
+            ),
+            "z_subgoal": (
+                (self.capability_flow.flow_guidance() or {}).get("z_subgoal") or {}
                 if getattr(self, "capability_flow", None)
                 else {}
             ),

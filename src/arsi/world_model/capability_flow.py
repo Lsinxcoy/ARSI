@@ -341,6 +341,47 @@ class CapabilityFlowTracker:
             "note": "ode_world_pt_flow_adapted_statistical",
         }
 
+    def flow_guidance(self, horizon_s: float = 600.0) -> dict:
+        """P1 control surface: negative-velocity organs + z subgoal for planning.
+
+        Evidence-based only — derived from observed v_hat / integrate, never invented.
+        """
+        last = self._obs_log[-1] if self._obs_log else {}
+        neg = list(last.get("negative_organs") or [])
+        v_hat = dict(last.get("v_hat") or {})
+        z_now = dict(last.get("z") or {})
+        goal = {}
+        if self.field.n_updates >= 2 and z_now:
+            try:
+                goal = integrate(z_now, self.field, horizon_s=horizon_s, steps=4).get("z_goal") or {}
+            except Exception:
+                goal = {}
+        if not goal:
+            goal = (last.get("integrated") or {}).get("z_goal") or {}
+
+        focus = "execute_with_evidence"
+        if "memory_trust" in neg:
+            focus = "reingest"
+        elif "behavior_predictor_trust" in neg:
+            focus = "calibrate"
+        elif "self_trust" in neg:
+            focus = "calibrate"
+        elif "live_last" in neg or "live_ema" in neg:
+            focus = "explore_frontier"
+        elif neg:
+            focus = "repair_organs"
+
+        return {
+            "focus": focus,
+            "negative_organs": neg,
+            "v_hat": v_hat,
+            "z_now": z_now,
+            "z_subgoal": goal,
+            "horizon_s": float(horizon_s),
+            "n_v_updates": self.field.n_updates,
+            "source": "capability_flow_flow_guidance",
+        }
+
     def serialize(self) -> dict:
         return {
             "schema": "arsi.capability_flow.v1",

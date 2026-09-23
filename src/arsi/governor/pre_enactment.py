@@ -27,6 +27,19 @@ class PreEnactmentEngine:
         self.dynamics = dynamics
         self._prediction_count = 0
         self._pre_enactment_count = 0
+        # P1 ODEWorld: optional capability-flow guidance (evidence-only)
+        self.flow_guide: dict = {}
+
+    def bind_capability_flow(self, arsi=None) -> dict:
+        """Attach z subgoal / negative organs from CapabilityFlowTracker if present."""
+        if arsi is None or getattr(arsi, "capability_flow", None) is None:
+            self.flow_guide = {}
+            return self.flow_guide
+        try:
+            self.flow_guide = arsi.capability_flow.flow_guidance()
+        except Exception:
+            self.flow_guide = {}
+        return self.flow_guide
 
     def evaluate_candidates(
         self,
@@ -39,6 +52,7 @@ class PreEnactmentEngine:
         """
         self._pre_enactment_count += 1
         evaluated = []
+        flow_bonus = self._flow_action_bonuses()
 
         for action in candidates:
             pred = self.dynamics.predict_transition(state, action)
@@ -46,18 +60,42 @@ class PreEnactmentEngine:
 
             # Score: how beneficial is the predicted delta?
             score = self._score_prediction(pred, state)
+            bonus = float(flow_bonus.get(action, 0.0) or 0.0)
+            score = score + bonus
 
             evaluated.append({
                 "action": action,
                 "predicted_delta": pred.get("predicted_delta", {}),
                 "confidence": pred.get("confidence", 0.0),
                 "score": round(score, 4),
+                "flow_bonus": round(bonus, 4),
+                "z_subgoal": bool(self.flow_guide.get("z_subgoal")),
                 "source": "pre_enactment" if pred.get("confidence", 0) > 0 else "no_data",
             })
 
         # Sort by score descending
         evaluated.sort(key=lambda x: x["score"], reverse=True)
         return evaluated
+
+    def _flow_action_bonuses(self) -> dict:
+        """Map negative-velocity organs / z_subgoal to small action score bonuses.
+
+        Keep small so dynamics score remains primary; only nudge ties.
+        """
+        if not self.flow_guide:
+            return {}
+        neg = set(self.flow_guide.get("negative_organs") or [])
+        bonuses: dict[str, float] = {}
+        if "memory_trust" in neg:
+            bonuses["learn"] = bonuses.get("learn", 0.0) + 0.15
+            bonuses["remember"] = bonuses.get("remember", 0.0) + 0.08
+        if "behavior_predictor_trust" in neg or "self_trust" in neg:
+            bonuses["evolve"] = bonuses.get("evolve", 0.0) + 0.12
+        if "live_last" in neg or "live_ema" in neg:
+            bonuses["empower"] = bonuses.get("empower", 0.0) + 0.10
+        if neg:
+            bonuses["maintain"] = bonuses.get("maintain", 0.0) + 0.05
+        return bonuses
 
     def select_best(
         self,
@@ -89,8 +127,10 @@ class PreEnactmentEngine:
             "reason": f"pre_enactment: score={best['score']}, confidence={best['confidence']}",
             "confidence": best["confidence"],
             "score": best["score"],
+            "flow_bonus": best.get("flow_bonus", 0.0),
+            "z_subgoal": best.get("z_subgoal", False),
             "alternatives": [
-                {"action": e["action"], "score": e["score"]}
+                {"action": e["action"], "score": e["score"], "flow_bonus": e.get("flow_bonus", 0.0)}
                 for e in evaluated[1:3]
             ],
         }

@@ -37,6 +37,10 @@ class HostStrategy:
     control_flags: dict = field(default_factory=dict)
     organ_snapshot: dict = field(default_factory=dict)
     frontier: dict = field(default_factory=dict)
+    # P1 ODEWorld: first-order dyn flow (evidence-only)
+    negative_organs: list[str] = field(default_factory=list)
+    dyn_velocity: dict = field(default_factory=dict)
+    z_subgoal: dict = field(default_factory=dict)
     receipt_policy: str = "require_grounded_receipt"
     note: str = "structured IWM strategy facts only"
     timestamp: str = ""
@@ -70,6 +74,16 @@ class HostStrategy:
         ot = self.organ_snapshot.get("organ_trust") or self.organ_snapshot.get("organs") or {}
         if ot:
             lines.append(f"- organ_trust: {ot}")
+        if self.negative_organs:
+            lines.append(f"- negative_velocity_organs: {self.negative_organs}")
+        if self.z_subgoal:
+            compact = {
+                k: self.z_subgoal.get(k)
+                for k in ("self_trust", "memory_trust", "live_ema", "d_t_mean", "eta")
+                if k in self.z_subgoal
+            }
+            if compact:
+                lines.append(f"- z_subgoal: {compact}")
         if self.frontier.get("explore_bias"):
             lines.append(f"- frontier_explore: {self.frontier.get('explore_bias')[:6]}")
         if self.frontier.get("exploit_bias"):
@@ -89,15 +103,28 @@ class HostStrategy:
             recs.append("Focus on calibration: declare confidence vs outcomes explicitly.")
         if self.focus == "reingest":
             recs.append("Focus on re-ingest: ensure new evidence flows into ARSI before claiming completion.")
+        if self.focus == "repair_organs" and self.negative_organs:
+            recs.append(
+                "Negative-velocity organs detected: "
+                + ",".join(self.negative_organs)
+                + " — repair with fresh measured outcomes (not narrative)."
+            )
         return recs
 
 
-def _skills_from_strategy(focus: str, organ_trust: dict, agent_id: str) -> list[str]:
+def _skills_from_strategy(focus: str, organ_trust: dict, agent_id: str, negative_organs: Optional[list[str]] = None) -> list[str]:
     """Skill priors for empowerment content — map IWM state to known ARSI skills."""
     skills = []
     if focus in ("learn", "reingest"):
         skills.extend(["arsi-knowledge", "arsi-environment"])
     if focus == "calibrate":
+        skills.append("arsi-calibration")
+    if focus == "repair_organs":
+        skills.append("arsi-metacognition")
+    neg = set(negative_organs or [])
+    if "memory_trust" in neg:
+        skills.extend(["arsi-environment", "arsi-knowledge"])
+    if "behavior_predictor_trust" in neg:
         skills.append("arsi-calibration")
     if organ_trust.get(ORGAN_BEHAVIOR_PREDICTOR, 0) < 0.5:
         skills.append("arsi-metacognition")
@@ -138,7 +165,21 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
     memory_status = advice.get("memory_status") or STATUS_UNKNOWN
     organ_trust = advice.get("organ_trust") or {}
 
-    # A-line focus decision
+    # Capability flow (ODEWorld P1): first-order dyn evidence only
+    flow_guide: dict = {}
+    negative_organs: list[str] = []
+    dyn_velocity: dict = {}
+    z_subgoal: dict = {}
+    if arsi is not None and getattr(arsi, "capability_flow", None) is not None:
+        try:
+            flow_guide = arsi.capability_flow.flow_guidance()
+            negative_organs = list(flow_guide.get("negative_organs") or [])
+            dyn_velocity = dict(flow_guide.get("v_hat") or {})
+            z_subgoal = dict(flow_guide.get("z_subgoal") or {})
+        except Exception:
+            flow_guide = {}
+
+    # A-line focus decision (IWM first; dyn-flow can override only with evidence)
     if advice.get("downweight_memory_ops") or memory_status == STATUS_UNRELIABLE:
         focus = "reingest"
     elif advice.get("trust_memory_for_learn") or memory_trust >= 0.5:
@@ -149,6 +190,17 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         focus = "explore_frontier"
     else:
         focus = "execute_with_evidence"
+
+    # P1: negative-velocity organs can set focus when they name a concrete weakness
+    flow_focus = str(flow_guide.get("focus") or "")
+    if negative_organs and flow_focus in ("reingest", "calibrate", "repair_organs", "explore_frontier"):
+        if "memory_trust" in negative_organs and flow_focus == "reingest":
+            # memory velocity negative → evidence path first (even over calibrate)
+            focus = "reingest"
+        elif "behavior_predictor_trust" in negative_organs or "self_trust" in negative_organs:
+            focus = "calibrate"
+        elif focus in ("learn", "execute_with_evidence") and flow_focus in ("repair_organs", "explore_frontier"):
+            focus = flow_focus
 
     # Operational warnings from IWM (structured, not lessons)
     warnings = []
@@ -163,6 +215,8 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         warnings.append("iwm_degrade_to_baseline")
     if memory_status == STATUS_UNRELIABLE:
         warnings.append("memory_organ_unreliable")
+    if negative_organs:
+        warnings.append(f"negative_velocity:{','.join(negative_organs)}")
 
     # Confidence: IWM self_trust + memory trust + layer1 quality
     self_trust = float(advice.get("self_trust") or 0.5)
@@ -172,7 +226,7 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         conf *= 0.7
     conf = max(0.05, min(0.95, conf))
 
-    skills = _skills_from_strategy(focus, organ_trust, agent_id)
+    skills = _skills_from_strategy(focus, organ_trust, agent_id, negative_organs=negative_organs)
 
     control_flags = {
         "prefer_learn": bool(advice.get("prefer_learn")),
@@ -182,6 +236,8 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         "forbid_default_dream": bool(advice.get("forbid_default_dream")),
         "downweight_pre_enactment": bool(advice.get("downweight_pre_enactment")),
         "degrade_to_baseline": bool(advice.get("degrade_to_baseline")),
+        "use_z_subgoal": bool(z_subgoal),
+        "negative_velocity": bool(negative_organs),
     }
 
     return HostStrategy(
@@ -193,8 +249,11 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         control_flags=control_flags,
         organ_snapshot=organ_snap,
         frontier=frontier,
+        negative_organs=negative_organs,
+        dyn_velocity=dyn_velocity,
+        z_subgoal=z_subgoal,
         receipt_policy="require_grounded_receipt",
-        note="structured IWM strategy facts; no invented lessons",
+        note="structured IWM strategy facts; dyn-flow focus only from v_hat evidence",
     )
 
 
@@ -216,5 +275,9 @@ def strategy_for_skill_content(strategy: HostStrategy) -> str:
         lines.append("- policy: dream forbidden by IWM loop evidence")
     if strategy.operational_warnings:
         lines.append(f"- warnings: {strategy.operational_warnings}")
+    if strategy.negative_organs:
+        lines.append(f"- negative_velocity_organs: {strategy.negative_organs}")
+    if strategy.z_subgoal:
+        lines.append(f"- z_subgoal_keys: {sorted(list(strategy.z_subgoal))[:8]}")
     lines.append(f"- receipt_policy: {strategy.receipt_policy}")
     return "\n".join(lines)
