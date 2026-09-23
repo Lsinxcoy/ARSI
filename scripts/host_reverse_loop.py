@@ -222,6 +222,13 @@ def main() -> int:
 
         if arsi.iwm is not None:
             arsi.iwm.observe_memory(bool(act["success"]), note=f"host_reverse:{agent_id}")
+        # ODEWorld reverse: rebuild z_pre on failure (model reconstruction — unverified)
+        fail_reverse = {}
+        if (not act.get("success")) and getattr(arsi, "capability_flow", None):
+            try:
+                fail_reverse = arsi.capability_flow.reverse_last_failure()
+            except Exception as e:
+                fail_reverse = {"error": str(e), "evidence_status": "unverified"}
         report_rows.append({
             "agent_id": agent_id,
             "dispatched": dispatch.get("dispatched"),
@@ -231,12 +238,18 @@ def main() -> int:
             "iwm_bind": result.get("iwm_bind"),
             "anchor": (result.get("effect_anchor") or {}).get("claim"),
             "http_result": http_result,
+            "failure_reverse": fail_reverse,
         })
 
     advice = arsi.iwm.governor_advice(arsi.siwm.get_state()) if arsi.iwm else {}
     report = {
         "timestamp": datetime.now().isoformat(),
         "brief_evidence": {k: v for k, v in evidence.items() if k != "sample_tail"},
+        "flow_guidance": (
+            arsi.capability_flow.flow_guidance()
+            if getattr(arsi, "capability_flow", None)
+            else {}
+        ),
         "hosts": report_rows,
         "iwm_advice": {
             k: advice.get(k)

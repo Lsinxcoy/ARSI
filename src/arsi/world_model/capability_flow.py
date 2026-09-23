@@ -246,6 +246,74 @@ def negative_organs(v_hat: dict, thr: float = -1e-4) -> list[str]:
     return out
 
 
+def integrate_backward(
+    z_fail: dict,
+    field: VelocityField,
+    lookback_s: float = 300.0,
+    steps: int = 4,
+) -> dict:
+    """Euler integrate −v_hat from failure state → z_pre (ODEWorld backward prediction).
+
+    Reconstructs pre-failure dyn state under current velocity field.
+    Marked as model reconstruction — not a substitute for observed history.
+    """
+    z = {k: float(z_fail.get(k, 0.0) or 0.0) for k in Z_KEYS}
+    if lookback_s <= 0 or steps <= 0:
+        return {"z_pre": z, "lookback_s": 0.0, "steps": 0, "note": "empty_reverse"}
+    dt = float(lookback_s) / float(steps)
+    path = [{**z}]
+    for _ in range(steps):
+        v = field.predict(z)
+        # reverse: z_pre ≈ z − v·dt
+        z = {k: z[k] - float(v.get(k, 0.0)) * dt for k in Z_KEYS}
+        path.append({**z})
+    return {
+        "z_pre": {k: round(z[k], 6) for k in Z_KEYS},
+        "path": [{k: round(p[k], 6) for k in Z_KEYS} for p in path],
+        "lookback_s": float(lookback_s),
+        "steps": int(steps),
+        "note": "euler_reverse_integrate_z_pre",
+        "evidence_status": "model_reconstruction",  # not observed — unverified until receipt
+    }
+
+
+def pre_failure_organs(
+    z_pre: dict,
+    z_fail: dict,
+    thr: float = 1e-4,
+) -> list[str]:
+    """Organs that were already higher before failure than at failure (degraded)."""
+    out = []
+    for key in Z_BLOCKS["organ"]:
+        pre = float((z_pre or {}).get(key, 0.0) or 0.0)
+        fail = float((z_fail or {}).get(key, 0.0) or 0.0)
+        if pre - fail > thr:
+            out.append(key)
+    return out
+
+
+def reverse_from_failure(
+    z_fail: dict,
+    field: VelocityField,
+    lookback_s: float = 300.0,
+    steps: int = 4,
+    note: str = "",
+) -> dict:
+    """Full reverse package: z_pre + organs already degraded before failure."""
+    rev = integrate_backward(z_fail, field, lookback_s=lookback_s, steps=steps)
+    z_pre = rev.get("z_pre") or {}
+    degraded = pre_failure_organs(z_pre, z_fail)
+    return {
+        "z_fail": {k: float((z_fail or {}).get(k, 0.0) or 0.0) for k in Z_KEYS},
+        "z_pre": z_pre,
+        "pre_failure_organs": degraded,
+        "negative_organs_now": negative_organs(field.predict(z_fail or {})),
+        "reverse": rev,
+        "note": note or "failure_reverse_integrate",
+        "evidence_status": rev.get("evidence_status", "model_reconstruction"),
+    }
+
+
 def rankme_windows(history: list[dict]) -> dict:
     """Collapse diagnostics on sliding windows of z (and optional pool node rows)."""
     if not history:
@@ -359,21 +427,40 @@ class CapabilityFlowTracker:
         if not goal:
             goal = (last.get("integrated") or {}).get("z_goal") or {}
 
+        # P1 reverse: if last obs is a failure anchor, rebuild z_pre
+        z_pre = {}
+        pre_fail = []
+        rev = {}
+        if (last.get("note") or "").startswith("fail") or last.get("failure_anchor"):
+            try:
+                rev = reverse_from_failure(z_now, self.field, lookback_s=max(60.0, horizon_s / 2))
+                z_pre = rev.get("z_pre") or {}
+                pre_fail = list(rev.get("pre_failure_organs") or [])
+            except Exception:
+                rev = {}
+        # always expose last known reverse if recorded
+        if not z_pre and last.get("z_pre"):
+            z_pre = dict(last.get("z_pre") or {})
+            pre_fail = list(last.get("pre_failure_organs") or [])
+
         focus = "execute_with_evidence"
-        if "memory_trust" in neg:
+        # pre-failure degradation is stronger signal than instantaneous negative v
+        focus_src = list(pre_fail) + [x for x in neg if x not in pre_fail]
+        if "memory_trust" in focus_src:
             focus = "reingest"
-        elif "behavior_predictor_trust" in neg:
+        elif "behavior_predictor_trust" in focus_src or "self_trust" in focus_src:
             focus = "calibrate"
-        elif "self_trust" in neg:
-            focus = "calibrate"
-        elif "live_last" in neg or "live_ema" in neg:
+        elif "live_last" in focus_src or "live_ema" in focus_src:
             focus = "explore_frontier"
-        elif neg:
+        elif focus_src:
             focus = "repair_organs"
 
         return {
             "focus": focus,
             "negative_organs": neg,
+            "pre_failure_organs": pre_fail,
+            "z_pre": z_pre,
+            "reverse": rev,
             "v_hat": v_hat,
             "z_now": z_now,
             "z_subgoal": goal,
@@ -381,6 +468,16 @@ class CapabilityFlowTracker:
             "n_v_updates": self.field.n_updates,
             "source": "capability_flow_flow_guidance",
         }
+
+    def reverse_last_failure(self, z_fail: Optional[dict] = None, lookback_s: float = 300.0) -> dict:
+        """Explicit reverse from a failure (host_reverse / IWM)."""
+        z = z_fail or (self._obs_log[-1].get("z") if self._obs_log else {}) or {}
+        out = reverse_from_failure(z, self.field, lookback_s=lookback_s)
+        if self._obs_log:
+            self._obs_log[-1]["z_pre"] = out.get("z_pre")
+            self._obs_log[-1]["pre_failure_organs"] = out.get("pre_failure_organs")
+            self._obs_log[-1]["failure_anchor"] = True
+        return out
 
     def serialize(self) -> dict:
         return {

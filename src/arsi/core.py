@@ -1380,6 +1380,11 @@ class ARSI:
                 if getattr(self, "capability_flow", None)
                 else {}
             ),
+            "failure_reverse": (
+                self.capability_flow.reverse_last_failure()
+                if getattr(self, "capability_flow", None) and str(harvest.get("quality_gate") or {}).find("fail") >= 0
+                else {}
+            ),
             "z_subgoal": (
                 (self.capability_flow.flow_guidance() or {}).get("z_subgoal") or {}
                 if getattr(self, "capability_flow", None)

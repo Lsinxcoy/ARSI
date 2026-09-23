@@ -10,6 +10,9 @@ from arsi.world_model.capability_flow import (
     encode_dyn_state,
     encode_static_context,
     integrate,
+    integrate_backward,
+    pre_failure_organs,
+    reverse_from_failure,
     velocity_gt,
 )
 from arsi.world_model.dream_rsi_deep import (
@@ -41,6 +44,9 @@ __all__ = [
     "encode_dyn_state",
     "encode_static_context",
     "integrate",
+    "integrate_backward",
+    "pre_failure_organs",
+    "reverse_from_failure",
     "velocity_gt",
     "ActionBatch",
     "AdaptiveBehaviorController",
