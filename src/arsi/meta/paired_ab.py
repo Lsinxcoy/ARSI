@@ -139,17 +139,23 @@ def select_policy_paired(
     margin: float = DEFAULT_MEAN_MARGIN,
     min_d: float = NEGLIGIBLE_COHEN_D,
     min_samples: int = DEFAULT_MIN_SAMPLES,
+    same_generation_only: bool = False,
+    generation: Optional[int] = None,
+    flow_guidance: Optional[dict] = None,
+    apply_difficulty_flow_gate: bool = True,
 ) -> dict:
     """S6: champion/challenger on per-world paired scores.
 
     Current policy always remains candidate; challenger must beat it with effect size.
+    P2-9: optional same-lineage-generation pairing + difficulty×flow dual gate.
     """
     names = candidate_names or [f"cand_{i+1}" for i in range(len(candidate_fns))]
     base_eval = pool.evaluate_policy_across_pool(current_fn, policy_name=current_name)
-    base_scores = [
-        float(w.get("score", 0.0))
-        for w in (base_eval.get("per_world") or [])
-    ]
+    base_rows = list(base_eval.get("per_world") or [])
+    if same_generation_only:
+        from arsi.meta.difficulty_flow_gate import same_generation_pairs
+        base_rows = same_generation_pairs(base_rows, generation=generation)
+    base_scores = [float(w.get("score", 0.0)) for w in base_rows]
 
     comparisons = []
     best_name = current_name
@@ -159,7 +165,11 @@ def select_policy_paired(
 
     for name, fn in zip(names, candidate_fns):
         ev = pool.evaluate_policy_across_pool(fn, policy_name=name)
-        cand_scores = [float(w.get("score", 0.0)) for w in (ev.get("per_world") or [])]
+        rows = list(ev.get("per_world") or [])
+        if same_generation_only:
+            from arsi.meta.difficulty_flow_gate import same_generation_pairs
+            rows = same_generation_pairs(rows, generation=generation)
+        cand_scores = [float(w.get("score", 0.0)) for w in rows]
         cmp = compare_paired(
             base_scores,
             cand_scores,
@@ -178,7 +188,7 @@ def select_policy_paired(
                 best_eval = ev
                 best_cmp = cmp
 
-    return {
+    selection = {
         "best_name": best_name,
         "best_fn": best_fn,
         "best_eval": best_eval,
@@ -191,6 +201,8 @@ def select_policy_paired(
             "margin": margin,
             "min_samples": min_samples,
             "rule": "paired_delta_mean+cohen_d; negligible→hold",
+            "same_generation_only": same_generation_only,
+            "generation": generation,
         },
         "monotone_ok": True,  # current always eligible; promote only on evidence
         "all": [
@@ -205,3 +217,9 @@ def select_policy_paired(
               "avg_score": float(base_eval.get("avg_score", 0.0) or 0.0),
               "world_count": len(base_scores)}],
     }
+
+    if apply_difficulty_flow_gate:
+        from arsi.meta.difficulty_flow_gate import apply_dual_gate_to_selection
+        selection = apply_dual_gate_to_selection(selection, pool, flow_guidance=flow_guidance)
+
+    return selection

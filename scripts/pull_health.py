@@ -52,6 +52,15 @@ for d in rows[-10:]:
         zw = rk.get("z_window") or {}
         if zw:
             print("  rankme_z", zw.get("effective_rank"), "collapse", zw.get("collapse"), "dim", zw.get("dim"))
+    dg = d.get("difficulty_flow_gate") or {}
+    if isinstance(dg, dict) and dg:
+        print(
+            "  d×flow_gate",
+            "allow", dg.get("allow_promote"),
+            "d_t_rising", dg.get("d_t_rising"),
+            "prog", (dg.get("progress") or {}).get("score"),
+            "reason", (dg.get("reason") or "")[:80],
+        )
     iw = d.get("iwm")
     if isinstance(iw, dict):
         inner = iw.get("iwm") if isinstance(iw.get("iwm"), dict) else iw

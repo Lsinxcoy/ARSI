@@ -430,8 +430,13 @@ class WorldPool:
         candidate_names: Optional[list[str]] = None,
         use_paired_ab: bool = True,
         use_el: bool = False,
+        same_generation_only: bool = False,
+        flow_guidance: Optional[dict] = None,
     ) -> dict:
-        """S6: paired A/B + effect-size gate when enabled; else max avg_score."""
+        """S6: paired A/B + effect-size gate when enabled; else max avg_score.
+
+        P2-9: same_generation_only + difficulty×flow dual gate (promote ≠ D_T↑).
+        """
         if use_paired_ab:
             from arsi.meta.paired_ab import select_policy_paired
             return select_policy_paired(
@@ -440,6 +445,9 @@ class WorldPool:
                 candidate_policy_fns,
                 current_name=current_name,
                 candidate_names=candidate_names,
+                same_generation_only=same_generation_only,
+                flow_guidance=flow_guidance,
+                apply_difficulty_flow_gate=True,
             )
 
         candidates = [(current_name, current_policy_fn)]

@@ -222,6 +222,9 @@ class ARSIDaemon:
                 "manifest_cycles": stats.get("manifest_cycles", 0),
                 "env_evolution": stats.get("env_evolution") or {},
                 "capability_flow": stats.get("capability_flow") or {},
+                "difficulty_flow_gate": (stats.get("last_eval_loop") or {}).get("notes", {}).get("difficulty_flow_gate")
+                if isinstance(stats.get("last_eval_loop"), dict)
+                else {},
                 "beta": stats.get("beta", 0.6),
                 "grid_plan": stats.get("grid_plan", {}),
                 "iwm": {

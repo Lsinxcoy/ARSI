@@ -19,6 +19,14 @@ from arsi.meta.env_difficulty import (
     weakness_vs_difficulty,
 )
 from arsi.meta.el_scheduler import ELScheduler, LineageState
+from arsi.meta.difficulty_flow_gate import (
+    apply_dual_gate_to_selection,
+    d_t_is_rising,
+    difficulty_flow_gate,
+    extract_d_t_history,
+    flow_progress_score,
+    same_generation_pairs,
+)
 
 __all__ = [
     "LiveCycleManifest",
@@ -41,4 +49,10 @@ __all__ = [
     "weakness_vs_difficulty",
     "ELScheduler",
     "LineageState",
+    "apply_dual_gate_to_selection",
+    "d_t_is_rising",
+    "difficulty_flow_gate",
+    "extract_d_t_history",
+    "flow_progress_score",
+    "same_generation_pairs",
 ]

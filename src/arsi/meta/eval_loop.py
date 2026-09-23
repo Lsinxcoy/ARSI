@@ -163,9 +163,31 @@ def run_eval_loop(
             cand_name="dream_rsi",
         )
         result.notes["paired_ab"] = paired.to_dict()
+        # P2-9: D_T↑ alone is not promote evidence — require z progress
+        try:
+            from arsi.meta.difficulty_flow_gate import (
+                apply_dual_gate_to_selection,
+                difficulty_flow_gate,
+                extract_d_t_history,
+            )
+            fg = {}
+            cf = getattr(arsi, "capability_flow", None)
+            if cf is not None:
+                fg = cf.flow_guidance()
+            gate = difficulty_flow_gate(extract_d_t_history(pool), fg)
+            result.notes["difficulty_flow_gate"] = gate
+            if paired.promote and not gate.get("allow_promote", True):
+                paired.promote = False
+                paired.hold = True
+                paired.reason = (paired.reason or "") + f";dual_gate:{gate.get('reason')}"
+                result.notes["paired_ab"] = paired.to_dict()
+                result.notes["pool_dream_wins"] = False
+                result.notes["s6_note"] = "difficulty_flow_gate_blocked"
+        except Exception as e:
+            logger.warning(f"difficulty_flow_gate failed: {e}")
         if not paired.promote and paired.negligible:
             result.notes["pool_dream_wins"] = False
-            result.notes["s6_note"] = "negligible_effect_hold"
+            result.notes["s6_note"] = result.notes.get("s6_note") or "negligible_effect_hold"
     except Exception as e:
         logger.warning(f"paired A/B gate failed: {e}")
 

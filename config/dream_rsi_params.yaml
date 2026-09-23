@@ -79,3 +79,9 @@ capability_flow:
   history_size: 128
   horizon_seconds: 600
   rankme_collapse_ratio: 0.15
+
+# P2-9 dual gate: D_T↑ is not promote; need z progress (or stable difficulty)
+difficulty_flow_gate:
+  enabled: true
+  min_progress: 0.0
+  same_generation_only: true

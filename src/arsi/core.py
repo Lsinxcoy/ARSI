@@ -1228,6 +1228,14 @@ class ARSI:
                 candidates,
                 current_name=self.portfolio_policy.name,
                 candidate_names=candidate_names,
+                use_paired_ab=True,
+                use_el=use_el,
+                same_generation_only=True,
+                flow_guidance=(
+                    self.capability_flow.flow_guidance()
+                    if getattr(self, "capability_flow", None)
+                    else None
+                ),
             )
         else:
             selection = {
@@ -1383,6 +1391,8 @@ class ARSI:
             "revised": revised,
             "monotone_ok": selection.get("monotone_ok", True),
             "all_candidates": selection.get("all", []),
+            "difficulty_flow_gate": selection.get("difficulty_flow_gate") or {},
+            "gate_revoked": selection.get("gate_revoked", False),
             "beta": self.portfolio_policy.beta,
             "grid_plan": grid_plan.to_dict(),
             "beta_sweep": sweep.to_dict(),
