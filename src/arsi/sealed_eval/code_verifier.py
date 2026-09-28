@@ -28,8 +28,11 @@ class CodeVerifier:
     - Temp directory isolation
     """
 
-    def __init__(self, timeout: int = 10):
+    def __init__(self, timeout: int = 10, require_compile: bool = True):
         self.timeout = timeout
+        # CM-7b86cd1d1f: reject generated code that fails compile (synthex compiled_mech cluster)
+        self.require_compile = bool(require_compile)
+        self.on_compile_fail = "reject_and_log"
 
     def verify_python_code(self, code: str, test_cases: list[dict]) -> tuple[float, dict]:
         """Execute Python code and run test cases.
@@ -42,18 +45,67 @@ class CodeVerifier:
             (score, evidence) where score is 0.0 to 1.0
         """
         if not code or not code.strip():
-            return 0.0, {"reason": "empty_code"}
+            return 0.0, {"reason": "empty_code", "fail_class": "invalid"}
 
         # Extract Python code from markdown fences
         extracted = self._extract_code(code)
         if not extracted:
-            return 0.0, {"reason": "no_python_code_found"}
+            return 0.0, {"reason": "no_python_code_found", "fail_class": "invalid"}
 
         # Check syntax
         try:
             ast.parse(extracted)
         except SyntaxError as e:
-            return 0.0, {"reason": f"syntax_error: {e}"}
+            try:
+                from arsi.harness.compile_gate import record_compile
+
+                record_compile(ok=False, reason=f"syntax:{e}", source="code_verifier", syntax=True)
+            except Exception:
+                pass
+            return 0.0, {"reason": f"syntax_error: {e}", "fail_class": "compile"}
+
+        # Compile gate — require_compile: true (reject_and_log)
+        if self.require_compile:
+            try:
+                from arsi.harness.compile_gate import bump_candidate_fail, candidate_reject, extract_candidate_id
+
+                cid = extract_candidate_id(code) or extract_candidate_id(str(test_cases))
+                skip, why = candidate_reject(cid) if cid else (False, "")
+                if skip:
+                    record = {"reason": why, "fail_class": "compile_retry_ring", "candidate_id": cid}
+                    try:
+                        from arsi.harness.compile_gate import record_compile
+
+                        record_compile(ok=False, reason=why, source="code_verifier")
+                    except Exception:
+                        pass
+                    return 0.0, record
+            except Exception:
+                cid, bump_candidate_fail = "", None
+            try:
+                compile(extracted, "<arsi_candidate>", "exec")
+            except Exception as e:
+                logger.warning("code_verifier compile reject: %s", e)
+                try:
+                    from arsi.harness.compile_gate import bump_candidate_fail, record_compile
+
+                    record_compile(ok=False, reason=str(e), source="code_verifier")
+                    if cid:
+                        bump_candidate_fail(cid)
+                except Exception:
+                    pass
+                return 0.0, {
+                    "reason": f"compile_error: {e}",
+                    "fail_class": "compile",
+                    "on_compile_fail": self.on_compile_fail,
+                    "require_compile": True,
+                }
+            try:
+                from arsi.harness.compile_gate import record_compile
+
+                record_compile(ok=True, source="code_verifier")
+            except Exception:
+                pass
 
         # Run test cases
         passed = 0

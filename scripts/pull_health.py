@@ -47,11 +47,44 @@ for d in rows[-10:]:
             "n", cf.get("n_samples"), "v_upd", cf.get("n_v_updates"),
             "mse", cf.get("field_mse_ewma"),
             "neg_organs", cf.get("last_negative_organs"),
+            "act", cf.get("last_action"),
         )
+        asup = cf.get("action_support") or {}
+        if asup:
+            trusted = [a for a, v in asup.items() if isinstance(v, dict) and v.get("trusted")]
+            print("  action_support", "trusted", trusted, "counts", {a: (v or {}).get("n") for a, v in asup.items()})
         rk = cf.get("last_rankme") or {}
         zw = rk.get("z_window") or {}
         if zw:
             print("  rankme_z", zw.get("effective_rank"), "collapse", zw.get("collapse"), "dim", zw.get("dim"))
+        sync = cf.get("sync") or {}
+        if sync:
+            print(
+                "  sync",
+                "n", sync.get("n_samples"),
+                "dead_organs", sync.get("dead_organs"),
+                "dead", sync.get("dead_channels"),
+            )
+            for bname, b in (sync.get("blocks") or {}).items():
+                ent = b.get("entropy") or {}
+                tops = (b.get("top_pairs") or [])[:3]
+                print(
+                    "   sync_" + bname,
+                    "ent", ent.get("norm_entropy"), "collapse", ent.get("collapse"),
+                    "top", [(p.get("a"), p.get("b"), p.get("rho")) for p in tops],
+                )
+        nlm = cf.get("nlm") or {}
+        if nlm:
+            print("  nlm trusted_frac", nlm.get("trusted_frac"), "pred_keys", list((cf.get("nlm_pred") or {}))[:4])
+        kv = cf.get("kernel_v") or {}
+        if kv:
+            print("  kernel_v", "n", kv.get("n_updates"), "trusted", kv.get("trusted"), "mse", kv.get("mse_ewma"))
+        cm = cf.get("cognitive_map") or {}
+        if cm:
+            print("  cogmap edges", cm.get("edges"), "per_act", cm.get("obs_per_action"))
+        sm = cf.get("sync_memory") or {}
+        if sm:
+            print("  sync_mem pairs", sm.get("pairs"), "bound", sm.get("n_bound"))
     dg = d.get("difficulty_flow_gate") or {}
     if isinstance(dg, dict) and dg:
         print(

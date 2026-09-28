@@ -19,6 +19,35 @@ from arsi.world_model.discovery_tree import DiscoveryTree
 logger = logging.getLogger(__name__)
 
 
+def dream_selection_fidelity_check(
+    *,
+    prefix_only: bool = True,
+    semantic_guidance_in_selection: bool = False,
+    current_in_candidate_set: bool = True,
+    score_mode: str = "quality_anchored",
+) -> dict:
+    """Dream-RSI selection invariants (paper discipline).
+
+    - prefix-only (unrevealed scores stay unknown)
+    - no semantic guidance on replay selection
+    - V*≥V0: incumbent always in candidate set
+    """
+    ok = (
+        bool(prefix_only)
+        and not semantic_guidance_in_selection
+        and bool(current_in_candidate_set)
+        and score_mode in ("quality_anchored", "paper")
+    )
+    return {
+        "ok": ok,
+        "prefix_only": bool(prefix_only),
+        "semantic_forbidden_in_selection": not semantic_guidance_in_selection,
+        "V_star_ge_V0": bool(current_in_candidate_set),
+        "score_mode": score_mode,
+        "note": "dream_rsi_selection_fidelity",
+    }
+
+
 @dataclass
 class ActionBatch:
     """Mechanism 1: Batch decision — multiple actions + parallelism.

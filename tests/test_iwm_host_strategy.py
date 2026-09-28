@@ -93,7 +93,7 @@ class TestBriefCarriesStrategy:
         iface = ARSIInterface(arsi)
         brief = iface.brief("write calibration skill", "hermes")
         assert getattr(brief, "channel_strategy", None) is not None
-        body = brief.format_for_agent()
+        body = brief.format_for_agent(full=True)
         assert "IWM Strategy (structured facts)" in body
         assert "focus:" in body
 
@@ -115,7 +115,7 @@ class TestABJointAcceptance:
             arsi.iwm.organ.record(ORGAN_MEMORY, True)
         iface = ARSIInterface(arsi)
         brief = iface.brief("host empowerment task", "hermes")
-        body = brief.format_for_agent()
+        body = brief.format_for_agent(full=True)
         rec = build_receipt_from_text(body, source_kind="ab_accept", fields={"agent": "hermes"})
         assert rec.verified is True
         assert getattr(brief, "channel_strategy", None) is not None

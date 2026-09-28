@@ -1,14 +1,16 @@
 # ARSI Configuration
 # API credentials — DO NOT commit real keys to public repos
+# Preferred: set ARSI_API_KEY in environment (or local .env, gitignored).
 
 llm:
   provider: openai
-  model: nvidia/nemotron-3.5-lightning-30b-a3b
-  api_base: https://integrate.api.nvidia.com/v1
-  # api_key: set via environment variable ARSI_API_KEY (NVIDIA nvapi-...)
+  model: MiMo-V2.6-Flash
+  api_base: https://developer.amd.com.cn/radeon/api/v1
+  # Local fallback if ARSI_API_KEY env is unset (do not commit to public remotes)
+  api_key: ""
   max_tokens: 1024
   temperature: 0.3
-  timeout: 20
+  timeout: 30
   use_proxy: false
   proxy_url: http://127.0.0.1:7890
   fallback_to_heuristic: true

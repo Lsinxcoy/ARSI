@@ -1,20 +1,26 @@
 @echo off
-REM ARSI Daemon Startup Script
-REM API key MUST come from environment — never hardcode secrets in this file.
+REM ARSI Daemon Startup Script — venv python + single instance
+REM API key MUST come from environment or local .env — never hardcode secrets in this file.
 set PYTHONPATH=E:\ARSI\src
+set PYTHONHOME=
+if exist "E:\ARSI\.env" (
+  for /f "usebackq tokens=1,* delims==" %%A in ("E:\ARSI\.env") do (
+    if /i "%%A"=="ARSI_API_KEY" set "ARSI_API_KEY=%%B"
+  )
+)
 if "%ARSI_API_KEY%"=="" (
-  echo [ERROR] ARSI_API_KEY is not set. Set it in the parent shell before running.
-  echo Example: set ARSI_API_KEY=... then run this script.
+  echo [ERROR] ARSI_API_KEY is not set. Set it in the parent shell or E:\ARSI\.env
   exit /b 1
 )
-set PYTHONHOME=E:\MIMOdesktop\Xiaomi MiMo\resources\runtimes\win32-x64\python
 set TEMP=E:\ARSI\archive\tmp
 set TMP=E:\ARSI\archive\tmp
 if not exist "E:\ARSI\archive\tmp" mkdir "E:\ARSI\archive\tmp"
 
-echo Starting ARSI Daemon...
-echo Python: %PYTHONHOME%\python.exe
-echo API Key: present ^(from env, length %ARSI_API_KEY:~0,3%***^)
-echo.
+REM single instance: refuse if lock is live
+if exist "E:\ARSI\archive\arsi.lock" (
+  echo [ERROR] arsi.lock exists — another daemon may be running
+  exit /b 1
+)
 
-"%PYTHONHOME%\python.exe" E:\ARSI\scripts\arsi_daemon.py --tick-sleep 300
+echo Starting ARSI Daemon (venv)...
+"E:\ARSI\.venv\Scripts\python.exe" E:\ARSI\scripts\arsi_daemon.py --tick-sleep 300

@@ -27,7 +27,7 @@ class DreamRSIParams:
     beta1_cost_penalty: float = 0.1
     beta2_parallel_bonus: float = 0.05
     parallel_lambda: float = 0.05
-    M_revisions_per_cycle: int = 2
+    M_revisions_per_cycle: int = 4
     K2_replay_max_rounds: int = 20
     dream_every_n_steps: int = 8
     dream_every_n_ticks: int = 8

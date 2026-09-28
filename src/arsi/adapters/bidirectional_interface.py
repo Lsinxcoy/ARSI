@@ -1,12 +1,16 @@
 """ARSI Bidirectional Interface Protocol — agents pass through ARSI on every task.
 
-Protocol:
-  1. Agent calls brief() before task → gets context, skills, recommendations
+Protocol (empowerment-max · dual boundary):
+  1. Agent calls brief() before task → Empowerment Pack (skills/tools/manifests/
+     fail-recovery/drawbacks/what-if) + structured strategy. Host face MAY be
+     semantic and actionable.
   2. Agent executes task
-  3. Agent calls report() after task → ARSI learns from outcome
+  3. Agent calls report() after task → actionable schema + negative-epistemology
+     claim gate (never blind SUCCESS)
 
-ARSI only improves its own consulting quality. Agents don't need to change
-their core behavior — they just call ARSI before/after.
+Dual boundaries:
+  - ARSI internal replay_selection still forbids semantic guidance (P-R9)
+  - claims only no_known_defect / verified_contract / measured / unverified
 """
 from __future__ import annotations
 
@@ -28,11 +32,12 @@ FEEDBACK_DIR = Path.home() / ".local" / "share" / "mimocode" / "memory" / "arsi_
 class ARSIBrief:
     """What ARSI tells an agent before a task.
 
-    brief_policy (Dream-RSI §5.1):
-      - structured (default): skills + safety warnings + structured history
-        stats only. Recommendations / past lessons are meta_only and MUST NOT
-        appear in format_for_agent() — semantic guidance hurts exploration.
-      - full: legacy text brief for human CLI / debugging.
+    Host face is empowerment-max (skills, tools, manifests, fail recovery,
+    drawbacks, what-if). Internal ARSI selection remains free of this prose.
+    brief_policy:
+      - structured (default): empowerment pack + structured stats; free-form
+        past lessons stay meta_only.
+      - full: also dump recommendations / past lessons (human CLI / debug).
     """
 
     POLICY_STRUCTURED = "structured"
@@ -49,6 +54,8 @@ class ARSIBrief:
         confidence: float = 0.5,
         history_simulator: Optional[dict] = None,
         policy: str = "structured",
+        empower_pack: Optional[dict] = None,
+        working_state: Optional[dict] = None,
     ):
         self.task_description = task_description
         self.agent_id = agent_id
@@ -59,6 +66,8 @@ class ARSIBrief:
         self.confidence = confidence
         self.history_simulator = history_simulator  # Dream-RSI: queryable history
         self.policy = policy or self.POLICY_STRUCTURED
+        self.empower_pack = empower_pack  # max host capability surface
+        self.working_state = working_state  # Recuris WM snapshot
         self.timestamp = datetime.now().isoformat()
         self.brief_id = f"brief_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -98,10 +107,12 @@ class ARSIBrief:
                 "recommendations": self.recommendations,
                 "past_lessons": self.past_lessons,
             },
+            "empower_pack": self.empower_pack,
+            "working_state": self.working_state,
             "timestamp": self.timestamp,
         }
 
-    def format_for_agent(self) -> str:
+    def format_for_agent(self, full: bool = False) -> str:
         """Format brief for agent consumption.
 
         B-line (SoL-Pi channel):
@@ -116,6 +127,18 @@ class ARSIBrief:
             f"Policy: {self.policy}",
             "",
         ]
+        # Pin capture contract at top when terminal failures are hot
+        ep = self.empower_pack
+        top = []
+        try:
+            top = [c.get("label") for c in ((getattr(ep, "preflight", None) or {}).get("top_clusters") or [])]
+        except Exception:
+            top = []
+        if any("terminal" in str(x) for x in top) or True:
+            lines.append("## HARD CONTRACT (must before any SUCCESS)")
+            lines.append("  - terminal/execute_code fail → measurements MUST include exit_code + stderr_tail")
+            lines.append("  - fail_class=tool_error_terminal|execute; one recovery; never verbal done")
+            lines.append("")
         if self.relevant_skills:
             lines.append("## Relevant Skills")
             for s in self.relevant_skills:
@@ -126,6 +149,37 @@ class ARSIBrief:
             for w in self.warnings:
                 lines.append(f"  ⚠ {w}")
             lines.append("")
+
+        # Empowerment-max pack (host face semantic OK)
+        if self.empower_pack:
+            pack = self.empower_pack
+            if hasattr(pack, "as_structured_block"):
+                lines.extend(pack.as_structured_block())
+            elif isinstance(pack, dict):
+                from arsi.adapters.host_empower import EmpowermentPack
+
+                lines.extend(EmpowermentPack(**{k: pack.get(k) for k in EmpowermentPack.__dataclass_fields__ if k in pack}).as_structured_block())
+            lines.append("")
+
+        # P-c bounded context for long lesson/recommendation dumps
+        try:
+            from arsi.harness.runtime_wiring import brief_compress
+            if self.past_lessons or len(self.recommendations or []) > 8:
+                folded = brief_compress(list(self.past_lessons or []) + list(self.recommendations or []))
+                lines.append("## Compressed prior (bounded)")
+                lines.append(folded[:800])
+        except Exception:
+            pass
+
+        # Fail-handling (CM-fc23371019 + P1-2 gate_reject + tool_error) - structured, executable
+        lines.append("## Fail-handling")
+        lines.append("  - On tool failure (esp. terminal/execute_code): fail_class=tool_error + tool_id.")
+        lines.append("  - One recovery only: backoff retry OR switch_alternate_tool (execute_code↔terminal).")
+        lines.append("  - Do not repeat the identical failing call without a changed precondition.")
+        lines.append("  - On gate/synthex reject: fail_class=gate_reject; log gate_id+candidate_id; ONE repair pass only.")
+        lines.append("  - Compile (synthex/mech): tag candidate_id; ONE recompile; 2nd fail same id → abandon_and_log.")
+        lines.append("  - Report fail_class + recovery_attempted + recovery_worked; never mark tool_loop/gate_reject as success.")
+        lines.append("")
 
         hs = self.history_simulator or {}
         if hs.get("available"):
@@ -181,6 +235,9 @@ class ARSIBrief:
             lines.append("")
 
         body = "\n".join(lines)
+        self._last_full_body = body
+        if full:
+            return body
         # ObservationPack: large brief → handle for host, full text archived
         try:
             from arsi.foundation.observation_pack import pack_for_host
@@ -193,7 +250,11 @@ class ARSIBrief:
 
 
 class ARSIReport:
-    """What an agent tells ARSI after a task."""
+    """What an agent tells ARSI after a task (actionable schema + claim gate).
+
+    Actionable fields feed AEGIS digester labels and recovery learning.
+    `claim` (optional) is screened by negative epistemology — never blind SUCCESS.
+    """
 
     def __init__(
         self,
@@ -206,6 +267,15 @@ class ARSIReport:
         recommendations_followed: list[str],
         recommendations_ignored: list[str],
         notes: str = "",
+        fail_class: str = "",
+        recovery_attempted: str = "",
+        recovery_worked: Optional[bool] = None,
+        acceptance_evidence: str = "",
+        manifest_ids_used: list[str] | None = None,
+        compile_checked: Optional[bool] = None,
+        claim: Optional[dict] = None,
+        measurements: Optional[dict] = None,
+        wm_updates: Optional[list] = None,
     ):
         self.brief_id = brief_id
         self.agent_id = agent_id
@@ -216,7 +286,37 @@ class ARSIReport:
         self.recommendations_followed = recommendations_followed
         self.recommendations_ignored = recommendations_ignored
         self.notes = notes
+        self.fail_class = fail_class or ""
+        self.recovery_attempted = recovery_attempted or ""
+        self.recovery_worked = recovery_worked
+        self.acceptance_evidence = acceptance_evidence or ""
+        self.manifest_ids_used = list(manifest_ids_used or [])
+        self.compile_checked = compile_checked
+        self.claim = claim  # {kind, subject, drawbacks_checked, contract_id, evidence, raw}
+        self.measurements = dict(measurements or {})
+        self.wm_updates = list(wm_updates or [])  # proposed StateUpdate dicts
         self.timestamp = datetime.now().isoformat()
+
+    def to_dict(self) -> dict:
+        return {
+            "brief_id": self.brief_id,
+            "agent_id": self.agent_id,
+            "task_description": self.task_description,
+            "outcome": self.outcome,
+            "effect": self.effect,
+            "skills_used": self.skills_used,
+            "fail_class": self.fail_class,
+            "recovery_attempted": self.recovery_attempted,
+            "recovery_worked": self.recovery_worked,
+            "acceptance_evidence": self.acceptance_evidence,
+            "manifest_ids_used": self.manifest_ids_used,
+            "compile_checked": self.compile_checked,
+            "claim": self.claim,
+            "measurements": self.measurements,
+            "wm_updates": self.wm_updates,
+            "notes": self.notes,
+            "timestamp": self.timestamp,
+        }
 
 
 class ARSIInterface:
@@ -249,10 +349,16 @@ class ARSIInterface:
         self._report_count = 0
         self._active_briefs: dict[str, ARSIBrief] = {}
 
-    def brief(self, task_description: str, agent_id: str) -> ARSIBrief:
+    def brief(
+        self,
+        task_description: str,
+        agent_id: str,
+        pull: Optional[list] = None,
+    ) -> ARSIBrief:
         """Generate a brief for an agent about to execute a task.
 
-        This is what ARSI "says" to the agent before it works.
+        pull: optional read-only capability pulls, e.g. ["harness_preflight"].
+              Never triggers evolve/apply.
         """
         self._brief_count += 1
 
@@ -319,6 +425,31 @@ class ARSIInterface:
             history_simulator=history_simulator,
             policy=self.brief_policy,
         )
+        # Empowerment-max pack (skills/tools/manifests/fail-recovery/drawbacks/what-if)
+        try:
+            from arsi.adapters.host_empower import build_empowerment_pack, harness_preflight
+
+            brief.empower_pack = build_empowerment_pack(self.arsi, agent_id=agent_id)
+            if pull and "harness_preflight" in pull:
+                brief.empower_pack.preflight = harness_preflight(self.arsi, agent_id=agent_id)
+            for s in brief.empower_pack.skill_kit:
+                name = s.get("skill") if isinstance(s, dict) else str(s)
+                if name and name not in brief.relevant_skills:
+                    brief.relevant_skills.append(name)
+        except Exception as e:
+            logger.warning(f"empowerment pack failed: {e}")
+            brief.empower_pack = None
+
+        # Recuris R0: structured working state (goals pending/done/blocked)
+        try:
+            from arsi.iwm.working_memory import WorkingState
+
+            goals = self._goals_from_task(task_description)
+            ws = WorkingState.init_from_task(task_description, goals, task_id=brief.brief_id)
+            brief.working_state = ws.snapshot()
+        except Exception as e:
+            logger.warning(f"working state init failed: {e}")
+            brief.working_state = None
         if strategy is not None:
             brief.channel_strategy = strategy
             if self.brief_policy == ARSIBrief.POLICY_FULL:
@@ -350,7 +481,94 @@ class ARSIInterface:
         """
         self._report_count += 1
 
-        # 1. Record the trace
+        # 0aa) tool_error_terminal: require exit_code/stderr capture (CM capture)
+        try:
+            fc = str(getattr(report, "fail_class", "") or "")
+            m = report.measurements or {}
+            if fc in ("tool_error_terminal", "tool_error") and "terminal" in f"{report.task_description} {report.notes}":
+                if not (m.get("exit_code") is not None or m.get("stderr_tail") or m.get("stdout_tail")):
+                    report.fail_class = "tool_error_terminal"
+                    # do not invent success; mark capture missing
+                    m = dict(m)
+                    m["capture_missing"] = True
+                    report.measurements = m
+        except Exception:
+            pass
+
+        # 0a) compile retry ring: abandoned candidate_id is not a new attempt
+        try:
+            from arsi.harness.compile_gate import extract_candidate_id, note_trace_candidate
+
+            blob = f"{report.task_description} {report.notes} {report.measurements}"
+            cid = extract_candidate_id(blob)
+            if cid:
+                _, abandon, why = note_trace_candidate(blob)
+                if abandon:
+                    report.outcome = "unknown"
+                    report.effect = min(float(report.effect or 0.0), 0.0)
+                    report.fail_class = report.fail_class or "compile_retry_ring"
+        except Exception:
+            pass
+
+        # 0b) Recuris WM: commit proposed updates only with checker evidence
+        wm_results = []
+        try:
+            from arsi.iwm.working_memory import StateUpdate, WorkingState
+
+            ws = WorkingState.init_from_task(report.task_description, [], task_id=report.brief_id)
+            for raw in getattr(report, "wm_updates", []) or []:
+                u = StateUpdate(
+                    goal_id=str((raw or {}).get("goal_id") or "g0"),
+                    new_status=str((raw or {}).get("new_status") or "pending"),
+                    evidence=list((raw or {}).get("evidence") or []),
+                    blocker=str((raw or {}).get("blocker") or ""),
+                    claimed=bool((raw or {}).get("claimed", True)),
+                )
+                wm_results.append(ws.propose_update(u))
+        except Exception as e:
+            wm_results = [{"accepted": False, "reason": f"wm_error:{e}"}]
+
+        # 0b) Hard-abandon: re-version of exhausted candidate_id is refused
+        try:
+            from arsi.harness.compile_gate import is_reversion_blocked
+
+            blocked, bwhy = is_reversion_blocked(
+                f"{report.task_description} {report.notes} {report.measurements} {getattr(report, 'fail_class', '')}"
+            )
+            if blocked:
+                report.outcome = "unknown"
+                report.effect = min(float(report.effect or 0.0), 0.0)
+                report.fail_class = report.fail_class or "compile_retry_ring"
+        except Exception:
+            bwhy = ""
+
+        # 0) Negative epistemology claim gate (never blind SUCCESS)
+        claim_gate = {"accepted": True, "reason": "no_claim"}
+        if getattr(report, "claim", None):
+            try:
+                from arsi.harness.epistemic import Claim, admit_claim
+
+                c = report.claim or {}
+                ok, why = admit_claim(
+                    Claim(
+                        kind=str(c.get("kind") or "unverified"),
+                        subject=str(c.get("subject") or report.agent_id),
+                        drawbacks_checked=list(c.get("drawbacks_checked") or []),
+                        contract_id=str(c.get("contract_id") or ""),
+                        evidence=str(c.get("evidence") or ""),
+                        metric=c.get("metric"),
+                        raw=str(c.get("raw") or report.notes or ""),
+                    )
+                )
+                claim_gate = {"accepted": ok, "reason": why}
+                if not ok:
+                    # demote outcome — never store forbidden claim as success
+                    report.outcome = "unknown"
+                    report.effect = min(float(report.effect or 0.0), 0.0)
+            except Exception as e:
+                claim_gate = {"accepted": False, "reason": f"claim_gate_error:{e}"}
+
+        # 1) Record the trace (actionable schema for Digester)
         self.arsi.ingest_trace(
             agent_id=report.agent_id,
             action=f"task:{report.task_description[:40]}",
@@ -363,6 +581,14 @@ class ARSIInterface:
                 "recommendations_ignored": report.recommendations_ignored,
                 "notes": report.notes,
                 "source": "arsi_interface",
+                "fail_class": getattr(report, "fail_class", ""),
+                "recovery_attempted": getattr(report, "recovery_attempted", ""),
+                "recovery_worked": getattr(report, "recovery_worked", None),
+                "acceptance_evidence": getattr(report, "acceptance_evidence", ""),
+                "manifest_ids_used": getattr(report, "manifest_ids_used", []),
+                "compile_checked": getattr(report, "compile_checked", None),
+                "measurements": getattr(report, "measurements", {}),
+                "claim_gate": claim_gate,
             },
         )
 
@@ -395,7 +621,27 @@ class ARSIInterface:
             "brief_id": report.brief_id,
             "effectiveness": effectiveness,
             "lesson": lesson,
+            "claim_gate": claim_gate,
+            "wm_results": wm_results,
+            "capture_missing": (report.measurements or {}).get("capture_missing", False),
+            "reversion_block": locals().get("bwhy", ""),
+            "fail_class": getattr(report, "fail_class", ""),
+            "actionable": {
+                "recovery_attempted": getattr(report, "recovery_attempted", ""),
+                "recovery_worked": getattr(report, "recovery_worked", None),
+                "acceptance_evidence": getattr(report, "acceptance_evidence", ""),
+            },
         }
+
+    def _goals_from_task(self, task_description: str) -> list[str]:
+        """Split task into goal candidates for WM (simple; hosts may override)."""
+        text = str(task_description or "").strip()
+        if not text:
+            return ["complete_task"]
+        for sep in ("；", ";", " and then ", " then "):
+            if sep in text:
+                return [p.strip() for p in text.split(sep) if p.strip()][:8]
+        return [text]
 
     def _generate_warnings(self, agent_id: str) -> list[str]:
         """Generate warnings based on known issues."""

@@ -174,16 +174,32 @@ def verify_world(
     else:
         res.quality_ok = True
 
-    # Off-policy hardening: high/max effort children must not collapse D_T
+    # P2-1: Red Queen — block difficulty collapse (overnight: L 63→27).
+    # high: forbid >5% d_t drop OR require structural growth (L / novelty / nodes)
+    # max: require non-decreasing d_t or strictly longer horizon
     if effort in ("high", "max") and seed_world is not None:
         try:
             seed_d = compute_env_difficulty(seed_world)
             child_d = compute_env_difficulty(world)
+            seed_n = len(_nodes_to_traces(seed_world) or [])
+            child_n = len(nodes)
+            novelty_up = (child_d.scenario_novelty + child_d.skill_rarity) >= (
+                seed_d.scenario_novelty + seed_d.skill_rarity
+            )
+            structural_up = child_d.L >= seed_d.L or child_n > seed_n or novelty_up
+            if effort == "max":
+                ok = child_d.d_t + 1e-6 >= seed_d.d_t or child_d.L > seed_d.L
+            else:
+                ok = child_d.d_t + 1e-6 >= seed_d.d_t * 0.95 or structural_up
+            if not ok:
+                res.reasons.append("difficulty_collapse_red_queen")
+                res.quality_ok = False
             if child_d.d_t + 1e-6 < seed_d.d_t * 0.85:
                 res.reasons.append("difficulty_dropped_too_much")
                 res.quality_ok = False
         except Exception as e:
             res.reasons.append(f"difficulty_check_error:{e}")
+            res.quality_ok = False
     return res
 
 
@@ -220,14 +236,15 @@ def evolve_traces(
         for i in range(a, b):
             if i < n:
                 seq[i]["agent_id"] = rng.choice(SCENARIO_POOL)
-        # inject a novel scenario step
-        if effort in ("high", "max") and n:
-            seq.insert(min(b, n), {
+        # P2-1: inject MORE novel scenario steps for high/max (raise L + novelty)
+        inserts = {"low": 1, "high": max(2, n // 8), "max": max(3, n // 5)}.get(effort, 2)
+        for _ in range(inserts):
+            seq.insert(min(b, len(seq)), {
                 "action": rng.choice(SKILL_POOL),
                 "agent_id": rng.choice(SCENARIO_POOL),
                 "outcome": "success",
                 "effect": 0.55,
-                "params": {"evolved": "scenario_insert"},
+                "params": {"evolved": "scenario_insert", "fail_class": "ok"},
             })
     elif direction == "skill":
         for i in range(a, b):
@@ -242,16 +259,19 @@ def evolve_traces(
                 if fc != "ok":
                     seq[i]["outcome"] = rng.choice(["failure", "partial"])
                     seq[i]["effect"] = float(rng.uniform(-0.3, 0.45))
-        if effort == "max":
-            seq.append({
-                "action": rng.choice(["repair", "verify", "analyze_trace"]),
-                "agent_id": seq[-1].get("agent_id", "unknown") if seq else "unknown",
-                "outcome": "partial",
-                "effect": 0.4,
-                "params": {"evolved": "skill_tail"},
-            })
+        # P2-1: always add rare tail for high/max (skill_rarity↑)
+        if effort in ("high", "max"):
+            tails = 2 if effort == "max" else 1
+            for _ in range(tails):
+                seq.append({
+                    "action": rng.choice(["repair", "verify", "analyze_trace", "deploy_skill"]),
+                    "agent_id": seq[-1].get("agent_id", "unknown") if seq else "unknown",
+                    "outcome": "partial",
+                    "effect": 0.4,
+                    "params": {"evolved": "skill_tail", "fail_class": rng.choice(FAIL_CLASSES)},
+                })
     elif direction == "length":
-        inserts = {"low": 1, "high": max(2, n // 4), "max": max(3, n // 2)}.get(effort, 2)
+        inserts = {"low": 1, "high": max(3, n // 3), "max": max(4, n // 2)}.get(effort, 3)
         for _ in range(inserts):
             pos = rng.randrange(1, max(2, len(seq)))
             seq.insert(pos, {

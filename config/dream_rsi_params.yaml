@@ -1,46 +1,101 @@
 # Dream-RSI / Phase D hyperparameters
-# Official paper (arXiv:2609.14858) does NOT publish β1/β2/M/K2/λ/β-grid.
-# Values below are ARSI-calibrated defaults. When GitHub full codebase is
-# released, overwrite numbers here only — do not silently edit Python constants.
+#
+# Sources checked 2026-09-23:
+#   - GitHub https://github.com/zhengkid/Dream-RSI (main)
+#       Paper PDF ✅ · Project page ✅ · Full codebase ⏳ "Being prepared"
+#       Reproduction scripts ⏳ · Discovered programs ⏳
+#   - Official PDF: papers/Dream-RSI.pdf (repo) / arXiv:2609.14858
+#
+# Rule: when full codebase is released, overwrite NUMBERS here only —
+# never silently edit Python constants. Fields tagged paper_confirmed are
+# from the PDF; paper_unspecified keep ARSI-calibrated defaults until code.
 
 paper:
   arxiv: "2609.14858"
-  official_code_status: "not_released"   # update to released + version when available
-  last_checked: "2026-09-18"
+  github: "https://github.com/zhengkid/Dream-RSI"
+  official_code_status: "paper_pdf_only_code_pending"  # full codebase not released
+  last_checked: "2026-09-23"
+  release_plan:
+    paper_pdf: true
+    project_page: true
+    arxiv_posting: "in_progress"
+    discovered_programs: "being_prepared"
+    full_codebase: "being_prepared"
+    reproduction_scripts: "being_prepared"
+  # Replay objective (paper Eq.1): V = max(s) - β1*N + β2*(N / max{1, k*})
+  #   quality - execution_cost + parallelism_bonus
+  #   β1, β2 ≥ 0 "fixed coefficients" — numeric values NOT in paper
+  # pareto.reward = pareto.auc - λ * parallel_penalty
+  #   parallel_penalty = mean(effective_sequential_rounds / total_probes) over β sweep
+  #   λ numeric value NOT in paper
+  # M revisions: π_0..π_{M-1} then argmax select — numeric M NOT in paper text
+  # K2 = max replay decision rounds (K1 = live rounds) — numeric NOT in paper
+  demo_site:
+    url: "https://www.dream-rsi.com"
+    assets: ["dream.js", "script.js"]
+    note: "Demo canvas numbers are ILLUSTRATIVE (site disclaimer). Structure only is authoritative."
+    # dream.js (2026-09-23 scrape) — illustrative, NOT paper coefficients:
+    #   LAMBDA = 0.006  → Return = best_score - LAMBDA * n_attempts  (flat cost charge)
+    #   REVS = 4        → comment "M, kept equal to NF"; site: π0 deployed + π1…π3 revisions
+    #   EK = 24         → replays averaged per candidate version (stochastic policy)
+    #   BUDGET=32, MAXD=6, MINBR=5, MAXBR=8  → demo tree generator only
+    illustrative:
+      cost_lambda_per_attempt: 0.006
+      eval_replays_per_version: 24
+      policy_greed_pi0: 0.85
+      policy_greed_step: 0.3
+    structure_confirmed:
+      M_versions_incl_deployed: 4   # π^0 … π^3 ; site text "π1…π3 revisions"
+      replay_is_subtree_charged_per_node: true
+      return_demo_form: "best_score - lambda_demo * n"
 
 replay_objective:
-  beta1_cost_penalty: 0.1
-  beta2_parallel_bonus: 0.05
+  beta1_cost_penalty: 0.1          # paper_unspecified (ARSI default; demo λ=0.006 is NOT this)
+  beta2_parallel_bonus: 0.05       # paper_unspecified (ARSI default)
   # V = max(s) - beta1*N + beta2*(N/k)
+  formula: "max_s - beta1*N + beta2*(N/max(1,k_star))"
+  status: paper_formula_confirmed_values_pending
 
 pareto:
-  parallel_lambda: 0.05
+  parallel_lambda: 0.05            # paper_unspecified (ARSI default)
   # pareto.reward = auc_proxy - lambda * parallel_penalty
+  formula: "pareto.auc - lambda * parallel_penalty"
+  status: paper_formula_confirmed_values_pending
 
 loop:
-  M_revisions_per_cycle: 2
-  K2_replay_max_rounds: 20
-  dream_every_n_steps: 8
-  dream_every_n_ticks: 8
+  M_revisions_per_cycle: 4         # demo_structure_confirmed (π0..π3); paper symbol M
+  K2_replay_max_rounds: 20         # paper_unspecified (ARSI default; paper defines K2 symbolically)
+  dream_every_n_steps: 8           # ARSI operational
+  dream_every_n_ticks: 8           # ARSI operational
+  status: M_aligned_to_demo_structure_K2_pending
 
 beta:
-  default_uncertain: 0.6          # paper B.2 bootstrap
-  sweep_grid: [0.2, 0.4, 0.6, 0.8, 1.0]
-  plateau_raise_step: 0.15
-  wasteful_lower_step: 0.15
-  clamp: [0.0, 1.0]
+  default_uncertain: 0.6           # paper_confirmed: "about 0.6" when history insufficient
+  sweep_grid: [0.2, 0.4, 0.6, 0.8, 1.0]   # paper_unspecified (ARSI default; paper says "fixed beta grid")
+  plateau_raise_step: 0.15         # paper_confirmed range "about 0.1–0.2"
+  wasteful_lower_step: 0.15        # paper: "lower it by a small step" (same order)
+  clamp: [0.0, 1.0]                # paper_confirmed
+  # Cross-cycle default-beta rule (paper §beta):
+  #   improving live best → keep prior default unless sweep shows better nearby β
+  #   plateaued + high-β better attainment/cost → raise by 0.1–0.2
+  #   high-β plateau + more work no gain → lower by small step
+  #   conflict/insufficient → about 0.6
+  # Non-degenerate sweep iff β changes attainment/work trade-off
+  # Never pick default as smallest β that hits frozen ceiling
 
 grid_plan:
-  bootstrap_branch_count: 2
-  bootstrap_refine_count: 3
-  hard_max_branch_count: 4
+  bootstrap_branch_count: 2        # paper: explicit conservative bootstrap when history empty
+  bootstrap_refine_count: 3        # (numeric bootstrap is ARSI; paper leaves to context hard-caps)
+  hard_max_branch_count: 4         # from context.hard_max_* (runtime bound)
   hard_max_refine_count: 8
   # W = parallel focus count (dimensions/operators), NOT OS threads
-  cost_unit_per_focus_step: 1.0
-  default_cost_budget: 8.0
+  # GridPlan(branch_count=W, refine_count=R); R = refinements after each root
+  cost_unit_per_focus_step: 1.0    # ARSI operational
+  default_cost_budget: 8.0         # ARSI operational
+  status: paper_structure_confirmed_bootstrap_numbers_arsi
 
 quality_gate:
-  world_min_verdict: PASS        # PASS-first; WARN only up to quota
+  world_min_verdict: PASS        # PASS-first; WARN only up to quota (ARSI)
   semantic: auto                  # auto | off
   max_warn_ratio: 0.25
   max_admitted: 120
@@ -48,6 +103,7 @@ quality_gate:
   weak_quality_cost_scale: 0.2
   min_quality_signal: 0.08
   freeze_beta_on_degenerate: true
+  status: arsi_operational
 
 eval_loop:
   # D7: pool-monotone ≠ live-monotone
@@ -55,6 +111,7 @@ eval_loop:
   rollback_delta_eps: 0.02        # live best drop threshold
   compare_modes: ["fixed", "dream_rsi"]
   report_dir: "archive/eval"
+  status: arsi_operational
 
 brief:
   policy: structured              # structured | full
@@ -85,3 +142,32 @@ difficulty_flow_gate:
   enabled: true
   min_progress: 0.0
   same_generation_only: true
+
+# Peer unofficial implementations (2026-09-23) — NOT paper numbers.
+# Full analysis: E:\Mimo 生成\docs\2026-09-23\Dream-RSI-peer-repos-deep-dive.md
+# All fork:false independents after paper drop. Do not treat as official.
+peer_implementations:
+  note: peer_default_only_never_paper_confirmed
+  pi_dream_rsi:  # juanmackie — closest formula fidelity
+    beta1: 0.01
+    beta2: 0.01
+    pareto_lambda_in_dream_ts: 1.0
+    k1: 6
+    k2: 8
+    revisions: 3
+    beta_grid: [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+    default_beta: 0.6
+    engineering: [V_star_ge_V0_assert, scoring_fingerprint, no_semantic_guidance, failed_ep_not_averaged]
+  dream_rsi_sdk:  # TheAstrayDev — explicit unofficial NOTICE
+    parallel_weight: 0.1   # their appendix-pareto-v1 convention, not paper λ
+    default_beta_insufficient: 0.6
+  dream_rsi_spark:  # robinber — best semantic SPEC (M=R+1, App.B≠§3)
+    M_semantics: evaluated_versions_including_incumbent
+  open_dream_rsi:  # patrykorwat — DISPUTED mapping
+    diversity_beta: 0.2
+    warning: labels this "paper beta_2" but it is branch-diversity, NOT N/k parallel bonus
+  dsh_dream_rsi:  # opengpt4 — embodied domain, no license
+    useful: false
+
+# M note (spark SPEC): M = evaluated versions including incumbent.
+# If counting development attempts R, then M = R + 1. Demo REVS=4 = π0..π3.

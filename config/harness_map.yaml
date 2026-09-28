@@ -1,0 +1,51 @@
+# Harness map — nine dims (HarnessX) × five modules (ModularRSI)
+# c7 control_and_safety = Iron Laws — FROZEN, never evolution target.
+# See src/arsi/harness/taxonomy.py for the executable source of truth.
+
+frozen_dimensions:
+  - c7  # control_and_safety / iron_laws
+
+dimensions:
+  c1: model_selection
+  c2: context_assembly
+  c3: memory_management
+  c4: tool_ecosystem
+  c5: execution_environment
+  c6: evaluation_and_reward
+  c7: control_and_safety
+  c8: observability
+  c9: training_bridge
+
+modules:
+  agent_loop:
+    dims: [c2, c5, c7]
+    primary: c2
+  tool_use:
+    dims: [c4]
+    primary: c4
+  observation_management:
+    dims: [c8, c3]
+    primary: c8
+  context_management:
+    dims: [c3, c2]
+    primary: c3
+  task_completion_detection:
+    dims: [c6]
+    primary: c6
+  infrastructure:
+    dims: [c5, c1, c7, c9]
+    primary: c5
+    frozen: true
+
+pathologies:
+  reward_hacking: critic_check
+  catastrophic_forgetting: regression_check + deterministic_gate
+  under_exploration: planner_landscape
+
+edit_types: [prompt, processor, tool, config, control]
+
+isolation:
+  sealed_tasks: evolve_blacklist
+  i6_gates: evolve_blacklist
+  eval_loop: evolve_blacklist
+  host_unlabeled: evolve_ok_mark_pseudo

@@ -49,6 +49,53 @@ class EmpowermentApplier:
     def bind_arsi(self, arsi) -> None:
         self._arsi = arsi
 
+    def apply_change_manifest(self, manifest: dict, agent_id: str = "hermes") -> dict:
+        """Hard-enpower: write accepted Change-Manifest as a host skill.
+
+        tool_use / agent_loop CMs land in Hermes skills so the host executes
+        the recovery playbook (not just reads it in brief).
+        """
+        m = dict(manifest or {})
+        mid = str(m.get("manifest_id") or "CM")
+        module = str(m.get("module") or "")
+        summary = str(m.get("summary") or "")
+        diff = str(m.get("diff") or "")
+        inverse = str(m.get("inverse_op") or "")
+        skill_id = f"arsi-{mid.lower().replace('cm-', 'cm')}"
+        content = f"""---
+name: {skill_id}
+description: ARSI Change-Manifest {mid} — {summary[:80]}
+generated: {datetime.now().isoformat()}
+source: arsi-harness-{module or 'harness'}
+manifest_id: {mid}
+---
+
+# {summary}
+
+## Patch (apply these behaviors)
+{diff}
+
+## Inverse (rollback)
+{inverse}
+
+## Report contract
+- set fail_class on failure
+- recovery_attempted / recovery_worked
+- acceptance_evidence required before SUCCESS
+- never is_correct / is_safe claims
+"""
+        skill_dir = self._skills_dir / skill_id
+        skill_dir.mkdir(parents=True, exist_ok=True)
+        (skill_dir / "SKILL.md").write_text(content, encoding="utf-8")
+        self._application_count += 1
+        return {
+            "applied": True,
+            "manifest_id": mid,
+            "agent_id": agent_id,
+            "skill_path": str(skill_dir / "SKILL.md"),
+            "module": module,
+        }
+
     def _strategy_binding_suffix(self) -> str:
         """A-line: bind IWM strategy facts into skill markdown."""
         arsi = self._arsi

@@ -224,6 +224,10 @@ class MultiAgentOrchestrator:
         notes: str = "",
         recommendations_followed: Optional[list[str]] = None,
         recommendations_ignored: Optional[list[str]] = None,
+        fail_class: str = "",
+        recovery_attempted: str = "",
+        recovery_worked: Optional[bool] = None,
+        acceptance_evidence: str = "",
     ) -> dict:
         """Ingest host RESULT → ARSI report + external effect + organ evidence."""
         rec = self.agents.get(agent_id)
@@ -253,6 +257,10 @@ class MultiAgentOrchestrator:
                     recommendations_followed=list(recommendations_followed or []),
                     recommendations_ignored=list(recommendations_ignored or []),
                     notes=notes,
+                    fail_class=fail_class,
+                    recovery_attempted=recovery_attempted,
+                    recovery_worked=recovery_worked,
+                    acceptance_evidence=acceptance_evidence,
                 ))
             except Exception as e:
                 ingest = {"status": "report_error", "error": str(e)}
@@ -277,6 +285,13 @@ class MultiAgentOrchestrator:
         if self.arsi is not None and getattr(self.arsi, "iwm", None) is not None:
             try:
                 self.arsi.iwm.observe_memory(success, note=f"multiagent:{agent_id}:{outcome}:measured={measured}")
+                # P-vitals: host outcomes are the real IWM arm — feed calibrator
+                self.arsi.iwm.apply_outcome(
+                    f"host:{agent_id}:{task_id}",
+                    used_iwm=True,
+                    success=bool(success),
+                    note=f"host_outcome:{agent_id}:{outcome}",
+                )
                 iwm_bind = "observe_memory"
                 if measured:
                     # stronger score when organ formally measured

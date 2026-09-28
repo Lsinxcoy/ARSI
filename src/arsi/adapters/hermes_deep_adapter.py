@@ -130,29 +130,67 @@ class HermesDeepAdapter:
             tool_name = row["tool_name"]
             content = row["content"] or ""
 
-            # Classify tool call outcome
+            # Classify tool call outcome (ignore JSON null error fields)
             content_lower = content.lower()
-            if any(w in content_lower for w in ["error", "failed", "exception", "traceback"]):
+            noisy = (
+                content_lower.replace('"error": null', " ")
+                .replace('"error_code": null', " ")
+                .replace("'error': null", " ")
+                .replace("error_code: null", " ")
+            )
+            if any(w in noisy for w in ["error", "failed", "exception", "traceback", "timed out", "denied"]):
                 outcome = "failure"
                 effect = 0.2
-            elif any(w in content_lower for w in ["success", "complete", "done", "pass"]):
+            elif any(w in noisy for w in ["success", "complete", "done", "pass"]):
                 outcome = "success"
                 effect = 0.7
             else:
                 outcome = "recorded"
                 effect = 0.5
 
+            # P: harvest capture fields for terminal-style failures (CM capture)
+            import re as _re
+
+            exit_m = _re.search(
+                r"exit[_ ]?(?:code|status)[\"']?\s*[:=]\s*\"?(-?\d+)",
+                content,
+                _re.I,
+            )
+            stderr_tail = ""
+            sm = _re.search(r"(?:stderr|traceback|error)[:=]?\s*(.{0,200})", content, _re.I | _re.S)
+            if sm:
+                stderr_tail = (sm.group(1) or "").strip()[:200]
+            # prefer explicit JSON error field when present
+            em = _re.search(r"\"error\"\s*:\s*\"([^\"]{1,200})\"", content)
+            if em and em.group(1):
+                stderr_tail = em.group(1)[:200]
+            fail_class = ""
+            if "terminal" in (tool_name or "").lower():
+                fail_class = "tool_error_terminal" if outcome == "failure" else ""
+            elif outcome == "failure" and "tool" in (tool_name or "").lower():
+                fail_class = "tool_error"
+            elif outcome == "failure" and "execute_code" in (tool_name or "").lower():
+                fail_class = "tool_error_execute"
+
+            params = {
+                "source": "hermes_tool_call",
+                "tool_name": tool_name,
+                "session_id": row["session_id"],
+                "content_length": len(content),
+                "token_count": row["token_count"] or 0,
+            }
+            if exit_m:
+                params["exit_code"] = int(exit_m.group(1))
+            if stderr_tail:
+                params["stderr_tail"] = stderr_tail
+            if fail_class:
+                params["fail_class"] = fail_class
+
             traces.append({
                 "action": f"hermes_tool:{tool_name}",
                 "outcome": outcome,
                 "effect": effect,
-                "params": {
-                    "source": "hermes_tool_call",
-                    "tool_name": tool_name,
-                    "session_id": row["session_id"],
-                    "content_length": len(content),
-                    "token_count": row["token_count"] or 0,
-                },
+                "params": params,
             })
 
         return traces

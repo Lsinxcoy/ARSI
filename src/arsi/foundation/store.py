@@ -297,7 +297,29 @@ class MnemosyneStore:
         query += " ORDER BY timestamp DESC LIMIT ?"
         params.append(n)
         rows = self._conn.execute(query, params).fetchall()
-        return [dict(r) for r in rows]
+        out = []
+        for r in rows:
+            d = dict(r)
+            # JSON columns arrive as str — decode for consumers (digester/preflight)
+            raw = d.get("action_params")
+            if isinstance(raw, str) and raw.strip():
+                try:
+                    d["action_params"] = json.loads(raw)
+                except Exception:
+                    d["action_params"] = {"_raw": raw[:200]}
+            elif raw is None:
+                d["action_params"] = {}
+            if isinstance(d.get("action_params"), dict):
+                d.setdefault("params", d["action_params"])
+            for k in ("state_before", "state_after"):
+                v = d.get(k)
+                if isinstance(v, str) and v.strip():
+                    try:
+                        d[k] = json.loads(v)
+                    except Exception:
+                        pass
+            out.append(d)
+        return out
 
     # ── Self Records (Ψ, η, dream sessions, reports) ───────────
 

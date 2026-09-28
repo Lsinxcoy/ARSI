@@ -145,6 +145,30 @@ def run_eval_loop(
     result.notes["official_code_status"] = params.official_code_status
     result.notes["params"] = params.to_dict()
 
+    # P-R4/P-R7: dual-Ω credit + monotone admitted-best on live scores
+    try:
+        from arsi.harness.monotone import MonotoneLedger
+        from arsi.harness.pr_wiring import log_unified_after_dream, monotone_after_selection
+
+        if getattr(arsi, "unified_credit", None) is not None:
+            log_unified_after_dream(
+                arsi.unified_credit,
+                t=int(getattr(arsi, "_dream_rsi_cycles", 0) or 0),
+                policy_id="dream_rsi_vs_fixed",
+                dS=float(result.delta_score or 0.0),
+                dC=0.0,
+                accepted=bool(result.dream_wins_pool),
+                policy_share=1.0,
+            )
+        mono = monotone_after_selection(
+            getattr(arsi, "monotone_ledger", None) or MonotoneLedger(),
+            float(result.dream_avg_score or 0.0),
+            "dream_rsi",
+        )
+        result.notes["monotone"] = mono
+    except Exception as e:
+        logger.warning(f"P-R eval wiring failed: {e}")
+
     # S6: paired A/B effect-size gate on dream vs fixed (not just mean delta)
     try:
         from arsi.meta.paired_ab import compare_paired

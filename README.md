@@ -17,6 +17,22 @@
 | MWM / SIWM | 世界与自我如何被建模 | η、预测、pre-enactment |
 | **Dream-RSI** | **策略如何被递归改进** | **世界池、回放、GridPlan/β、manifest、eval 回退** |
 
+## 六层架构（2026-09-23 二次研读后升格）
+
+Autopoiesis 升为**总纲**（贯穿各层）。其上六层：
+
+| 层 | 名称 | 来源 | 回答 |
+|----|------|------|------|
+| **L0** | Anchored Constitution | GAI `2609.13406` | 我们被允许成为什么 |
+| **L1** | Contracted Computation | SEVerA `2603.25111` | 每次调用上什么恒真 |
+| **L2** | Regularized MetaRSI | RRSI `2609.24972` × AIDE² `2609.26457` | 如何改而不自欺 |
+| **L3** | Introspective World + Vitals | SIWM/ODE/CTM + SAHOO | 世界/自我如何流，何时漂 |
+| **L4** | Dream-RSI | `2609.14858` | 探索策略如何被梦出 |
+| **L5** | Evaluative Epistemology | Grader `2607.12790` | 什么算证据 |
+
+声明与审计：`src/arsi/harness/pillars.py`  
+二次研读：`E:\Mimo 生成\docs\2026-09-23\RSI-second-pass-pillars.md`
+
 ## 架构
 
 ```

@@ -17,3 +17,16 @@ archive/daemon*.log
 *.env
 .env
 secrets.txt
+
+# runtime artifacts (do not sync)
+archive/eval/
+archive/evidence/
+archive/harness/
+archive/iwm/
+archive/observation_pack/
+archive/trace_pool/
+archive/*.json
+archive/*.jsonl
+archive/arsi_checkpoint.json
+archive/arsi_health.jsonl
+archive/world_pool_snapshot.json

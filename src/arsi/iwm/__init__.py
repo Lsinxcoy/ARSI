@@ -64,7 +64,9 @@ class IWM:
         self.loops = LoopEfficacy()
         self.frontier = KnowledgeFrontier()
         self.provenance = DecisionProvenance()
-        self.calibrator = IntrospectorCalibrator()
+        self.calibrator = IntrospectorCalibrator(
+            persist_path=str(archive_dir / "calibration.json") if self.archive_dir else None
+        )
         self._open_trials: dict[str, str] = {}  # intervention -> trial_id
         self._hooks_applied_count = 0
         self._advice_count = 0
@@ -284,6 +286,7 @@ class IWM:
         advice = {
             "self_trust": self_trust,
             "degrade_to_baseline": degrade,
+            "calibration": self.calibrator.reliability(),
             "downweight_pre_enactment": downweight_dyn,
             "forbid_default_dream": forbid_dream,
             "forbid_dream_reason": (
@@ -320,8 +323,17 @@ class IWM:
         }
         return advice
 
-    def apply_outcome(self, decision_id: str, used_iwm: bool, success: bool, note: str = "") -> None:
-        self.calibrator.record(decision_id, used_iwm=used_iwm, success=success, note=note)
+    def apply_outcome(
+        self,
+        decision_id: str,
+        used_iwm: bool,
+        success: bool,
+        note: str = "",
+        confidence: Optional[float] = None,
+    ) -> None:
+        self.calibrator.record(
+            decision_id, used_iwm=used_iwm, success=success, note=note, confidence=confidence
+        )
         self.provenance.mark_outcome(decision_id, outcome="success" if success else "failure")
 
     def record_decision(self, **kwargs):
@@ -375,6 +387,7 @@ class IWM:
             "iwm": {
                 "self_trust": advice["self_trust"],
                 "degrade_to_baseline": advice["degrade_to_baseline"],
+                "calibration": advice.get("calibration") or {},
                 "unreliable_organs": advice["unreliable_organs"],
                 "organ_trust": advice["organ_trust"],
                 "dream_loop": advice["dream_loop"],
@@ -393,8 +406,44 @@ class IWM:
                 "memory_status": self.organ.status(ORGAN_MEMORY),
                 "trust_memory_for_learn": bool(advice.get("trust_memory_for_learn")),
                 "downweight_memory_ops": bool(advice.get("downweight_memory_ops")),
+                # P-f SAHOO goal vitals (L3)
+                "goal_vitals": self.goal_vitals(),
             }
         }
+
+    def goal_vitals(self) -> dict:
+        """SAHOO-style continuous vitals alongside η (GDI/CAR/regression)."""
+        try:
+            from arsi.harness.sahoo import regression_risk
+
+            q = list(getattr(self, "_quality_series", []) or [])
+            return {
+                "gdi": getattr(self, "last_gdi", None),
+                "car": getattr(self, "last_car", None),
+                "regression_risk": regression_risk(q) if q else 0.0,
+                "quality_n": len(q),
+                "note": "sahoo_goal_vitals_p-f",
+            }
+        except Exception:
+            return {"gdi": None, "car": None, "regression_risk": 0.0}
+
+    def observe_goal_vitals(
+        self,
+        gdi: float,
+        quality_gain: float = 0.0,
+        quality_point: Optional[float] = None,
+    ) -> dict:
+        """Feed GDI / quality stream; CAR = gain / max(gdi,eps)."""
+        from arsi.harness.sahoo import capability_alignment_ratio
+
+        self.last_gdi = float(gdi)
+        self.last_car = capability_alignment_ratio(quality_gain, gdi)
+        if not hasattr(self, "_quality_series"):
+            self._quality_series = []
+        if quality_point is not None:
+            self._quality_series.append(float(quality_point))
+            self._quality_series = self._quality_series[-50:]
+        return self.goal_vitals()
 
     def calibrate(self) -> dict:
         return self.calibrator.report()

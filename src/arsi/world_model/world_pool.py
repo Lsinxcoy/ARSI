@@ -250,6 +250,16 @@ class WorldPool:
         if not cfg.get("enabled", True):
             return []
         effort = effort or str(cfg.get("effort", "high"))
+        # P2-2 Red Queen: success↑ → harder effort (unless caller pinned effort)
+        try:
+            from arsi.meta.red_queen_env import red_queen_effort_for_pool
+
+            rq = red_queen_effort_for_pool(self)
+            if effort == str(cfg.get("effort", "high")):
+                effort = str(rq.get("effort") or effort)
+            self._last_red_queen = rq
+        except Exception:
+            self._last_red_queen = {}
         min_nodes = int(min_seed_nodes if min_seed_nodes is not None else cfg.get("min_seed_nodes", 3))
         seed_nodes = len(getattr(seed_world, "_full", {}) or {})
         if seed_nodes < min_nodes:
@@ -331,8 +341,9 @@ class WorldPool:
                 continue
             score = row.get("score", row.get("replay_score", 0.0)) or 0.0
             quality = row.get("quality", 0.0) or 0.0
-            ok = bool(score > 0.0 or quality >= 0.3)
-            self.el_scheduler.record_probe(lin, success=ok, score=float(score))
+            # P2-3: success = quality path solved (replay_score is often negative)
+            ok = bool(quality >= 0.3 or score > 0.0)
+            self.el_scheduler.record_probe(lin, success=ok, score=None)
             out.append({"world_id": wid, "lineage_id": lin, "score": score, "success": ok})
         return out
 
@@ -640,7 +651,31 @@ class WorldPool:
         p = Path(path)
         if not p.is_absolute():
             p = project_root() / p
-        return write_json_once(p, self.export_snapshot(), writer_id="arsi.world_model.world_pool.persist")
+        data = self.export_snapshot()
+        # P: never clobber a larger snapshot with a smaller in-memory pool
+        # (short-lived ARSI.from_config processes must not wipe 50-world archives)
+        try:
+            if p.exists():
+                old = json.loads(p.read_text(encoding="utf-8"))
+                old_worlds = {w.get("world_id"): w for w in (old.get("worlds") or []) if w.get("world_id")}
+                new_ids = {w.get("world_id") for w in data.get("worlds") or []}
+                merged = list(data.get("worlds") or [])
+                for wid, w in old_worlds.items():
+                    if wid not in new_ids:
+                        merged.append(w)
+                if len(merged) > len(old_worlds):
+                    data["worlds"] = merged[: max(self.max_worlds, len(old_worlds))]
+                elif len(data.get("worlds") or []) < len(old_worlds) and not getattr(self, "_force_shrink", False):
+                    # keep old file; do not shrink
+                    logger.warning(
+                        "world_pool persist skipped shrink %d→%d",
+                        len(old_worlds),
+                        len(data.get("worlds") or []),
+                    )
+                    return p
+        except Exception:
+            pass
+        return write_json_once(p, data, writer_id="arsi.world_model.world_pool.persist")
 
     @classmethod
     def load_from(cls, path: str | Path) -> "WorldPool":

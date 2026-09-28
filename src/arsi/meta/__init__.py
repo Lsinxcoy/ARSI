@@ -18,7 +18,7 @@ from arsi.meta.env_difficulty import (
     pool_difficulty_stats,
     weakness_vs_difficulty,
 )
-from arsi.meta.el_scheduler import ELScheduler, LineageState
+from arsi.meta.el_scheduler import ELScheduler, LineageState, env_evolution_fidelity_check
 from arsi.meta.difficulty_flow_gate import (
     apply_dual_gate_to_selection,
     d_t_is_rising,
@@ -26,6 +26,14 @@ from arsi.meta.difficulty_flow_gate import (
     extract_d_t_history,
     flow_progress_score,
     same_generation_pairs,
+)
+from arsi.meta.red_queen_env import (
+    DifficultyCommand,
+    apply_to_evolver_plan,
+    difficulty_command_for_host,
+    mutual_pressure_plan,
+    success_rate,
+    success_trend,
 )
 
 __all__ = [
@@ -49,10 +57,17 @@ __all__ = [
     "weakness_vs_difficulty",
     "ELScheduler",
     "LineageState",
+    "env_evolution_fidelity_check",
     "apply_dual_gate_to_selection",
     "d_t_is_rising",
     "difficulty_flow_gate",
     "extract_d_t_history",
     "flow_progress_score",
     "same_generation_pairs",
+    "DifficultyCommand",
+    "apply_to_evolver_plan",
+    "difficulty_command_for_host",
+    "mutual_pressure_plan",
+    "success_rate",
+    "success_trend",
 ]

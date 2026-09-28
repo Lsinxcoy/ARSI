@@ -226,7 +226,9 @@ def main() -> int:
         fail_reverse = {}
         if (not act.get("success")) and getattr(arsi, "capability_flow", None):
             try:
-                fail_reverse = arsi.capability_flow.reverse_last_failure()
+                fail_reverse = arsi.capability_flow.reverse_last_failure(
+                    action=str((act or {}).get("action") or "unknown")
+                )
             except Exception as e:
                 fail_reverse = {"error": str(e), "evidence_status": "unverified"}
         report_rows.append({

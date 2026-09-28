@@ -15,6 +15,52 @@ Usage:
 """
 from __future__ import annotations
 
+import os
+import sys
+from pathlib import Path
+
+
+def _pid_still_active(pid: int) -> bool:
+    """True only if process exists AND is still running (STILL_ACTIVE)."""
+    try:
+        import ctypes
+
+        h = ctypes.windll.kernel32.OpenProcess(0x1000, False, int(pid))
+        if not h:
+            return False
+        code = ctypes.c_ulong()
+        ok = ctypes.windll.kernel32.GetExitCodeProcess(h, ctypes.byref(code))
+        ctypes.windll.kernel32.CloseHandle(h)
+        return bool(ok) and code.value == 259  # STILL_ACTIVE
+    except Exception:
+        return False
+
+
+# --- atomic single-instance via O_EXCL lock (when run as script / mp re-exec) ---
+if __name__ == "__main__":
+    _lock_path = Path(r"E:\ARSI\archive\arsi.lock")
+    _lock_path.parent.mkdir(parents=True, exist_ok=True)
+    for _attempt in range(2):
+        try:
+            _fd = os.open(str(_lock_path), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            os.write(_fd, str(os.getpid()).encode())
+            globals()["_ARSISINGLETON_FD"] = _fd
+            break
+        except FileExistsError:
+            try:
+                _old = int(_lock_path.read_text().strip() or "0")
+            except Exception:
+                _old = 0
+            if _old and _pid_still_active(_old) and _old != os.getpid():
+                sys.exit(0)  # live holder
+            try:
+                _lock_path.unlink()
+            except Exception:
+                sys.exit(0)
+            if _attempt == 1:
+                sys.exit(0)
+    os.environ["ARSI_DAEMON_SINGLETON"] = str(os.getpid())
+
 import argparse
 import json
 import logging
@@ -37,6 +83,64 @@ from arsi.empowerment.dimensions import DimensionOrchestrator
 from arsi.empowerment.applier import EmpowermentApplier
 
 logger = logging.getLogger("arsi.daemon")
+
+
+def _other_daemon_pids(exclude: int | None = None) -> list[int]:
+    """PIDs of live processes whose cmdline runs arsi_daemon.py (Windows)."""
+    import ctypes
+    import ctypes.wintypes as wt
+
+    class PROCESSENTRY32(ctypes.Structure):
+        _fields_ = [
+            ("dwSize", wt.DWORD),
+            ("cntUsage", wt.DWORD),
+            ("th32ProcessID", wt.DWORD),
+            ("th32DefaultHeapID", ctypes.POINTER(ctypes.c_ulong)),
+            ("th32ModuleID", wt.DWORD),
+            ("cntThreads", wt.DWORD),
+            ("th32ParentProcessID", wt.DWORD),
+            ("pcPriClassBase", ctypes.c_long),
+            ("dwFlags", wt.DWORD),
+            ("szExeFile", ctypes.c_char * 260),
+        ]
+
+    pids: list[int] = []
+    exclude = int(exclude or 0)
+    # Prefer Toolhelp snapshot of python.exe + wmic cmdline filter
+    try:
+        import subprocess
+
+        out = subprocess.check_output(
+            ["wmic", "process", "where", "name like 'python%'", "get", "ProcessId,CommandLine", "/format:csv"],
+            stderr=subprocess.DEVNULL,
+            timeout=8,
+            text=True,
+            errors="replace",
+        )
+        for line in out.splitlines():
+            if "arsi_daemon" not in line.lower():
+                continue
+            parts = [p.strip() for p in line.split(",") if p.strip()]
+            if not parts:
+                continue
+            try:
+                pid = int(parts[-1])
+            except Exception:
+                continue
+            if pid and pid != exclude:
+                pids.append(pid)
+    except Exception:
+        pass
+    return sorted(set(pids))
+
+
+def _is_daemon_child_respawn() -> bool:
+    """Detect multiprocessing/subprocess child that re-enters arsi_daemon main."""
+    parent = os.environ.get("ARSI_DAEMON_SINGLETON", "")
+    if parent and parent.isdigit() and int(parent) != os.getpid():
+        # spawned under a live daemon — do not become a second daemon
+        return True
+    return False
 
 # Paths
 ARSI_HOME = Path(__file__).parent.parent
@@ -201,6 +305,40 @@ class ARSIDaemon:
                         logger.warning(f"host_loop failed: {e}")
                         host_loop_info = {"error": str(e)}
 
+            # 5e. AEGIS landscape every 3 ticks — digester + planner on live traces
+            harness_info = {}
+            if self._tick_count % 3 == 0:
+                try:
+                    harness_info = self._run_harness_landscape()
+                    logger.info(
+                        f"  harness_landscape: failures={harness_info.get('n_failures')} "
+                        f"clusters={len(harness_info.get('clusters') or [])}"
+                    )
+                    # AEGIS auto-evolve dry-run (propose only — never auto-applies core)
+                    if harness_info.get("clusters"):
+                        auto = self._run_harness_evolve_dry()
+                        harness_info["auto_evolve"] = auto
+                        logger.info(
+                            f"  harness_evolve_dry: proposed={auto.get('proposed')} "
+                            f"accepted={auto.get('accepted')} dry_run={auto.get('dry_run')}"
+                        )
+                except Exception as e:
+                    logger.warning(f"harness landscape failed: {e}")
+                    harness_info = {"error": str(e)}
+
+            # 5f. GRPO pre-data-plane export every 6 ticks (export only, no train)
+            grpo_info = {}
+            if self._tick_count % 6 == 0:
+                try:
+                    grpo_info = self._run_grpo_export()
+                    logger.info(
+                        f"  grpo_data_plane: groups={grpo_info.get('n_groups')} "
+                        f"ready={grpo_info.get('n_advantage_ready_groups')}"
+                    )
+                except Exception as e:
+                    logger.warning(f"grpo export failed: {e}")
+                    grpo_info = {"error": str(e)}
+
             # 6. Save checkpoint
             self._save_checkpoint()
 
@@ -240,11 +378,18 @@ class ARSIDaemon:
                     "forbid_default_dream": (iwm_inner or {}).get("dream_loop", {}).get("allowed_default") is False
                     if isinstance(iwm_inner.get("dream_loop"), dict) else None,
                     "unreliable_organs": (iwm_inner or {}).get("unreliable_organs"),
+                    "calibration": (iwm_inner or {}).get("calibration")
+                    or ((iwm_inner or {}).get("q_gate") or {}).get("scores", {}).get("Q6_calibrate")
+                    or {},
+                    "degrade_to_baseline": (iwm_inner or {}).get("degrade_to_baseline"),
                     "q_gate": stats.get("iwm_q_gate", {}),
                 },
                 "verified": self._health_verified(stats),
                 "multi_agent": ma_info or (stats.get("multi_agent") or {}),
                 "host_loop": host_loop_info if "host_loop_info" in locals() else {},
+                "harness_landscape": harness_info if "harness_info" in locals() else {},
+                "grpo_data_plane": grpo_info if "grpo_info" in locals() else {},
+                "armor": self._armor_health(),
                 "layer1": stats.get("layer1"),
                 "paths": stats.get("paths"),
             })
@@ -275,9 +420,50 @@ class ARSIDaemon:
             orch.interface = interface
         report = mod.run_cycle(self.arsi, orch, cycle_id=self._tick_count)
         execs = report.get("executions") or {}
+        # Harness variants: bind hosts and observe outcomes (HarnessX §4.5)
+        try:
+            from arsi.foundation.paths import archive_dir
+            from arsi.harness.variants import VariantPool
+
+            vpath = archive_dir() / "harness" / "variants.json"
+            pool = VariantPool(max_variants=6)
+            if vpath.exists():
+                try:
+                    import json as _json
+
+                    data = _json.loads(vpath.read_text(encoding="utf-8"))
+                    for vid, vd in (data.get("variants") or {}).items():
+                        from arsi.harness.variants import HarnessVariant
+
+                        pool.variants[vid] = HarnessVariant(
+                            variant_id=vid,
+                            label=vd.get("label") or vid,
+                            cluster_success=dict(vd.get("cluster_success") or {}),
+                            active=bool(vd.get("active", True)),
+                            created_at=vd.get("created_at") or "",
+                        )
+                except Exception:
+                    pass
+            hosts = list(execs.keys()) or ["hermes", "mimo-desktop", "synthex-mothernest"]
+            pool.ensure_hosts(hosts)
+            for hid, ex in execs.items():
+                pool.observe_host(hid, bool(ex.get("success")))
+            vpath.parent.mkdir(parents=True, exist_ok=True)
+            _json_dump = pool.report()
+            vpath.write_text(
+                __import__("json").dumps(_json_dump, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            host_loop_info_variants = {
+                "route": {h: pool.route_for_host(h) for h in hosts},
+                "active": _json_dump.get("active"),
+            }
+        except Exception as _e:
+            host_loop_info_variants = {"error": str(_e)}
         summary = {
             "ingest": report.get("ingest"),
             "layer1_holdout": (report.get("layer1") or {}).get("holdout_accuracy"),
+            "variants": host_loop_info_variants,
             "hosts": {
                 k: {"success": v.get("success"), "effect": v.get("effect")}
                 for k, v in execs.items()
@@ -374,6 +560,122 @@ class ARSIDaemon:
             apply_result = self.applier.apply_all(results)
             logger.info(f"    Applied: {apply_result['applied']} recommendations")
 
+    def _armor_health(self) -> dict:
+        """RSI-Armor face: dual sensor / overshoot / conformance / shared calib."""
+        try:
+            from arsi.harness.runtime_wiring import armor_health
+            scores = list(getattr(self.arsi, "_live_capability_scores", []) or [])[-30:]
+            gdi = float(getattr(getattr(self.arsi, "iwm", None), "last_gdi", 0.0) or 0.0)
+            return armor_health(scores, gdi=gdi)
+        except Exception as e:
+            return {"error": str(e)}
+
+    def _run_harness_landscape(self) -> dict:
+        """AEGIS Digester+Planner over recent production traces."""
+        from arsi.foundation.paths import archive_dir, eval_dir, write_json_once
+        from arsi.harness.audit import AuditLog
+        from arsi.harness.pipeline import load_label_counts, run_landscape, save_label_counts
+
+        traces = self.arsi.store.get_recent_traces(n=400)
+        arch = archive_dir()
+        audit = AuditLog(arch / "harness")
+        label_path = arch / "harness" / "label_counts.json"
+        report = run_landscape(
+            traces,
+            prior_labels=load_label_counts(label_path),
+            audit=audit,
+        )
+        merged = report.pop("_merged_label_counts", None)
+        if merged is not None:
+            save_label_counts(label_path, merged)
+        write_json_once(eval_dir() / "harness_landscape_latest.json", report)
+        return report
+
+    def _run_grpo_export(self) -> dict:
+        """P1/GRPO: export groups+rewards+split (never trains)."""
+        from arsi.foundation.paths import eval_dir
+        from arsi.harness.grpo_data import (
+            _ChunkPool,
+            default_policy_matrix,
+            export_grpo_data_plane,
+            worlds_from_trace_chunks,
+        )
+
+        traces = self.arsi.store.get_recent_traces(n=400)
+        pool = getattr(self.arsi, "world_pool", None)
+        if pool is None or getattr(pool, "size", 0) < 3:
+            pool = _ChunkPool(worlds_from_trace_chunks(traces, n_worlds=8))
+        man = export_grpo_data_plane(
+            traces,
+            eval_dir() / "grpo_data_plane",
+            harness_variant="default",
+            world_pool=pool,
+            policies=default_policy_matrix(5),
+            max_worlds=12,
+        )
+        return {
+            k: man.get(k)
+            for k in (
+                "n_traces",
+                "n_exported_rewards",
+                "n_groups",
+                "n_advantage_ready_groups",
+                "n_policy_matrix_rows",
+                "split",
+                "grpo_live",
+            )
+        }
+
+    def _run_harness_evolve_dry(self) -> dict:
+        """AEGIS Evolver dry-run: propose Change-Manifests, store + audit, never apply."""
+        from arsi.foundation.paths import archive_dir, eval_dir, write_json_once
+        from arsi.harness.audit import AuditLog
+        from arsi.harness.evolver import Evolver
+        from arsi.harness.manifest import ManifestStore
+
+        land_path = eval_dir() / "harness_landscape_latest.json"
+        if not land_path.exists():
+            return {"dry_run": True, "proposed": 0, "accepted": 0, "reason": "no_landscape"}
+        try:
+            payload = json.loads(land_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            return {"dry_run": True, "proposed": 0, "accepted": 0, "reason": f"bad_landscape:{e}"}
+        landscape = payload.get("landscape") or payload
+        arch = archive_dir()
+        audit = AuditLog(arch / "harness")
+        store = ManifestStore(arch / "harness")
+        ev = Evolver()
+        proposed = ev.propose_from_landscape(landscape, max_k=3) or []
+        accepted = []
+        for m in proposed:
+            if getattr(m, "status", "") == "accepted":
+                store.append(m)
+                accepted.append(getattr(m, "manifest_id", "") or "")
+                audit.emit(
+                    "evolver",
+                    "manifest_accepted",
+                    ok=True,
+                    manifest_id=getattr(m, "manifest_id", ""),
+                    dry_run=True,
+                )
+            else:
+                audit.emit(
+                    "evolver",
+                    "manifest_rejected",
+                    ok=False,
+                    reason=getattr(m, "reject_reason", ""),
+                    dry_run=True,
+                )
+        out = {
+            "dry_run": True,
+            "proposed": len(proposed),
+            "accepted": len(accepted),
+            "accepted_ids": accepted,
+            "note": "aegis_auto_evolve_dry_run_never_applies_core",
+        }
+        write_json_once(eval_dir() / "harness_evolve_dry_latest.json", out)
+        return out
+
     def _run_dream(self) -> None:
         """Run dream cycle."""
         state = self.arsi.siwm.refresh_state()
@@ -425,6 +727,9 @@ class ARSIDaemon:
                     "memory_trust": (iwm_inner or {}).get("memory_trust"),
                     "layer1_holdout": (iwm_inner or {}).get("layer1_holdout"),
                     "trust_memory_for_learn": (iwm_inner or {}).get("trust_memory_for_learn"),
+                    "self_trust": (iwm_inner or {}).get("self_trust"),
+                    "calibration": (iwm_inner or {}).get("calibration") or {},
+                    "degrade_to_baseline": (iwm_inner or {}).get("degrade_to_baseline"),
                 },
                 "layer1": stats.get("layer1"),
             }
@@ -494,24 +799,36 @@ class ARSIDaemon:
             logger.error(f"Snapshot write failed: {e}")
 
     def _acquire_lock(self) -> None:
-        """Acquire lock file to prevent multiple instances."""
+        """Single-instance lock: file + named mutex + live process scan.
+
+        P0-4: a second arsi_daemon (including a child respawn) must exit, not compete.
+        """
         self.checkpoint_path.parent.mkdir(parents=True, exist_ok=True)
 
-        if LOCK_FILE.exists():
-            try:
-                old_pid = int(LOCK_FILE.read_text().strip())
-                # Check if process is alive (Windows)
-                import ctypes
-                kernel32 = ctypes.windll.kernel32
-                handle = kernel32.OpenProcess(0x1000, False, old_pid)
-                if handle:
-                    kernel32.CloseHandle(handle)
-                    logger.error(f"Another instance (PID {old_pid}) is running, exiting")
-                    sys.exit(1)
-            except (ValueError, OSError):
-                pass  # Stale lock file
+        # 1) refuse if any OTHER live arsi_daemon is already running
+        others = _other_daemon_pids(exclude=os.getpid())
+        if others:
+            logger.error(f"Another arsi_daemon instance(s) {others} running, exiting")
+            sys.exit(1)
 
+        # 2) named mutex — only create if not already held by this process (early __main__)
+        try:
+            import ctypes
+
+            if globals().get("_ARSISINGLETON_MUTEX"):
+                self._mutex = globals()["_ARSISINGLETON_MUTEX"]
+            else:
+                self._mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "ARSIDaemonSingleton")
+                if ctypes.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+                    logger.error("ARSIDaemonSingleton mutex already held, exiting")
+                    sys.exit(1)
+        except Exception as e:
+            logger.warning(f"mutex acquire failed (continue with lockfile): {e}")
+
+        # 3) lock file is informational only — mutex is source of truth
+        #    (OpenProcess on a stale PID can false-positive and block startup)
         LOCK_FILE.write_text(str(os.getpid()))
+        os.environ["ARSI_DAEMON_SINGLETON"] = str(os.getpid())
         logger.info(f"Lock acquired: PID {os.getpid()}")
 
     def _release_lock(self) -> None:
@@ -538,6 +855,10 @@ class ARSIDaemon:
 
 
 def main():
+    if _is_daemon_child_respawn():
+        logging.basicConfig(level=logging.WARNING)
+        logger.warning("child respawn under ARSI_DAEMON_SINGLETON=%s — exiting", os.environ.get("ARSI_DAEMON_SINGLETON"))
+        return
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",

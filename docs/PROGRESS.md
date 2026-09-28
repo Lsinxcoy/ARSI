@@ -827,4 +827,1195 @@ python E:\ARSI\scripts\host_loop.py --cycles 1 --http
 
 提交 `db7b248` 已推送。
 
+---
 
+## P2-8 action-conditioned 速度场收尾（2026-09-23）
+
+### 交付
+| 项 | 说明 |
+|----|------|
+| `ActionConditionedVelocityField` | $v(z;a)$ = 全局场 + 动作残差；`min_action_samples` 前回退全局 |
+| `canon_action` / `ACTION_POOL` | learn/remember/dream/maintain/evolve/empower/repair/unknown |
+| `integrate` / `integrate_backward` / `reverse_from_failure` | 均接受 `action`，经 `_field_predict` 安全下传 |
+| `CapabilityFlowTracker` | `observe(..., action=)`、`reverse_last_failure(action=)`、health 带 `last_action` / `action_support` |
+| `core._recent_flow_action` | harvest 按最近轨迹主操作条件化；dream 固定 `action="dream"` |
+| `host_reverse_loop` / `pull_health` | 失败反向带 action；观测 action_support |
+| 序列化 | `to_dict` / `from_serialize` 保留 action 残差与计数 |
+
+### 修复
+- 去掉 `field.predict.__code__` duck-type（bound method 上直接炸）
+- 统一 `_field_predict`：`try predict(z, action=)` → `TypeError` 回退 `predict(z)`
+
+### 测试
+```
+482 passed（项目根目录全量）
+```
+- 新增 `tests/test_action_conditioned_flow.py`
+- 修掉 lastfailed 中 integrate/backward/reverse 及 dream 接线相关失败
+
+### 语义
+- 反向重建可区分「learn 劣化 vs dream 劣化」；动作样本 &lt; min 时 **强制回退全局场**，不编残差
+- $z_{pre}$ 仍标 `model_reconstruction`，无 receipt 不得当 verified
+
+### 环境
+- 测试用 `E:\ARSI\.venv`（Python 3.12 + pydantic/pytest/pyyaml/numpy/networkx/scikit-learn）
+- 运行命令：`PYTHONPATH=E:\ARSI\src` + `E:\ARSI\.venv\Scripts\python.exe -m pytest tests -q`（CWD=`E:\ARSI`）
+
+### 仍未做
+- host measured 比例与 `n_v_updates` 稳定几 tick 后，再看是否把条件场接进 Governor 选动作
+- 官方 Dream-RSI 超参回填 · I6 live · LLM 401
+
+---
+
+## Sync-1 器官同步诊断（2026-09-23 · CTM arXiv:2505.05522）
+
+### 交付
+| 模块 | 作用 |
+|------|------|
+| `foundation/sync_repr.py` | 分块相关阵 · PairSync 递推（App.H）· short/med/long 半衰期 · dead 通道 · top 耦合对 · 谱熵代理 |
+| `capability_flow.observe/health` | `sync` / `dead_channels` / `dead_organs` 进 health 与 flow_guidance |
+| `host_strategy` | `dead_organs_observe_only` 警告（**只观察，不改 focus/confidence**） |
+| `pull_health.py` | 打印 sync 块 entropy / top pairs / dead |
+| `tests/test_sync_repr.py` | 递推、相关、dead、多尺度、Tracker 接线 |
+
+### 语义（CTM 对位）
+- **snapshot vs 同步**：在 $v(z)$ 旁增加通道间时序共波动 $\rho_{ij}$ / $S_{ij}(t_{1/2})$
+- **dead-organ**（CTM dead-neuron 类比）：低方差 frozen 或与其它通道 max|ρ|≈0 → 仅 brief 观察字段
+- 半衰期网格 30s / 5min / 30min（官方可学习 $r_{ij}$ 的统计先验）
+
+### 纪律
+- **不改评分、不改铁律、不改 Dream-RSI 选择**
+- live/pool/D_T/流分块不混写
+- 诊断特征 ≠ verified claim
+
+### 测试
+全量套件见本轮运行（Sync 相关 52 passed 后全量）
+
+### 仍未做
+- C1-1 certainty↔correctness 校准 · C1-2 自适应预演深度 · C1-3 条件同步 $\mathbf{S}(a)$
+- C2 NLM / 神经 ODE / 认知地图（数据门槛后）
+
+---
+
+## C1-1/2/3 CTM 决策轨（2026-09-23）
+
+### C1-1 校准（t2 纪律）
+- `IntrospectorCalibrator`：显式 confidence ↔ success 可靠性分箱 + ECE
+- **overconfident** 或 ECE 高 → 压低 `self_trust`；严重过度自信 → `degrade_to_baseline`
+- 未显式给 confidence **不编 0.5** 进 ECE（避免误伤）
+- `governor_advice` / health 带 `calibration`
+
+### C1-2 自适应预演
+- `PreEnactmentEngine.max_think_ticks` 为唯一预算；`plan_think_ticks()` 按 difficulty（η、field_mse、dynamics 未训）伸缩
+- `select_best_adaptive`：多 tick 加深 $z_\tau$ 视界，**selection certainty**（margin+conf）达标则 early-stop
+- `core.step` 预演层已切到 `select_best_adaptive`（source=`pre_enactment_adaptive`）
+
+### C1-3 条件同步 $\mathbf{S}(a)$
+- `action_conditioned_sync`：按 action 分层算耦合对 / dead / 熵；n&lt;3 标 `unmeasured`
+- `FlowSample.action` 入历史；`sync_report.by_action` 进 health
+
+### 测试
+```
+503 passed
+```
+新增 `tests/test_c1_ctm.py`（校准 / 自适应 tick / S(a)）
+
+### 仍未做
+- C2 NLM / 神经 ODE / 认知地图
+- LLM 401 · I6 live · 官方超参回填
+
+---
+
+## C2 表示升级轨（2026-09-23 · CTM）
+
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **C2-1** | `world_model/nlm_filter.py` | 每通道私有历史滤波 $g_d(A_d)$（线性 NLM）；不足样本 echo，不编预测 |
+| **C2-2** | `world_model/kernel_flow.py` | Nadaraya–Watson 核回归 $v(z;a)$；一阶直督；动作样本不足回退全局 support |
+| **C2-3** | `world_model/cognitive_map.py` | 无外部坐标：action→Δz 边；`route(z_now,z_goal)` 想象路线 |
+| **C2-4** | `foundation/sync_memory.py` | 器官对绑定 evidence_id；`recall(z)` 超窗召回 |
+
+### 接线
+- `CapabilityFlowTracker.observe`：NLM + cogmap 边；dt 够时 `kernel.fit_sample`
+- `health`：`nlm` / `kernel_v` / `cognitive_map` / `sync_memory` / `nlm_pred`
+- `flow_guidance`：`kernel_v` + `cognitive_route`
+- `pull_health`：打印上述字段
+
+### 纪律
+- 一阶监督，**禁** multi-step consistency loss
+- 数据门：不足样本标 untrusted / unmeasured，不发明 Δ
+- 不改评分 / 铁律 / Dream-RSI 选择
+
+### 测试
+`tests/test_c2_representation.py`；全量见本轮运行
+
+### 仍未做
+- 神经 MLP NLM / 真 neural ODE（需更厚样本）
+- LLM 401 · I6 live · 官方超参回填
+
+---
+
+## LLM 切换 AMD MiMo（2026-09-23）
+
+| 项 | 值 |
+|----|-----|
+| provider | openai（OpenAI 兼容） |
+| model | `MiMo-V2.6-Flash` |
+| api_base | `https://developer.amd.com.cn/radeon/api/v1` |
+| key | `config/arsi.yaml` 本地 fallback + **gitignored** `E:\ARSI\.env`（`ARSI_API_KEY`） |
+| proxy | `use_proxy: false` |
+| 冒烟 | `chat("PONG")` → **success True / content PONG / available True** |
+
+`start_daemon.bat` 会加载 `E:\ARSI\.env`。**daemon 需重启**才会换掉旧 NVIDIA 401 配置。
+
+注意：`arsi.yaml` 为本地开发含 key，**勿推公开远端**；`.env` 已在 `.gitignore`。
+
+---
+
+## I6 live 验收轨（2026-09-23）
+
+### 交付
+| 项 | 说明 |
+|----|------|
+| `iwm/i6_live.py` | 证据门 + 宣称阶梯：`skeleton` → `candidate` → **`introspective_v1_live`** |
+| `scripts/i6_live_acceptance.py` | 读 health/checkpoint/compare + 可选 Q 探针/suite；写 `archive/eval/i6_live_acceptance.json` |
+| `tests/test_i6_live.py` | 阶梯、降级、facts 合并 |
+
+### 宣称纪律
+- Q1–Q3 **任二失败** → skeleton  
+- **未跑 Q**（skip-q）→ 最高 **candidate**，不误标 skeleton  
+- 全部门槛过了还要 **suite verified=True** 才 `live_v1`；否则强制降级  
+- 种子 runner 只配 `candidate`（与 `iwm_probes` 边界一致）
+
+### 首次实盘结果（--skip-suite --skip-q）
+```
+claim: introspective_v1_candidate
+ok:  pool=17 traces=287k cycles=383 L1=0.956 organs_frac=0.6 no_regress
+fail: q_evaluated · flow_thick(v_upd=7<8) · calibration_n=0 · host_loop_healthy · suite_verified
+```
+
+### 测试
+```
+525 passed
+```
+
+### 仍未做
+- 跑满 Q 探针 + suite → 再验一次 live  
+- 官方超参回填 · MLP-NLM / neural ODE（厚数据后）
+
+---
+
+## I6 live 达成 introspective_v1_live（2026-09-23）
+
+### 收口改动
+- `apply_outcome` 带上 **selection_certainty / confidence**（t2 显式置信）
+- 校准器 **落盘** `archive/iwm/calibration.json`
+- host 实测 **effect → confidence** 批量入 ECE
+- host_success_rate 取 host_loop ∨ multi_agent **最优证据**（不因空 MA 清零）
+- Q 事实优先读 daemon **health.q_gate**（不再对生产库 step）
+
+### 验收结果
+```
+claim: introspective_v1_live  live_v1=True
+gates_fail: []
+pool=17 traces=287461 cycles=383 v_upd=8 L1=0.956 organs=0.6
+cal_n=42  suite: verified pytest_exit_0
+report: archive/eval/i6_live_acceptance.json
+```
+
+### 测试
+全量套件见本轮（I6/IWM 相关 43 + 全量回归）
+
+### 仍未做
+- 官方超参回填 · MLP-NLM / neural ODE（厚数据后）
+- daemon 持续跑以让 calibration.json / flow 跨重启增厚
+
+---
+
+## Dream-RSI 官方仓库核查（2026-09-23）
+
+### 仓库状态（zhengkid/Dream-RSI@main）
+| 项 | 状态 |
+|----|------|
+| Paper PDF | ✅ `papers/Dream-RSI.pdf`（已下载 cache） |
+| 项目页 / demo | ✅ dream-rsi.com |
+| **Full codebase** | ⏳ **Being prepared**（无源码/无 YAML） |
+| Reproduction scripts | ⏳ Being prepared |
+| Discovered programs | ⏳ Being prepared |
+
+### 论文 PDF 能钉死的
+| 项 | 证据 |
+|----|------|
+| Replay 目标式 | $V=\max s-\beta_1 N+\beta_2(N/\max\{1,k^\*\})$ |
+| pareto 式 | `auc - λ·parallel_penalty`；penalty=seq_rounds/probes |
+| default β（历史不足） | **about 0.6** ✅ |
+| plateau 调 β 步长 | **about 0.1–0.2**，clamp [0,1] ✅ |
+| β 跨周期规则 | 改善保持 / 平台抬升 / 浪费下调 / 冲突→0.6 |
+| M / K₂ | 仅有符号定义，**无具体数** |
+| β₁ β₂ λ · β grid 数值 | **论文未给** |
+
+### YAML 处理
+- `config/dream_rsi_params.yaml`：`official_code_status=paper_pdf_only_code_pending`
+- **paper_confirmed** vs **paper_unspecified** 分栏；未编造 β₁/β₂/λ/M/K₂
+- 公式已写入注释；加载器 `load_dream_rsi_params` 正常，**525 passed**
+
+### 仍未回填（等 full codebase）
+`beta1_cost_penalty` · `beta2_parallel_bonus` · `parallel_lambda` · `M_revisions_per_cycle` · `K2_replay_max_rounds` · `beta.sweep_grid` 具体格点
+
+---
+
+## dream-rsi.com 交互 demo 挖掘（2026-09-23）
+
+### 来源
+`https://www.dream-rsi.com/dream.js`（+ `script.js`）；站方明确：**canvas 数字 illustrative**，真数在 Results。
+
+### Demo JS 常量（示意，非论文系数）
+| 常量 | 值 | 含义 |
+|------|-----|------|
+| `LAMBDA` | **0.006** | `Return = best − λ·n_attempts`（扁平尝试成本，≈β₁ 简化式；**不是**论文 β₁） |
+| `REVS` | **4** | 注释 `// M`；站文「π0 部署版 + π1…π3 修订」→ **M=4 个候选版本** |
+| `EK` | **24** | 每候选版本回放次数（随机策略取均值） |
+| `BUDGET/MAXD/MINBR/MAXBR` | 32/6/5/8 | demo 树生成，与 Dream-RSI 超参无关 |
+
+### 结构确认（可写进配置）
+- **M = 4**（π⁰…π³，含已部署 π⁰）→ `M_revisions_per_cycle: 4` ✅
+- 回放覆盖 **子树**，按节点计成本；`best_score - λ·n` 为 demo 回报式
+- 仍缺：β₁/β₂/λ(pareto)/K₂/β-grid 真数值
+
+### YAML
+`dream_rsi_params.yaml` 增加 `demo_site` 段（illustrative / structure_confirmed 分栏）；`loop.M_revisions_per_cycle: 4`。
+
+---
+
+## 同名仓库深度鉴别（2026-09-23）
+
+详见 `E:\Mimo 生成\docs\2026-09-23\Dream-RSI-peer-repos-deep-dive.md`
+
+| 仓 | 判定 |
+|----|------|
+| juanmackie/pi-Dream-RSI | 公式最贴论文；**peer default** β₁=β₂=0.01, K₂=8, grid含0 |
+| TheAstrayDev/dream-rsi-sdk | NOTICE 明确非 Google；约定版本化（parallel_weight=0.1） |
+| robinber/dream-rsi-spark | SPEC 最严谨：**M=R+1**、App.B≠§3 |
+| patrykorwat/open-dream-rsi | **误标 β₂**（diversity≠N/k），数字慎用 |
+| opengpt4/dsh_dream_rsi | 具身域 + **无 license**，不采信 |
+
+**结论**：全部非官方；YAML 记 `peer_implementations` 旁注；**不**升格为 paper_confirmed；ARSI 现值不动。
+
+---
+
+## Harness-1+X 开工（2026-09-23 · ModularRSI × HarnessX）
+
+### 交付
+| 模块 | 作用 |
+|------|------|
+| `harness/taxonomy.py` | 九维 c1–c9 × 五模块；**c7 铁律 frozen**；scope fence |
+| `harness/manifest.py` | Change-Manifest + 回滚 inverse_op + 状态机 |
+| `harness/audit.py` | audit.jsonl（stage/gate/commit） |
+| `harness/digester.py` | 失败簇（tool_loop / timeout / premature…） |
+| `harness/planner.py` | landscape + **untried levers**（打 under-exploration） |
+| `harness/gates.py` | critic（防 hack）· regression（防遗忘）· seesaw（→fork） |
+| `harness/variants.py` | 变体池 + ensemble routing；铁律全变体共享 |
+| `config/harness_map.yaml` | 映射与隔离表（sealed/I6/eval_loop 黑名单） |
+| `tests/test_harness_aegis.py` | 14 项 |
+
+### 纪律
+- 不动铁律 / 评分 / Dream-RSI 选择  
+- frozen dim c7 拒绝一切 edit  
+- seesaw 不硬拒 → fork 变体  
+
+### 测试
+`539 passed`（本轮全量，含 +14 harness）
+
+### 仍未做
+- Digester 接真实 host 轨迹入 daemon  
+- LLM Evolver / Change-Manifest 生成（需 MiMo）  
+- 变体路由接 multi-agent 宿主  
+- c9 训练桥导出  
+
+---
+
+## Digester 实盘接入（2026-09-23）
+
+### 交付
+- `harness/pipeline.py` — `run_landscape`（Digester+Planner+label 持久化）
+- `scripts/harness_landscape.py` — 生产库一键 landscape
+- `arsi_daemon` 每 **3 tick** 跑 landscape；health 带 `harness_landscape`
+- `archive/harness/` audit + label_counts；`archive/eval/harness_landscape_latest.json`
+
+### 首次实盘（400 条生产轨迹）
+```
+traces=400 failures=61
+clusters=2: generic_failure n=45 · invalid_or_compile n=16
+untried_edit_types=全部 5 类（首轮）
+```
+
+### 测试
+全量 **539 passed**
+
+### 仍未做
+- LLM Evolver 产 Change-Manifest  
+- 变体路由绑 hermes/mimo/synthex  
+- c9 训练桥  
+
+---
+
+## Evolver 最小闭环（2026-09-23）
+
+### 交付
+- `harness/evolver.py` — 规则模板 + 可选 LLM 润色；**scope fence + critic** 后才 `accepted`
+- `scripts/harness_evolve.py` — 一轮：landscape → manifests → store/audit
+- 默认**不自动改 core**（Change-Manifest 可审可回滚 `inverse_op`）
+
+### 实盘一轮
+```
+proposed=2 accepted=2
+[prompt c2] fail_class+recovery before tool failure  (generic_failure n=45)
+[prompt c6] compile check before accept code        (invalid_or_compile n=16)
+```
+`archive/eval/harness_evolve_latest.json` · `archive/harness/change_manifests.jsonl`
+
+### 测试
+全量 **542 passed**（+3 Evolver）
+
+### 仍未做
+- 应用 accepted manifest（人工/门后 apply）  
+- 变体路由绑宿主 · c9 桥  
+
+---
+
+## Apply 两条 Change-Manifest（2026-09-23 · 决策：先落地后变体）
+
+| Manifest | 落点 | 效果 |
+|----------|------|------|
+| **CM-fc23371019** | `ARSIBrief` + `HostStrategy.as_structured_block` | brief 增加 **Fail-handling**：fail_class + 一次恢复；禁止同前重复失败调用 |
+| **CM-7b86cd1d1f** | `CodeVerifier` | `require_compile=True` + `on_compile_fail=reject_and_log` |
+
+### 决策理由
+AEGIS 只差落地环；两条对准最大实盘簇（hermes tool 45 / synthex compile 16）。变体路由等跨宿主**改法冲突**再上。
+
+### 测试
+全量 **547 passed**
+
+### 仍未做
+- 变体路由绑 hermes/mimo/synthex · c9 训练桥  
+- landscape 复测：Fail-handling / compile 门生效后簇是否收缩  
+
+---
+
+## 变体路由绑三宿主 + daemon 重启（2026-09-23 · 决策）
+
+### 决策
+**不**立刻复测 landscape（400 条是 apply 前轨迹 → 假阴性）。改为：
+1. `VariantPool.ensure_hosts / route_for_host / observe_host`
+2. daemon `_run_host_loop` 绑 hermes / mimo-desktop / synthex-mothernest，按成败 observe；落盘 `archive/harness/variants.json`
+3. 重启 daemon 加载 Fail-handling + compile 门 + landscape 每 3 tick
+
+### 测试
+全量 **550 passed**（+3 host variants）
+
+### 仍未做
+- c9 训练桥  
+- **等 1–2 天新轨迹后** landscape 复测看簇收缩  
+
+---
+
+## c9 训练桥（2026-09-23）
+
+### 交付
+- `harness/training_bridge.py` — 轨迹 → **task-level** JSONL 训练样例  
+  - `trajectory_digest` / `prompt_facts` / `harness_variant` / `reward`  
+  - **黑名单**：sealed / i6_gate / eval_loop / gold_answer 不进训练集  
+  - **grpo=false**（API 宿主无权重，只导出）
+- `scripts/export_training_bridge.py`
+
+### 实盘导出
+```
+in=500 exported=500 excluded=0
+out=archive/eval/c9_training_bridge.jsonl
+alignment=task_level_not_action_level
+```
+
+### 纪律
+- 不现场 GRPO / 不训基座  
+- 与 Cross-Harness GRPO 的 task-level 对齐口径一致，留作离线 SFT/DPO/GRPO
+
+### 测试
+全量 **552 passed**（+2 c9）
+
+### Harness RSI 全环
+```text
+Digester→Planner→Evolver→Gates→Apply→Host variants→c9 export  ✅
+```
+
+### 仍未做
+- 等 1–2 天新轨迹后 landscape 复测  
+
+---
+
+## 总规划 + P0-RRSI（2026-09-23）
+
+### 规划（一篇一落地）
+RRSI ✅ → SEVerA → SAHOO → AIDE² → Self-Harness → Grader → GAI  
+落地序：P0-RRSI → P1-SEVerA → P1-SAHOO → P2  
+全文：`E:\Mimo 生成\docs\2026-09-23\ARSI-research-build-roadmap.md`
+
+### P0-RRSI 交付
+| 模块 | 对应 |
+|------|------|
+| `edit_budget.py` | L0 余弦退火 $b_t$ · stall_flag · unexercised |
+| `noise_floor.py` | δ 标定（range/std）· 地板判定 |
+| `credit.py` | $\mathcal{L}_t$ 账本 · $g_t$·$N_t$ · 剪枝集 · 负证据 |
+| `accept.py` | **评前泄漏** → 地板 → 成本式/带内 shaped → 守卫 |
+| `prune.py` | $\mathcal{B}_t$ · exploration_directive |
+| `evolver.py` | 接预算上限 + stall 探索槽 |
+
+### 测试
+全量 **559 passed**（+7 P0-RRSI）
+
+### 仍未做
+- manifest 回写 ΔS/ΔC/accepted 进 ledger  
+- 词表 YAML 对齐九维  
+- 下一篇精读：**SEVerA**  
+
+---
+
+## SEVerA + SAHOO 直接交付（2026-09-23 · 无需批准）
+
+### SEVerA
+- 精读：`E:\Mimo 生成\docs\2026-09-23\SEVerA-deep-dive.md`
+- **`harness/contracts.py`**：G1–G10 FGGM-lite（Φ/Ψ/check/fallback）
+- `accept.admit` 接硬契约：G3/G5/G6/G10 fallback → **拒**
+
+### SAHOO
+- 精读：`SAHOO-deep-dive.md`
+- **`harness/sahoo.py`**：GDI · regression_risk · CAR · `decide_stop`（**CPS=0 绝对停**）
+
+### 测试
+全量 **569 passed**
+
+### 下一篇（自动继续）
+AIDE² → Self-Harness → Grader → GAI  
+
+---
+
+## AIDE² + Self-Harness 交付（2026-09-23）
+
+### AIDE²
+- 精读：`AIDE2-deep-dive.md`
+- `holdout.py`：pub/priv 分割 · private_grade · **public 赢 private 输→拒** · 一阶/二阶泛化
+- `hack_kpi.py`：proxy↑×downstream↛ hack 率 · lineage 趋势
+
+### Self-Harness（同轮）
+- `minimality.py`：minimal_edit_score · **双回归**（held-in + held-out）
+
+### 下一篇（自动继续）
+Grader → GAI 用语  
+
+---
+
+## Grader + GAI 交付 — RSI-Armor 七篇齐（2026-09-23）
+
+### Grader
+- `drawback.py`：typed detector · 表达式 any/all/vote · birth/shadow/retire · S(e) · validity gate
+- **安全在 anchor**（sealed/铁律），不在 lifecycle
+
+### GAI
+- `gai.py`：两表盘 · polarity（anchored / goal_drift / self_referential）· `rsi_defects` · `assert_anchored`
+- **ARSI_GAI = RSI + anchored**
+
+### RSI-Armor 全景
+RRSI ✅ SEVerA ✅ SAHOO ✅ AIDE² ✅ Self-Harness ✅ Grader ✅ GAI ✅  
+
+### 测试
+全量 **584 passed**
+
+---
+
+## 二次研读 + 架构基石升格（2026-09-23）
+
+### 结论
+- **升格 L0** GAI 宪法 · **L1** SEVerA 契约层 · **L2** RRSI×AIDE² 正则化 MetaRSI · **L5** Grader 认识论  
+- SAHOO → **L3 生命体征**（并入 IWM）  
+- Autopoiesis → **总纲**  
+- Self-Harness 不升格  
+
+### 交付
+- `E:\Mimo 生成\docs\2026-09-23\RSI-second-pass-pillars.md`
+- `harness/pillars.py` 六层声明 + audit  
+- README 增「六层架构」  
+
+### 新潜力（未做）
+P-a FGGM 全调用面 · P-b 策略臂 bandit · P-c 有界上下文 · P-d 软锚硬化 · P-f GDI 入 IWM · P-h Ignition  
+
+### 测试
+全量见本轮运行
+
+---
+
+## 二次潜力 P-a/d/f/b 交付（2026-09-23）
+
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P-a** | `call_guard.py` | FGGM 全调用面：llm/tool/brief；密钥脱敏 · 非空 · 预算帽 + 铁律链 |
+| **P-d** | `anchor_hardening.py` | 软反馈→可检查 detector；anchor_set_quality（≥4 起步 / 论文目标 ≥10） |
+| **P-f** | `IWM.goal_vitals` | GDI / CAR / regression_risk 并入 IWM.health（L3 生命体征） |
+| **P-b** | `strategy_bandit.py` + Evolver | **策略臂 UCB1 + 30% softmax**（AIDE₈₅） |
+
+另：contracts 对非 dict 输出不再误触发 G2/G4 等 dict 契约。
+
+### 追加 P-c / P-e
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P-c** | `bounded_context.py` | 有界历史压缩（先弃 digest 再弃旧 recent）；防 AIDE₀ 超窗死 |
+| **P-e** | `detectability.py` | 可检性投资序：机械 detector 先建，语义 judge 最后 |
+
+### 测试
+全量 **596 passed**（P-a/d/f/b + P-c/e）
+
+---
+
+## P-g/h/i 交付 — 二次潜力清零（2026-09-23）
+
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P-g** | `everitt.py` | Everitt 条件：改 utility 须 value **预判改写** + **当前 utility** 评未来 |
+| **P-h** | `ignition.py` | Ignition test：发现的外环 vs 基线外环；点火 / 样本效率提示 |
+| **P-i** | `overshoot.py` | **过冲检测**：越过最优点后仍在改 → `rollback_to_best_or_stop` |
+
+### 测试
+全量 **600 passed**
+
+### 二次研读九件潜力
+P-a…P-i **全部落地**。主线清零。
+
+---
+
+## 第三轮研读 + 互锁螺丝（2026-09-23）
+
+### 三轮结论
+- 七篇是**互锁机器**（锚定—契约—搜索—解耦—评标—测漂）
+- **负认识论**是地基
+- Goal drift 操作定义：**锚名不变 + GDI 升**
+- 涌现反馈律 F1–F5
+
+### 落地 T1–T3 / T5–T6
+`conformance.py` · `accept.domain_guard` · `accept.select_among_admissible` · `sahoo.contractive_regime` · `sahoo.capability_ceiling_hit` · `strategy_bandit` AIDE₈₅ 五臂
+
+### 报告
+`E:\Mimo 生成\docs\2026-09-23\RSI-third-pass-interlock.md`
+
+
+
+
+## 接线债清偿（2026-09-23）
+
+| 接线 | 路径 |
+|------|------|
+| call_guard → conformance 累计 | 
+untime_wiring.log_call_conformance |
+| admit → domain_guard / stop / Everitt | detail_extras + dmit_extras |
+| daemon health → dual_sensor / overshoot / calib | rmor 字段 _armor_health |
+| brief → 有界上下文压缩 | rief_compress |
+
+### 测试
+全量见本轮实跑（wiring 89 + 全量）
+
+
+## 2608.10299 二轮（2026-09-23）
+
+- 反馈空间三型操作法 · 交互空间构造 · 组织演化
+- **W1–W5 纪律**落地 \harness/feedback_evo.py\：ECHO 可操作性 · ARCO 步-局一致 · PEBBLE 重标 · 提示退场 · R* 多 critic
+- 报告：\rxiv-2608.10299-second-pass.md
+
+---
+
+## 全基石深度反刍 + P-R 潜力清零（2026-09-23）
+
+### 报告
+`E:\Mimo 生成\docs\2026-09-23\ARSI-deep-rumination.md`
+
+### 已落地
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P-R1** | `harness/epistemic.py` | 负认识论 claim 白名单；禁积极谓词；I6→`no_known_introspection_defects` |
+| **P-R2** | `world_model/continuous_dream.py` | **连续梦境**：树节点精确 + v(z;a) 插值 + S 共动 + 半步反事实 |
+| **P-R3** | `harness/multiscale.py` | 多尺度控制律：各尺度改速率上限 + L_Δ 分尺度收缩 |
+| **P-R4** | `harness/unified_credit.py` | 双 Ω 统一账本：policy/harness/both 归因 |
+| **P-R5** | `meta/red_queen_env.py` | Red Queen 互压→EnvEvolution：成功率↑→难度↑→effort |
+| **P-R6** | `harness/pillars.py` L0/CHARTER | 组织=ρ / 结构=Ω 二分（自创生×GAI 正名） |
+| **P-R7** | `harness/monotone.py` | V*≥V₀ 推广到 manifest：含 baseline；admitted-best 不降 |
+| **P-R8** | `harness/metabolism.py` | 代谢面：吞吐 / 代谢率 / 膜完整性 → `armor_health` |
+| **AEGIS 自动环** | daemon `_run_harness_evolve_dry` | landscape 后自动 propose（**默认 dry-run，不 apply core**） |
+
+### 测试
+全量 **639 passed**（+15 deep-rumination potentials）
+
+### 仍未做
+- P-R9 guidance 白名单（replay 禁语义 / Evolver 可语义）
+- landscape 复测（等 1–2 天新轨迹）
+- daemon 重启加载 epistemic/multiscale/coevolution/continuous_dream
+
+
+---
+
+## P-R9 + P-R 接线债 + daemon 重启（2026-09-23）
+
+### P-R9 guidance 白名单
+- `harness/guidance.py`：**selection 禁语义** · diagnosis 可读 · Evolver 可语义但过泄漏筛 · brief structured_only
+- Evolver `_gate` 接 `screen_guidance("evolver_manifest", …)`
+
+### 接线
+| 接线 | 路径 |
+|------|------|
+| continuous_dream → dream_rsi_cycle | `harness/pr_wiring.continuous_dream_from_pool` |
+| unified_credit → dream_rsi / eval_loop | `log_unified_after_dream` |
+| monotone best → dream_rsi / eval_loop | `MonotoneLedger.observe` |
+| metabolism/monotone → armor_health | `runtime_wiring.armor_health` |
+
+### daemon
+- 旧 PID 13556/26256 已停；**新 PID 39856**（`.venv` · tick-sleep 300）
+- 首 tick：Ingested **377** traces；AMD LLM HTTP 200
+- 已加载：epistemic / multiscale / coevolution / continuous_dream / guidance / AEGIS dry-run
+
+### 测试
+全量 **647 passed**（+8 P-R9/wiring）
+
+### 仍未做
+- landscape 复测（等 1–2 天新轨迹）
+- GRPO / Dafny / 多 agent 深编排（后置）
+
+
+---
+
+## 宿主协议赋能最大化升级（2026-09-23 · 双边界）
+
+### 决策
+ARSI 最终服务宿主 → 协议必须**最大化赋能**；同时守双边界：
+1. 宿主 brief 面**允许**语义化/可读/可执行
+2. ARSI **内部 replay_selection 仍禁语义**；claim 走负认识论
+
+### 交付
+| 模块 | 要点 |
+|------|------|
+| `adapters/host_empower.py` | Empowerment Pack：skill kit · tool routing · active Change-Manifests · fail recovery playbook · known drawbacks · continuous-dream what-if · armor/vitals · scaffold_level（W4 hint fade） |
+| `bidirectional_interface` | brief 挂 empower_pack；`format_for_agent(full=)` 可绕过 ObservationPack |
+| `ARSIReport` | 可行动字段：fail_class / recovery_* / acceptance_evidence / manifest_ids_used / compile_checked / measurements |
+| report claim 门 | `admit_claim` 拒积极谓词 → outcome 降为 unknown，effect≤0 |
+
+### 测试
+全量 **653 passed**（+5 host_empower；IWM 测试改 `format_for_agent(full=True)`）
+
+### 纪律
+- 不改铁律/评分；不盲标 SUCCESS
+- 内部 selection 语义禁令不因宿主面放宽而松动
+
+
+---
+
+## P0 可归因与稳定四件（2026-09-24 · 夜间数据诊断后）
+
+### 依据
+晨间 landscape：compile 簇 16→6（CM 有效），generic 45→141 且证据全是 `synthex_gate:*` 粗标签；
+planner `tried_edit_types={}` 空转；v 场 d_t_mean 系数 1e205；daemon 双实例。
+
+### 交付
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P0-1** | `harness/digester.py` | `params.fail_class` 优先；新标签 gate_reject/tool_error/runtime_error/resource_limit；簇带 hosts/fail_classes |
+| **P0-1b** | `multiagent/protocol.py` | report_result 透传 fail_class/recovery/acceptance_evidence |
+| **P0-2** | `pipeline.py` + `planner.py` + `evolver.py` | landscape 自动读 ManifestStore；tried_* 记账；least-tried 轮换；同标签同 edit_type 去重 |
+| **P0-3** | `capability_flow.py` + `nlm_filter.py` | `_finite_clamped` 入 fit/predict/velocity_gt；参数/权重 clamp ±1e3 |
+| **P0-4** | `arsi_daemon.py` | 单实例：进程扫描 + named mutex + `ARSI_DAEMON_SINGLETON` 子进程拒入 |
+
+### 测试
+全量 **662 passed**（+9 P0）
+
+### 下一步（数据支撑）
+P1：compile 门固化收账 · Fail-handling 换靶 gate_reject · `harness_preflight` 只读口
+P2：EL 难度方向 / Red Queen 真互压
+
+
+---
+
+## P1 compile 收账 / gate_reject 换靶 / preflight（2026-09-24）
+
+| 项 | 模块 | 要点 |
+|----|------|------|
+| **P1-1** | `harness/compile_gate.py` + `code_verifier` | 每次 compile pass/reject 记账；`compile_gate_effect` 对比 invalid_or_compile 收缩 |
+| **P1-2** | `host_empower` + brief + host_strategy | Fail-handling **换靶 gate_reject**：gate_id+candidate_id · 一次修复 · compile 门 |
+| **P1-3** | `host_empower.harness_preflight` + `brief(pull=)` | **只读**预检：fail 簇 + playbook + compile 账，不触发 evolve |
+
+### 测试
+全量见本轮实跑（P1 21 + 全量）
+
+### 仍未做
+P2：EL 难度方向 / Red Queen 真互压
+
+
+---
+
+## P2 Red Queen / EL 课程（2026-09-24）
+
+| 项 | 修复 |
+|----|------|
+| **P2-1** | erify_world：high/max 子代 **难度不得降**（d_t/L/novelty）；evolve_traces 注入更多 length/scenario/skill-tail |
+| **P2-2** | 
+ed_queen_effort_for_pool 接 evolve_from_seed：宿主成功率↑ → effort↑ |
+| **P2-3** | EL 
+ecord_probe **信任 success 标志**（不再被负 replay_score 覆盖）；零通过率 → curriculum hold |
+
+### 测试
+全量 **674 passed**（+6 P2）
+
+
+---
+
+## GRPO 前置数据面（2026-09-24 · export only）
+
+| 交付 | 路径 |
+|------|------|
+| harness/grpo_data.py | group 采样（brief_id/task）· reward 表（fail_class+claim 罚）· holdout split |
+| scripts/export_grpo_data_plane.py | 导出 groups/rewards/split + manifest |
+| 实盘导出 | rchive/eval/grpo_data_plane/ traces=300 rewards=300 selection=240 private=60 |
+
+### 纪律
+- grpo_live=False 永不训权重（API 宿主）
+- sealed/i6/eval_loop 黑名单进 private/blacklist
+- claim 被拒 → reward≤0（负认识论）
+- 实盘 dvantage_ready=0：单 brief 单轨迹，需 **多采样/多变体** 才有组内相对优势
+
+### 测试
+全量 **681 passed**（+7 GRPO；P2 难度门改为禁塌缩）
+
+
+---
+
+## GRPO 组缺口补齐（2026-09-24）
+
+- worlds_from_trace_chunks + _ChunkPool：生产轨迹切块造多世界
+- default_policy_matrix：beta×width / fixed 多结构策略
+- collect_policy_matrix_from_pool：同世界 × 多策略 → 多完成组
+- 复合 reward：quality + 效率(probes) + score，打破同分饱和
+
+### 实盘
+export --from-pool：matrix_rows=40（8 世界×5 策略）· **advantage_ready=3**
+（仍有同分世界；组间相对优势已可用）
+
+### 测试
+全量见本轮（GRPO 8 + 全量）
+
+
+---
+
+## tool_error CM 落地（2026-09-24 · 按 landscape 复测）
+
+### 依据
+窗 400：	ool_error n=90（hermes terminal/execute_code）· invalid_or_compile n=9 · gate_reject 已分型
+
+### 交付
+| 项 | 落点 |
+|----|------|
+| CM tool | empowerment.applier：fail_class+tool_id · 一次恢复（execute_code↔terminal）· report 契约 |
+| CM compile / brief | 同轮 propose 3 accept 3 |
+| 硬赋能 | EmpowermentApplier.apply_change_manifest → hermes skills rsi-cm* |
+| 软赋能 | brief/host_strategy Fail-handling 对准 tool_error |
+| 账 | rchive/eval/unified_credit_tool_error.json |
+
+### 测试
+全量见本轮
+
+
+---
+
+## synthex compile 重试环 CM（2026-09-24）
+
+### 依据
+tool_error 90→61（CM 有效）；invalid_or_compile 窗内 9→15，同 candidate_id 多版本连打。
+
+### 交付
+- Evolver invalid_or_compile：**同 candidate_id 仅 1 次修复** → abandon_and_log
+- playbook / brief 换靶 compile 重试环
+- hermes skills：rsi-cmd60c7b54a8 / rsi-cm1ab50a9260
+- synthex：E:\SYNTHEX Autopoiesis\docsrsi_host_loop_guidance.md
+- 账：unified_credit_compile_ring.json
+
+### 测试
+全量见本轮
+
+
+---
+
+## compile 重试环硬闸（2026-09-24）
+
+被动 guidance 不够 → **ARSI 侧强制**：
+- compile_gate.candidate_reject：同 candidate_id 满 2 次 compile 失败 → abandon
+- code_verifier 接入硬闸；fail_class=compile_retry_ring
+- 实盘同 id 仍 ×11–12（233dcb/17eeed/1e9f10）— 闸载入后应断环
+
+### 现况（fresh 400 vs 旧 landscape）
+tool_error 43（↓）· invalid_or_compile 40（重试堆积，待硬闸）
+
+### 测试
+全量见本轮
+
+
+---
+
+## 重试环接到 ingest/digester（2026-09-24）
+
+发现：synthex 失败只进轨迹，**不经过 code_verifier** → 硬闸空转。
+改为 
+ote_trace_candidate 在 digester 记次；≥2 次 → 标 compile_retry_ring 并 abandon 列表进 brief。
+
+实盘（fresh 400）：invalid 40→28 · 同 id 12→9（待闸后断环）
+
+
+---
+
+## 下一阶段四线（2026-09-28）
+
+| 线 | 交付 |
+|----|------|
+| hermes tool_error 细分 | digester 	ool_error_terminal/execute · Evolver 捕获 exit/stderr · playbook |
+| eta/self_trust/live_layer1 | iwm/vitals_ledger.py 诊断原因+修复建议；multiagent 宿主结果入 calibrator |
+| synthex abandon 硬执行 | is_reversion_blocked：弃用 id 的 re-version → outcome 降级 |
+| GRPO 扩组 | --from-pool --max-worlds 20 |
+
+### 测试
+全量 686 passed
+
+
+---
+
+## RRSI L2 保真（2026-09-28）
+
+| 交付 | 要点 |
+|------|------|
+| harness/rrsi.py | ΔC=(C'-C)/C · Branch A ΔC≤β0+β1ΔS（coding 0.10/44.5）· three_track evolve/ID/OOD · rrsi_round 含 b_t+stall U_t |
+| ccept.relative_cost | 相对成本接口 |
+| pipeline landscape | 附 
+rsi_tracks（有 score 字段时） |
+| 测试 | 	est_rrsi_fidelity.py 7 项 |
+
+全量见本轮。
+
+
+---
+
+## GAI 基石深挖（2026-09-28 · 批1 起点）
+
+- 一轮机制：E:\Mimo 生成\docs\2026-09-28\GAI-deep-dive.md（χ·两表盘·四缺陷·缺口表）
+- 落地：delusion_box_check · dual_sensor_goal_drift 入 rmor_health.gai_dual_sensor
+- 测试：	est_gai_fidelity.py
+- 计划：GAI 二轮互锁 → SEVerA → …（批1 治权+改）
+
+
+---
+
+## SEVerA 基石深挖（2026-09-28 · 批1 #2）
+
+- 一轮+互锁：E:\Mimo 生成\docs\2026-09-28\SEVerA-deep-dive.md
+- 落地：contracts.well_formedness（FGGM fallback_valid / checker_sound）
+- 测试：	est_severa_wellformed.py
+- 下一篇：AIDE²
+
+
+---
+
+## AIDE² 基石深挖（2026-09-28 · 批1 #3）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\AIDE2-deep-dive.md
+- 落地：outer_loop_select（argmax private_grade）· split_tasks(ood=)
+- 测试：	est_aide2_outer.py
+- 下一篇：Self-Harness 收尾 L2
+
+
+---
+
+## Self-Harness 收尾 L2（2026-09-28 · 批1 #4）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\SelfHarness-deep-dive.md
+- 落地：self_harness_round（mine→minimal→dual_regression）
+- 测试：	est_self_harness_round.py
+- **批1（治权+改）收口**：GAI · SEVerA · RRSI · AIDE² · Self-Harness
+- 下一批：L3 身体 ODEWorld
+
+
+---
+
+## ODEWorld 基石深挖（2026-09-28 · 批2 #1）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\ODEWorld-deep-dive.md
+- 落地：low_fidelity_check（静态不进 z · 一阶直督 · 分块不混轨）
+- 测试：	est_odeworld_fidelity.py
+- 下一篇：CTM
+
+
+---
+
+## CTM 基石深挖（2026-09-28 · 批2 #2）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\CTM-deep-dive.md
+- 落地：ctm_fidelity_check（NLM+sync 同在 · diagnostic_only · 三尺度）
+- 测试：	est_ctm_fidelity.py
+- 下一篇：SAHOO
+
+
+---
+
+## SAHOO 基石深挖（2026-09-28 · 批2 #3）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\SAHOO-deep-dive.md
+- 落地：car_frontier + WEIGHTS_STATUS（must_recalibrate）
+- 测试：	est_sahoo_frontier.py
+- **批2 身体**收口：ODEWorld · CTM · SAHOO
+- 下一批：L4 Dream-RSI
+
+
+---
+
+## Dream-RSI 基石深挖（2026-09-28 · 批3 #1）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\DreamRSI-deep-dive.md
+- 落地：dream_selection_fidelity_check（prefix-only · 禁语义 · V*≥V0）
+- 测试：	est_dreamrsi_fidelity.py
+- 下一篇：Env Evolution
+
+
+---
+
+## EnvEvo 基石深挖（2026-09-28 · 批3 #2）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\EnvEvo-deep-dive.md
+- 落地：env_evolution_fidelity_check（off-policy · 三方向 · Invalid · EL）
+- 测试：	est_envevo_fidelity.py
+- **批3 L4 收口**：Dream-RSI · EnvEvo
+- 下一批：HarnessX / ModularRSI / Co-evo / Grader
+
+
+---
+
+## HarnessX 基石深挖（2026-09-28 · 批E #1）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\HarnessX-deep-dive.md
+- 落地：egis_fidelity_check（四段管线 + c7 frozen + variant isolation）
+- 测试：	est_harnessx_fidelity.py
+- 下一篇：ModularRSI
+
+
+---
+
+## ModularRSI 基石深挖（2026-09-28 · 批E #2）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\ModularRSI-deep-dive.md
+- 落地：contrastive_batches · module_scope_ok
+- 测试：	est_modularrsi.py
+- 剩：Co-evo · Grader（L5 收官）
+
+
+---
+
+## CoEvo 基石深挖（2026-09-28 · 批E #3）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\CoEvo-deep-dive.md
+- 落地：coevo_fidelity_check（三阶 + Anchored Meta）
+- 测试：	est_coevo_fidelity.py
+- 收官：Grader L5
+
+
+---
+
+## Grader 收官 + 基石逐篇深挖计划完成（2026-09-28）
+
+- 一轮：E:\Mimo 生成\docs\2026-09-28\Grader-deep-dive.md
+- 落地：grader_fidelity_check（clean≠correct · validity on anchor）
+- **14 篇基石深挖全完成**：GAI SEVerA RRSI AIDE² SelfHarness ODEWorld CTM SAHOO DreamRSI EnvEvo HarnessX ModularRSI CoEvo Grader
+
+
+---
+
+## Recuris 2608.24876 适配分析（2026-09-28）
+
+- 报告：E:\Mimo 生成\docs\2026-09-28\Recuris-2608.24876-ARSI-fit.md
+- 判定：**适合落地**（记忆控制层补全）· R0 WM 状态机 → R1 结构化 Γ/组件定位 → R2 验证门+CI
+- 不另起炉灶、不训基座、不与 Dream-RSI L4 混账
+
+
+---
+
+## Recuris R0–R2 实现（2026-09-28）
+
+- 方案：E:\Mimo 生成\docs\2026-09-28\Recuris-ARSI-landing-plan.md
+- R0 iwm/working_memory.py：GoalEntry 状态机 · 无证据 done→truth_bounce
+- R1 harness/skill_trace.py：Γ 结构化 · localize_failure → E/W/ρ/C/harness
+- R2 harness/skill_patch.py：组件定向补丁 · validation_gate（n/CI 不足 REJECT）
+- 测试：	est_recuris_r0_r2.py · 全量 **729 passed**
+
+
+---
+
+## Recuris WM 实线 + 定位校准（2026-09-28）
+
+- brief 挂 working_state · report 收 wm_updates → checker 裁
+- scripts/calibrate_recuris_localize.py：真实轨迹 49 fail → **experiential 49**（fail_class=compile_other）
+- localize 优先 fail_class → component
+- 测试全量见本轮
+
+
+---
+
+## validation_gate 真实门控 + abandon 持久化（2026-09-28）
+
+- 门控结果：**REJECT**（success 0.033→0.033；唯一率 0.33→0.03 更差）→ 不 admit 新 skill
+- candidate_fails.json 持久化 abandon 名单；report 遇弃用 id → outcome 降级
+- 观察点：下一窗唯一率回升后再跑 gate_compile_retry_skill.py
+- 全量 **729 passed**
+
+
+---
+
+## 数据窗复查（2026-09-28）
+
+| 观察点 | 结果 |
+|--------|------|
+| terminal 细分 | 修 digester 顺序后 **tool_error_terminal 77** / tool_error 10 |
+| 同 id 唯一率 | 窗 0.29→**0.57**（峰值 ×16 为历史） |
+| compile_retry_ring | 27–38 条被正确标出 |
+| self_trust | **0→0.396**（宿主入账生效） |
+| eta / live_layer1 | 仍 0 |
+| GRPO ready | 7 |
+
+
+---
+
+## hermes tool_error_terminal CM（2026-09-28）
+
+- landscape：terminal 77 · ring 27 · tool 10
+- Evolver 3 accepted；hermes skills rsi-cmac1e7d7855 等
+- report：terminal 缺 exit/stderr → capture_missing
+- playbook MUST capture exit_code+stderr_tail
+- 全量 **729 passed**
+
+
+---
+
+## eta / live_layer1 修复（2026-09-28）
+
+- 根因：仅 core.step() 走 predict_and_update；宿主 ingest 不喂 η
+- 修复：siwm.observe_host_action 接 ingest_trace；outcome 惊奇也计 η
+- 验证：ingest 后 eta **0.32** · live_accuracy **0.20**（原恒 0）
+- 全量 **729 passed**
+
+
+---
+
+## pool 防塌缩 + capture_missing（2026-09-28）
+
+- persist_to：合并旧世界、**拒绝 shrink**（短命 from_config 不得抹掉 50 池）
+- preflight 通告 terminal 必捕字段；report 回传 capture_missing
+- 全量 **729 passed**
+
+
+---
+
+## hermes 捕获抽取 + brief 钉死契约（2026-09-28）
+
+- hermes_deep_adapter：tool content 里刮 **exit_code / stderr_tail / fail_class**
+- brief 顶部 **HARD CONTRACT**：terminal 必捕，禁口头 done
+- 全量 **731 passed**（待跑）
+
+
+---
+
+## 捕获抽取命中（2026-09-28）
+
+- exit_code JSON 形态已刮出（extract 20 hit / 103）
+- ingest 节流（每 4 条 1 次 predict）防慢
+- terminal 最新窗 25（较 60 回落）
+
+
+---
+
+## 捕获可见：store JSON 解码（2026-09-28）
+
+- 根因：ction_params 落库为 **JSON 字符串**，消费端当 dict 读→全 0
+- get_recent_traces 解码 action_params/state_*，并镜像 params
+- 实测：800 条 **exit_code 148 / stderr_tail 132**
+- terminal 最新窗 ~21 · pool 15
+
+
+---
+
+## terminal 亚型 + 去误判（2026-09-28）
+
+- harness/terminal_subtypes.py：timeout/perm/not_found/resource/syntax/other
+- deep_adapter：**忽略 error: null** 伪失败（原先把 JSON null 当 error）
+- 抽样：terminal 真失败 5/19；亚型 timeout·not_found·other
+- 全量 **731 passed**
+
+
+---
+
+## terminal 归因闭环（2026-09-28）
+
+- noisy_ok（exit0+无真错误）移出失败簇：**98→22** 真 terminal 失败
+- 亚型：other 12 · timeout 6 · not_found 4
+- playbook 补 timeout / not_found 恢复包
+- 全量 **731 passed**
+
+
+---
+
+## terminal 六亚型收口（2026-09-28）
+
+- other 再拆：**script_error 9 · timeout 7 · path_escape 3 · type_error 3 · not_found 3 · other 3**
+- playbook：script/path_escape/type_error 专用恢复
+- 全量 **731 passed**
+
+
+---
+
+## script_error / path_escape CM（2026-09-28）
+
+- Evolver 3 accepted：script_error 捕获+一次隔离重试 · path_escape pathlib 规范化 · timeout 重试帽
+- hermes skills：rsi-cmd334c9763f 等
+- 全量 **731 passed**
+
+
+---
+
+## 亚型入 preflight + 门控观测（2026-09-28）
+
+- 亚型：script 12 · timeout 8 · path 4 · type 4 · not_found 4
+- validation_gate：success 0.148→0.148 **REJECT source_not_repaired**
+- preflight 已下发 terminal_subtypes
+- 全量 **731 passed**
+
+
+---
+
+## 长程任务收束：当前开发尽头（2026-09-28）
+
+- 报告：E:\Mimo 生成\docs\2026-09-28\ARSI-frontier-assessment.md
+- 架构图升 Recuris 层 · brief E2E 含 WM+preflight+HARD CONTRACT
+- 剩余阻塞：观察窗 / 外部超参 / 无权重
+- 全量 **731 passed**
+
+
+---
+
+## 统计版 OPF 纪律（2026-09-28 · JEPA-Anything J0–J2）
+
+- world_model/opf_discipline.py：J0 跨块正交 · J1 因子活性/死块 · J2 干预→分块响应
+- 接入 rmor_health.opf；诊断-only，不训网
+- 测试 	est_opf_discipline.py · 全量 **731+**（本轮 731+6）
+
+
+---
+
+## OPF 解耦完全落地（2026-09-28）
+
+- DECOUPLE_POLICY：organ=calibrator · pool=dream_rsi_deploy · live=eval_only · env=env_evo
+- capability_flow.health().opf 从 z 行算 J0–J2 + orth_alerts
+- 警报：organ~pool ρ=0.98 容量耦合 → 必须不同更新率
+- 测试 	est_opf_decouple.py · 全量 **735+**

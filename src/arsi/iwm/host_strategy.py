@@ -40,6 +40,7 @@ class HostStrategy:
     # P1 ODEWorld: first-order dyn flow (evidence-only)
     negative_organs: list[str] = field(default_factory=list)
     pre_failure_organs: list[str] = field(default_factory=list)
+    dead_organs: list[str] = field(default_factory=list)
     z_pre: dict = field(default_factory=dict)
     dyn_velocity: dict = field(default_factory=dict)
     z_subgoal: dict = field(default_factory=dict)
@@ -80,6 +81,15 @@ class HostStrategy:
             lines.append(f"- negative_velocity_organs: {self.negative_organs}")
             if self.pre_failure_organs:
                 lines.append(f"- pre_failure_organs: {self.pre_failure_organs}")
+        if self.dead_organs:
+            # Sync-1: observation-only — do not treat as strong recommendation
+            lines.append(f"- dead_organs_observe_only: {self.dead_organs}")
+        # Fail-handling (CM-fc23371019 + P1-2 gate_reject)
+        lines.append("- fail_handling:")
+        lines.append("    - tool_error (terminal/execute_code): fail_class+tool_id; one recovery (backoff or alt tool)")
+        lines.append("    - no identical failing call without changed precondition")
+        lines.append("    - gate_reject: log gate_id+candidate_id; one repair pass; never SUCCESS without evidence")
+        lines.append("    - compile check before accept code (require_compile)")
         if self.z_pre:
             compact_pre = {
                 k: self.z_pre.get(k)
@@ -182,6 +192,7 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
     flow_guide: dict = {}
     negative_organs: list[str] = []
     pre_fail: list[str] = []
+    dead_organs: list[str] = []
     z_pre: dict = {}
     dyn_velocity: dict = {}
     z_subgoal: dict = {}
@@ -190,6 +201,7 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
             flow_guide = arsi.capability_flow.flow_guidance()
             negative_organs = list(flow_guide.get("negative_organs") or [])
             pre_fail = list(flow_guide.get("pre_failure_organs") or [])
+            dead_organs = list(flow_guide.get("dead_organs") or [])
             z_pre = dict(flow_guide.get("z_pre") or {})
             dyn_velocity = dict(flow_guide.get("v_hat") or {})
             z_subgoal = dict(flow_guide.get("z_subgoal") or {})
@@ -238,6 +250,9 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
     if pre_fail:
         warnings.append(f"pre_failure_degraded:{','.join(pre_fail)}")
         warnings.append("z_pre_is_model_reconstruction_unverified")
+    if dead_organs:
+        # Sync-1: observation only — not a control override
+        warnings.append(f"dead_organs_observe_only:{','.join(dead_organs)}")
 
     # Confidence: IWM self_trust + memory trust + layer1 quality
     self_trust = float(advice.get("self_trust") or 0.5)
@@ -260,6 +275,7 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         "use_z_subgoal": bool(z_subgoal),
         "negative_velocity": bool(negative_organs),
         "pre_failure_reverse": bool(pre_fail),
+        "dead_organs_observe": bool(dead_organs),
     }
 
     return HostStrategy(
@@ -273,6 +289,7 @@ def build_host_strategy(arsi=None, agent_id: str = "host") -> HostStrategy:
         frontier=frontier,
         negative_organs=negative_organs,
         pre_failure_organs=pre_fail,
+        dead_organs=dead_organs,
         z_pre=z_pre,
         dyn_velocity=dyn_velocity,
         z_subgoal=z_subgoal,
@@ -303,6 +320,8 @@ def strategy_for_skill_content(strategy: HostStrategy) -> str:
         lines.append(f"- negative_velocity_organs: {strategy.negative_organs}")
     if strategy.pre_failure_organs:
         lines.append(f"- pre_failure_organs: {strategy.pre_failure_organs}")
+    if strategy.dead_organs:
+        lines.append(f"- dead_organs_observe_only: {strategy.dead_organs}")
     if strategy.z_pre:
         lines.append(f"- z_pre_keys: {sorted(list(strategy.z_pre))[:8]} (model_reconstruction)")
     if strategy.z_subgoal:

@@ -144,6 +144,11 @@ class ARSI:
         # Capability flow (arXiv:2607.27924 PT-Flow): wall-clock velocity field + RankMe
         from arsi.world_model.capability_flow import CapabilityFlowTracker
         self.capability_flow = CapabilityFlowTracker()
+        # P-R dual-Ω credit + P-R7 harness monotone (rumination)
+        from arsi.harness.monotone import MonotoneLedger
+        from arsi.harness.unified_credit import UnifiedCreditLedger
+        self.unified_credit = UnifiedCreditLedger()
+        self.monotone_ledger = MonotoneLedger()
         try:
             self.pre_enactment.bind_capability_flow(self)
         except Exception:
@@ -293,6 +298,16 @@ class ARSI:
         )
         self.mnemosyne.ingest_trace(trace)
 
+        # P-vitals: host streams must drive η + live_layer1 (throttled — store I/O)
+        try:
+            self._host_pred_n = int(getattr(self, "_host_pred_n", 0) or 0) + 1
+            if self._host_pred_n % 4 == 1:
+                self.siwm.observe_host_action(
+                    action=action, outcome=outcome, effect=float(effect or 0.0)
+                )
+        except Exception:
+            pass
+
         if capture_state:
             trace.state_after = self.siwm.refresh_state()
 
@@ -363,12 +378,13 @@ class ARSI:
             advice.get("degrade_to_baseline") or advice.get("downweight_pre_enactment")
         )
         if use_pre:
-            pre_result = self.pre_enactment.select_best(state, candidates)
+            # C1-2: adaptive think ticks (certainty early-stop); budget = max_think_ticks
+            pre_result = self.pre_enactment.select_best_adaptive(state, candidates)
         else:
             pre_result = {"confidence": 0.0, "action": "", "reason": "iwm_dynamics_untrusted"}
         if pre_result["confidence"] > 0.1:
             decision = pre_result
-            result["decision_source"] = "pre_enactment"
+            result["decision_source"] = "pre_enactment_adaptive"
         else:
             # Layer B: LLM decision
             llm_calls_before = self.llm_governor._llm_calls
@@ -505,6 +521,16 @@ class ARSI:
                     used_iwm=used_iwm,
                     success=bool(exec_ok),
                     note=f"{result['decision_source']}|{exec_note}",
+                    # C1-1: only explicit certainty claims enter ECE (t2)
+                    confidence=(
+                        float(result["decision"]["selection_certainty"])
+                        if result["decision"].get("selection_certainty") is not None
+                        else (
+                            float(result["decision"]["confidence"])
+                            if result["decision"].get("confidence") is not None
+                            else None
+                        )
+                    ),
                 )
 
         # 5. Governor metabolism (distill policy)
@@ -693,6 +719,21 @@ class ARSI:
             "track": "live_capability",
             "note": "live capability weighted score; never mix with pool replay_score",
         }
+
+    def _recent_flow_action(self) -> str:
+        """Dominant recent host/ARSI action for v(z; a) conditioning (P2-8)."""
+        try:
+            traces = self.store.get_recent_traces(n=8)
+        except Exception:
+            return "unknown"
+        from arsi.world_model.capability_flow import canon_action
+        counts: dict[str, int] = {}
+        for t in traces or []:
+            a = canon_action(str(t.get("action") or "unknown"))
+            counts[a] = counts.get(a, 0) + 1
+        if not counts:
+            return "unknown"
+        return max(counts.items(), key=lambda kv: kv[1])[0]
 
     # ── Stats ───────────────────────────────────────────────────
 
@@ -995,7 +1036,11 @@ class ARSI:
             "lineage_id": getattr(world, "lineage_id", None),
             "evolution": evolution,
             "capability_flow": (
-                self.capability_flow.observe(self.get_stats(), note="harvest").to_dict()
+                self.capability_flow.observe(
+                    self.get_stats(),
+                    note="harvest",
+                    action=self._recent_flow_action(),
+                ).to_dict()
                 if getattr(self, "capability_flow", None)
                 else {}
             ),
@@ -1342,6 +1387,26 @@ class ARSI:
         self._dream_rsi_cycles += 1
         self.operator_scheduler.mark_capability_change()
 
+        # P-R2/P-R4/P-R7 wiring: continuous dream + unified credit + monotone best
+        cont_dream: dict = {}
+        uni: dict = {}
+        mono: dict = {}
+        try:
+            from arsi.harness.pr_wiring import continuous_dream_from_pool, log_unified_after_dream, monotone_after_selection
+            cont_dream = continuous_dream_from_pool(self.world_pool)
+            uni = log_unified_after_dream(
+                self.unified_credit,
+                self._dream_rsi_cycles,
+                policy_id=str(deployed),
+                dS=float(deployed_score) - float(current_eval.get("avg_score", 0.0) or 0.0),
+                dC=0.0,
+                accepted=bool(selection.get("monotone_ok", True)),
+                policy_share=1.0 if not revised else 0.7,
+            )
+            mono = monotone_after_selection(self.monotone_ledger, float(deployed_score), str(deployed))
+        except Exception as _pr_e:
+            logger.warning(f"P-R wiring failed: {_pr_e}")
+
         # Phase D7: fixed vs dream compare + live-regression auto-rollback
         eval_loop = run_eval_loop(self, params=self.dream_rsi_params)
         self._last_eval_loop = eval_loop.to_dict() if hasattr(eval_loop, "to_dict") else dict(eval_loop)
@@ -1362,6 +1427,9 @@ class ARSI:
             "ran": True,
             "harvest": harvest,
             "pool_size": self.world_pool.size,
+            "continuous_dream": cont_dream,
+            "unified_credit": uni,
+            "monotone": mono,
             "env_evolution": {
                 "harvest": harvest.get("evolution"),
                 "el_used": current_eval.get("el_used"),
@@ -1371,7 +1439,11 @@ class ARSI:
                 "pool_dyn_rankme": self.world_pool.env_evolution_health().get("pool_dyn_rankme"),
             },
             "capability_flow": (
-                self.capability_flow.observe(self.get_stats(), note="dream_rsi").to_dict()
+                self.capability_flow.observe(
+                    self.get_stats(),
+                    note="dream_rsi",
+                    action="dream",
+                ).to_dict()
                 if getattr(self, "capability_flow", None)
                 else {}
             ),

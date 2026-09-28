@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Optional, Sequence
 
 
 @dataclass
@@ -48,11 +48,14 @@ class ELScheduler:
         st = self.lineages.get(lineage_id)
         if st is None:
             return
-        # success: boolean or positive replay score proxy
-        if score is not None:
+        # P2-3: trust the explicit success flag (quality-based); do NOT override
+        # with replay_score>0 — paper scores are often negative (cost term).
+        if success is not None:
+            ok = 1.0 if success else 0.0
+        elif score is not None:
             ok = 1.0 if float(score) > 0 else 0.0
         else:
-            ok = 1.0 if success else 0.0
+            ok = 0.0
         st.probe_history.append(ok)
         if len(st.probe_history) > self.batch:
             st.probe_history = st.probe_history[-self.batch :]
@@ -76,6 +79,14 @@ class ELScheduler:
         if st is None:
             return {"advanced": False, "reason": "unknown_lineage"}
         p = self.pass_rate(lineage_id)
+        # P2-3 curriculum: stuck at ~0 for a full batch → do not stack harder gens
+        if len(st.probe_history) >= self.batch and p <= 0.05:
+            return {
+                "advanced": False,
+                "reason": "curriculum_hold_zero_pass",
+                "pass_rate": round(p, 4),
+                "tau": self.tau,
+            }
         idx = self._active.get(lineage_id, 0)
         n = len(st.world_ids)
         if n == 0:
@@ -140,3 +151,28 @@ class ELScheduler:
                 for lin, st in self.lineages.items()
             },
         }
+
+
+def env_evolution_fidelity_check(
+    *,
+    off_policy: bool = True,
+    directions: Optional[Sequence[str]] = None,
+    invalid_test: bool = True,
+    el_schedule: bool = True,
+) -> dict:
+    """EnvEvo invariants: off-policy, 3 directions, empty-world fails, EL by generation."""
+    dirs = set(directions or ("scenario", "skill", "length"))
+    ok = (
+        bool(off_policy)
+        and dirs >= {"scenario", "skill", "length"}
+        and bool(invalid_test)
+        and bool(el_schedule)
+    )
+    return {
+        "ok": ok,
+        "off_policy": bool(off_policy),
+        "directions": sorted(dirs),
+        "invalid_test": bool(invalid_test),
+        "el_schedule": bool(el_schedule),
+        "note": "env_evolution_fidelity_2609_04128",
+    }

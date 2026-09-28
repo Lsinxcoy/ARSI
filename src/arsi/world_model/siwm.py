@@ -454,3 +454,22 @@ class SIWM:
             "holdout_accuracy": self.last_holdout_accuracy,
             "eta": eta,
         }
+
+    def observe_host_action(
+        self,
+        action: str,
+        outcome: str = "",
+        effect: float = 0.0,
+    ) -> dict:
+        """P-vitals: host ingest must also drive η + live_layer1 (not only core.step)."""
+        pred = self.predict_and_update(action)
+        # outcome surprise also bumps η (success predicted but fail, or vice versa)
+        try:
+            exp_ok = float(effect or 0.0) >= 0.5
+            got_ok = "success" in str(outcome or "").lower()
+            if exp_ok != got_ok:
+                self.eta.update("outcome_mismatch", "outcome_seen")
+        except Exception:
+            pass
+        pred["eta"] = self.eta.value
+        return pred

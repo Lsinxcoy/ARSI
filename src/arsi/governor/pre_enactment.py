@@ -23,12 +23,15 @@ class PreEnactmentEngine:
     Falls back to heuristic scoring when dynamics model is untrained.
     """
 
-    def __init__(self, dynamics: DynamicsModel):
+    def __init__(self, dynamics: DynamicsModel, max_think_ticks: int = 4):
         self.dynamics = dynamics
         self._prediction_count = 0
         self._pre_enactment_count = 0
         # P1 ODEWorld: optional capability-flow guidance (evidence-only)
         self.flow_guide: dict = {}
+        # C1-2 (CTM): adaptive compute — only max ticks is fixed
+        self.max_think_ticks = max(1, int(max_think_ticks))
+        self.certainty_threshold = 0.75
 
     def bind_capability_flow(self, arsi=None) -> dict:
         """Attach z subgoal / negative organs from CapabilityFlowTracker if present."""
@@ -135,6 +138,130 @@ class PreEnactmentEngine:
             ],
         }
 
+    def difficulty(self) -> float:
+        """Decision difficulty in [0,1] — high η / noisy flow / thin dynamics → think longer."""
+        d = 0.35
+        z_now = self.flow_guide.get("z_now") if isinstance(self.flow_guide.get("z_now"), dict) else {}
+        eta = float((z_now or {}).get("eta") or 0.0)
+        d += min(0.3, abs(eta))
+        mse = float(self.flow_guide.get("field_mse") or 0.0)
+        if mse:
+            d += min(0.2, mse)
+        if float(self.flow_guide.get("n_v_updates") or 0) < 2:
+            d += 0.15
+        if self.dynamics and not getattr(self.dynamics.transition_model, "_trained", False):
+            d += 0.2
+        return max(0.0, min(1.0, d))
+
+    def plan_think_ticks(self) -> int:
+        """CTM adaptive compute: easy decisions stop early; hard ones use budget."""
+        diff = self.difficulty()
+        ticks = 1 + int(round(diff * (self.max_think_ticks - 1)))
+        return max(1, min(self.max_think_ticks, ticks))
+
+    @staticmethod
+    def selection_certainty(evaluated: list[dict]) -> float:
+        """Margin + top confidence → how sure we are of the ranking (CTM certainty)."""
+        if not evaluated:
+            return 0.0
+        if len(evaluated) == 1:
+            return float(evaluated[0].get("confidence") or 0.0)
+        top = evaluated[0]
+        second = evaluated[1]
+        margin = abs(float(top.get("score") or 0.0) - float(second.get("score") or 0.0))
+        conf = float(top.get("confidence") or 0.0)
+        # margin saturates ~1.0 score unit
+        return max(0.0, min(1.0, 0.5 * conf + 0.5 * min(1.0, margin)))
+
+    def select_best_adaptive(
+        self,
+        state: WorldState,
+        candidates: list[str],
+        max_think_ticks: Optional[int] = None,
+    ) -> dict:
+        """C1-2: refine ranking over internal ticks; early-stop on certainty.
+
+        Budget is only max_think_ticks. Extra ticks deepen z_subgoal horizon
+        (think further) without changing scores/iron laws.
+        """
+        budget = max(1, int(max_think_ticks or self.max_think_ticks))
+        planned = self.plan_think_ticks()
+        ticks_used = 0
+        certainty = 0.0
+        evaluated: list[dict] = []
+        early_stop = False
+        base_guide = dict(self.flow_guide or {})
+        z_now = dict(base_guide.get("z_now") or {})
+        for tick in range(1, planned + 1):
+            ticks_used = tick
+            # deeper think → longer z subgoal horizon (super-resolution planning)
+            if z_now and getattr(self, "_arsi_field", None) is not None:
+                try:
+                    from arsi.world_model.capability_flow import integrate
+
+                    goal = integrate(
+                        z_now, self._arsi_field, horizon_s=120.0 * tick, steps=3,
+                        action=self._last_action if hasattr(self, "_last_action") else None,
+                    ).get("z_goal") or {}
+                    if goal:
+                        self.flow_guide = {**base_guide, "z_subgoal": goal, "think_ticks": tick}
+                except Exception:
+                    pass
+            evaluated = self.evaluate_candidates(state, candidates)
+            certainty = self.selection_certainty(evaluated)
+            if certainty >= self.certainty_threshold and tick >= 1:
+                early_stop = True
+                break
+
+        if not evaluated:
+            return {
+                "action": candidates[0] if candidates else "remember",
+                "reason": "no_candidates",
+                "confidence": 0.0,
+                "score": 0.0,
+                "think_ticks": ticks_used,
+            }
+
+        best = evaluated[0]
+        if best.get("confidence", 0) < 0.1 and not early_stop:
+            out = self._heuristic_select(state, candidates, evaluated)
+            out.update(
+                {
+                    "think_ticks": ticks_used,
+                    "planned_think_ticks": planned,
+                    "max_think_ticks": budget,
+                    "selection_certainty": round(certainty, 4),
+                    "early_stop": early_stop,
+                    "difficulty": round(self.difficulty(), 4),
+                }
+            )
+            return out
+
+        return {
+            "action": best["action"],
+            "reason": (
+                f"pre_enactment_adaptive: score={best['score']}, "
+                f"confidence={best['confidence']}, ticks={ticks_used}/{planned}"
+            ),
+            "confidence": best["confidence"],
+            "score": best["score"],
+            "flow_bonus": best.get("flow_bonus", 0.0),
+            "z_subgoal": best.get("z_subgoal", False),
+            "think_ticks": ticks_used,
+            "planned_think_ticks": planned,
+            "max_think_ticks": budget,
+            "selection_certainty": round(certainty, 4),
+            "early_stop": early_stop,
+            "difficulty": round(self.difficulty(), 4),
+            "alternatives": [
+                {"action": e["action"], "score": e["score"], "flow_bonus": e.get("flow_bonus", 0.0)}
+                for e in evaluated[1:3]
+            ],
+        }
+
+    def bind_action_condition(self, action: Optional[str] = None) -> None:
+        self._last_action = action
+
     def _score_prediction(self, pred: dict, state: WorldState) -> float:
         """Score a predicted state transition.
 
@@ -211,4 +338,7 @@ class PreEnactmentEngine:
             "prediction_count": self._prediction_count,
             "pre_enactment_count": self._pre_enactment_count,
             "dynamics_trained": self.dynamics.transition_model._trained,
+            "max_think_ticks": self.max_think_ticks,
+            "difficulty": round(self.difficulty(), 4),
+            "planned_think_ticks": self.plan_think_ticks(),
         }
