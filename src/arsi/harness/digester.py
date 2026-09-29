@@ -104,10 +104,12 @@ _LABEL_RULES: list[tuple[str, callable]] = [
     ("eval_mismatch", lambda t: _has(t, "eval") or _has(t, "assert") or _has(t, "mismatch")),
     ("resource_limit", lambda t: _has(t, "resource") or _has(t, "limit")),
     ("runtime_error", lambda t: _has(t, "runtime") or _has(t, "exception") or _has(t, "traceback")),
-    ("memory_or_context", lambda t: _has(t, "memory") or _has(t, "context") or _has(t, "overflow")),
-    ("tool_error", lambda t: _has(t, "tool") or _has(t, "skill") or _has(t, "empower")),
+    ("memory_or_context", lambda t: _has(t, "memory") or _has(t, "context") or _has(t, "overflow") or _has(t, "session_note")),
     ("tool_error_terminal", lambda t: _has(t, "terminal")),
     ("tool_error_execute", lambda t: _has(t, "execute_code")),
+    ("tool_error", lambda t: _has(t, "tool") or _has(t, "skill") or _has(t, "empower")),
+    ("task_step_fail", lambda t: _has(t, "task_step") or _has(t, "step_fail") or _has(t, "numpy")),
+    ("unknown_action", lambda t: "failure act_" in _blob(t) or _has(t, "unknown action")),
     ("generic_failure", lambda t: True),
 ]
 

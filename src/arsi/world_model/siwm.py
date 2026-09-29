@@ -472,4 +472,24 @@ class SIWM:
         except Exception:
             pass
         pred["eta"] = self.eta.value
+        try:
+            from arsi.foundation.paths import archive_dir
+            import json
+
+            p = archive_dir() / "iwm" / "siwm_vitals.json"
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(
+                json.dumps(
+                    {
+                        "live_accuracy": float(self.layer1.live_accuracy or 0.0),
+                        "holdout_accuracy": float(self.last_holdout_accuracy or 0.0),
+                        "rule_count": len(self.layer1.rules),
+                        "eta": float(self.eta.value),
+                    },
+                    ensure_ascii=False,
+                ),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
         return pred

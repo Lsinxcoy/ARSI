@@ -313,6 +313,49 @@ def default_policy_matrix(n: int = 5) -> dict:
     return pols
 
 
+def multisample_groups_from_traces(
+    traces: Sequence[dict],
+    *,
+    variants: Sequence[str] = (),
+) -> list[GroupRow]:
+    """Group real multi-host / multi-variant outcomes for the same action key.
+
+    Only groups with **actual reward variance** are advantage_ready —
+    never invent scores (negative epistemology).
+    """
+    buckets: dict[str, dict[str, float]] = defaultdict(dict)
+    for t in traces or []:
+        if not isinstance(t, dict):
+            continue
+        key = str(t.get("action") or t.get("task_id") or "")
+        if not key:
+            continue
+        vid = str((t.get("params") or {}).get("harness_variant") or t.get("agent_id") or "default")
+        ex = trace_to_example(t)
+        if ex.exclude_reason:
+            continue
+        buckets[key][vid] = float(ex.reward)
+    out = []
+    for key, vmap in sorted(buckets.items(), key=lambda kv: -len(kv[1])):
+        mem = list(vmap.items())
+        if len(mem) < 2:
+            continue
+        rewards = [r for _, r in mem]
+        var_ok = (max(rewards) - min(rewards)) > 1e-9
+        out.append(
+            GroupRow(
+                group_id="G-" + hashlib.sha256(key.encode("utf-8")).hexdigest()[:12],
+                task_key=key,
+                n_members=len(mem),
+                member_ids=[m[0] for m in mem],
+                rewards=[round(r, 6) for r in rewards],
+                advantage_ready=var_ok,
+                note="real_multivariant_outcomes",
+            )
+        )
+    return out
+
+
 def load_world_pool_snapshot(path: str | Path | None = None):
     """Prefer full daemon snapshot when live ARSI.pool is tiny."""
     try:
@@ -393,6 +436,10 @@ def export_grpo_data_plane(
     split = build_split_from_traces(kept_traces, private_ratio=private_ratio)
     rewards = reward_table(kept_traces, split=split, harness_variant=harness_variant)
     groups = build_groups(kept_examples, kept_traces)
+    try:
+        groups = groups + multisample_groups_from_traces(kept_traces)
+    except Exception:
+        pass
     matrix_rows: list[dict] = []
     if world_pool is not None and policies:
         matrix_rows = collect_policy_matrix_from_pool(world_pool, policies, max_worlds=max_worlds)

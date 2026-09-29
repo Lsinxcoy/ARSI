@@ -76,6 +76,8 @@ def _g2_psi(x: dict, y: Any) -> bool:
     """分级安全门：depth 越深，confidence 门槛不得更低。非 dict 输出不适用。"""
     if not isinstance(y, dict):
         return True
+    if y.get("rejected_by") == "G2":
+        return True  # verified fallback: explicit reject is contract-safe
     depth = int(y.get("depth") or (x or {}).get("depth") or 0)
     conf = float(y.get("confidence") or 0)
     thr = 0.3 + 0.15 * depth

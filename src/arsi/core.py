@@ -287,6 +287,34 @@ class ARSI:
         """
         state_before = self.siwm.get_state() if capture_state else WorldState()
 
+        # Hard stop: abandoned compile candidate_id must not re-enter as new work
+        try:
+            from arsi.harness.compile_gate import extract_candidate_id, is_reversion_blocked, note_gate_failure
+
+            blob = f"{action} {params}"
+            if extract_candidate_id(blob) and is_reversion_blocked(blob)[0]:
+                params = dict(params or {})
+                params["reversion_blocked"] = True
+                params["fail_class"] = params.get("fail_class") or "compile_retry_ring"
+                outcome = "unknown"
+                effect = min(float(effect or 0.0), 0.0)
+            elif "synthex_gate:" in blob:
+                gid, stop, why = note_gate_failure(blob)
+                if stop:
+                    params = dict(params or {})
+                    params["gate_ring_stop"] = True
+                    params["gate_id"] = gid
+                    params["fail_class"] = params.get("fail_class") or "gate_reject"
+                    outcome = "unknown"
+                    effect = min(float(effect or 0.0), 0.0)
+            elif "execute_code" in str(action) and "fail" in str(outcome).lower():
+                params = dict(params or {})
+                params.setdefault("fail_class", "tool_error_execute")
+                if not params.get("exc_type"):
+                    params["exc_type"] = "unclassified_execute_fail"
+        except Exception:
+            pass
+
         trace = BehaviorTrace(
             agent_id=agent_id,
             action=action,
@@ -305,6 +333,12 @@ class ARSI:
                 self.siwm.observe_host_action(
                     action=action, outcome=outcome, effect=float(effect or 0.0)
                 )
+            # holdout/rule refresh (was only in core.step)
+            if self._host_pred_n % 40 == 0:
+                try:
+                    self.siwm.train_from_history()
+                except Exception:
+                    pass
         except Exception:
             pass
 
@@ -779,11 +813,7 @@ class ARSI:
             "last_eval_loop": self._last_eval_loop,
             "iwm": self.iwm.health() if self.iwm is not None else {},
             "iwm_q_gate": self.iwm.q_gate()[1] if self.iwm is not None else {},
-            "layer1": {
-                "live_accuracy": round(getattr(self.siwm.layer1, "live_accuracy", 0.0) or 0.0, 4),
-                "holdout_accuracy": round(self.siwm.last_holdout_accuracy, 4),
-                "rule_count": len(self.siwm.layer1.rules),
-            },
+            "layer1": self._layer1_stats(),
             "paths": __import__("arsi.foundation.paths", fromlist=["identity_report"]).identity_report(),
             "vacuum": __import__("arsi.foundation.vacuum", fromlist=["consolidation_vacuum"]).consolidation_vacuum().stats,
             "multi_agent": getattr(self, "multi_agent", None).health() if getattr(self, "multi_agent", None) else {},
@@ -797,6 +827,29 @@ class ARSI:
                 "brief_policy": "structured+receipt+pack_handle",
             },
         }
+
+    def _layer1_stats(self) -> dict:
+        """In-memory layer1 first; else merge last persisted SIWM vitals (cross-restart)."""
+        live = round(getattr(self.siwm.layer1, "live_accuracy", 0.0) or 0.0, 4)
+        hold = round(self.siwm.last_holdout_accuracy, 4)
+        rules = len(self.siwm.layer1.rules)
+        if live or hold or rules:
+            return {"live_accuracy": live, "holdout_accuracy": hold, "rule_count": rules}
+        try:
+            from arsi.foundation.paths import archive_dir
+
+            p = archive_dir() / "iwm" / "siwm_vitals.json"
+            if p.exists():
+                d = __import__("json").loads(p.read_text(encoding="utf-8"))
+                return {
+                    "live_accuracy": round(float(d.get("live_accuracy") or 0.0), 4),
+                    "holdout_accuracy": round(float(d.get("holdout_accuracy") or 0.0), 4),
+                    "rule_count": int(d.get("rule_count") or 0),
+                    "persisted": True,
+                }
+        except Exception:
+            pass
+        return {"live_accuracy": 0.0, "holdout_accuracy": 0.0, "rule_count": 0}
 
     # ── Lifecycle ───────────────────────────────────────────────
 

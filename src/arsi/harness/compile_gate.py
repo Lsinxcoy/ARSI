@@ -144,6 +144,33 @@ def abandoned_candidates() -> list[str]:
     return sorted([cid for cid, n in _CANDIDATE_FAILS.items() if n >= MAX_CANDIDATE_COMPILES])
 
 
+# P: gate_id retry ring (synthex_gate:cand*) — same hard-stop after 2 fails
+_GATE_FAILS: dict[str, int] = {}
+MAX_GATE_FAILS = 2
+
+
+def extract_gate_id(blob: str) -> str:
+    import re
+
+    m = re.search(r"synthex_gate:([A-Za-z0-9_]+)", str(blob or ""))
+    return m.group(1) if m else ""
+
+
+def note_gate_failure(blob: str) -> tuple[str, bool, str]:
+    gid = extract_gate_id(blob)
+    if not gid:
+        return "", False, ""
+    _GATE_FAILS[gid] = int(_GATE_FAILS.get(gid, 0)) + 1
+    n = _GATE_FAILS[gid]
+    if n > MAX_GATE_FAILS:
+        return gid, True, f"gate_retry_ring_stop:{gid}:n={n}"
+    return gid, False, f"gate_fail_n={n}"
+
+
+def abandoned_gates() -> list[str]:
+    return sorted([g for g, n in _GATE_FAILS.items() if n > MAX_GATE_FAILS])
+
+
 def is_reversion_blocked(blob: str) -> tuple[bool, str]:
     """P: hard-abandon — re-version of exhausted candidate_id is refused."""
     cid = extract_candidate_id(blob)

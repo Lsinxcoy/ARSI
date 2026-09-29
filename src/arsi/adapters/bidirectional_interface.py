@@ -497,16 +497,20 @@ class ARSIInterface:
 
         # 0a) compile retry ring: abandoned candidate_id is not a new attempt
         try:
-            from arsi.harness.compile_gate import extract_candidate_id, note_trace_candidate
+            from arsi.harness.compile_gate import extract_candidate_id, is_reversion_blocked, note_trace_candidate
 
             blob = f"{report.task_description} {report.notes} {report.measurements}"
             cid = extract_candidate_id(blob)
             if cid:
                 _, abandon, why = note_trace_candidate(blob)
-                if abandon:
+                blocked, bwhy = is_reversion_blocked(blob)
+                if abandon or blocked:
                     report.outcome = "unknown"
                     report.effect = min(float(report.effect or 0.0), 0.0)
                     report.fail_class = report.fail_class or "compile_retry_ring"
+                    report.measurements = dict(report.measurements or {})
+                    report.measurements["reversion_blocked"] = True
+                    report.measurements["candidate_id"] = cid
         except Exception:
             pass
 

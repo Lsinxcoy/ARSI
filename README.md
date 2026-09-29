@@ -136,3 +136,9 @@ pytest tests/ -v
 ## License
 
 MIT
+
+
+## Production
+
+See docs/PRODUCTION_RUNBOOK.md for start/stop/health/backup (scripts/ops_*.ps1).
+Smoke: E:\\ARSI\\.venv\\Scripts\\python.exe scripts/ops_smoke.py

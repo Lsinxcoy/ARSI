@@ -2019,3 +2019,60 @@ rsi_tracks（有 score 字段时） |
 - capability_flow.health().opf 从 z 行算 J0–J2 + orth_alerts
 - 警报：organ~pool ρ=0.98 容量耦合 → 必须不同更新率
 - 测试 	est_opf_decouple.py · 全量 **735+**
+
+
+---
+
+## 夜间跑批（2026-09-28 → 09-29）
+
+- daemon 已用 df0f472 重启 · tick 300s · landscape 3 tick · GRPO 6 tick
+- **明早分析清单**：tool_error_terminal/script_error 簇 · 亚型直方图 · unique 率 · pool · eta/live/self_trust · OPF dead_blocks/orth_alerts · validation_gate
+- 代码已推送 Lsinxcoy/ARSI@df0f472（api_key 脱敏）
+
+
+---
+
+## 投产运维包（2026-09-29 · 长程自主）
+
+- docs/PRODUCTION_RUNBOOK.md · scripts/ops_{start,stop,health,backup}.ps1 · ops_smoke.py
+- G2 well-formed 修复：rejected_by 为契约安全 fallback
+- 冒烟全绿 · HEALTH_OK · 备份已跑 · 全量 **738 passed**
+
+
+---
+
+## 投产监控与计划任务（2026-09-29）
+
+- ops_watch.ps1：health 停更 / 磁盘 / daemon 告警 → ops_incidents.jsonl
+- ops_register_tasks.ps1：备份 02:00 · watch 30min（需管理员/用户权限跑一次）
+- WATCH_OK · HEALTH_OK · 备份 6 files
+
+
+---
+
+## 未解问题攻坚（2026-09-29）
+
+- **abandon 硬闸入 ingest**：弃用 candidate_id → outcome unknown + reversion_blocked（实测生效）
+- **holdout/live1**：ingest 周期 	rain_from_history — 实测 holdout **0.94** · live **1.0** · rules 24 · eta 0.25
+- 现存：ring 35 · execute 24 · gate_reject 23 · validation_gate 仍 REJECT
+- 全量 **738 passed**
+
+
+---
+
+## 终局生产审计（2026-09-29）
+
+- 报告：E:\Mimo 生成\docs\2026-09-29\ARSI-production-audit.md
+- **CONDITIONAL GO**：安全/测试/契约/健康/运维达标；功能簇继续收敛
+- 本轮：generic 拆分 · abandon ingest 硬闸 · holdout 0.94 · playbooks
+- 全量 **738 passed**
+
+
+---
+
+## gate 环硬停（2026-09-29）
+
+- 
+ote_gate_failure：同 synthex_gate id >2 次 → ingest **outcome unknown**
+- 实测 cand_same 4 连打：后两次 gate_ring_stop
+- GRPO 再导出 · 全量 **738 passed**

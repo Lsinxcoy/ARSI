@@ -78,10 +78,11 @@ FAIL_RECOVERY = {
     "premature_complete": ["attach_acceptance_evidence", "recheck_checklist", "never_label_SUCCESS"],
     # P1-2: gate rejects are the dominant synthex cluster — first-class recovery
     "gate_reject": [
-        "log_gate_id_and_candidate_id",
-        "one_repair_pass_only",
+        "log gate_id + candidate_id",
+        "ONE repair pass only",
         "set_fail_class=gate_reject",
         "never_label_SUCCESS_without_acceptance",
+        "if same gate_id repeats 3x → escalate_to_human_and_stop",
     ],
     "synthex_gate": [
         "log_gate_id_and_candidate_id",
@@ -89,6 +90,16 @@ FAIL_RECOVERY = {
         "set_fail_class=gate_reject",
     ],
     "unknown": ["record_observation_only", "no_success_claim", "set_fail_class"],
+    "unknown_action": [
+        "map action to known skill/tool vocabulary",
+        "one probe with explicit tool_id",
+        "report fail_class=unknown_action + observed_action",
+    ],
+    "task_step_fail": [
+        "pin failing step id",
+        "one dependency fix (import/version)",
+        "report fail_class=task_step_fail + step_id",
+    ],
 }
 
 DEFAULT_FAIL_KEYS = [
